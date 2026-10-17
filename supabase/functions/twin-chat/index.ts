@@ -1,5 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
+// Deployed with verify_jwt = true: Supabase's gateway rejects requests without
+// a valid project JWT before this function runs, so the Anthropic key cannot be
+// spent by anonymous callers. The client sends the user's session token.
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

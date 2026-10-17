@@ -36,11 +36,20 @@ function extractTerms(question: string): string[] {
 
 async function askLive(question: string): Promise<TwinReply> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twin-chat`;
+  // Dynamic import: keeps the Supabase client out of non-Vite runtimes that
+  // import this module for its pure functions (the eval suite).
+  const { supabase } = await import('./supabaseClient');
+  const { data: sessionData } = await supabase.auth.getSession();
   let response: Response;
   try {
     response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionData.session
+          ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+          : {}),
+      },
       body: JSON.stringify({ question }),
     });
   } catch {
@@ -49,6 +58,9 @@ async function askLive(question: string): Promise<TwinReply> {
 
   if (response.status === 503) {
     throw new TwinUnavailableError('not-configured', 'The AI provider is not configured for this project yet.');
+  }
+  if (response.status === 401) {
+    throw new TwinUnavailableError('service-error', 'The twin service requires a verified session. Sign in and try again.');
   }
   if (!response.ok) {
     throw new TwinUnavailableError('service-error', 'The twin service responded with an error. Please try again.');
