@@ -197,10 +197,32 @@ The **demo is now read-only for signed-out visitors**: sample rows (owner NULL) 
 - Normal owner flows work end to end (insert, update, delete own records).
 
 **Residual limitations (not claims of security):**
-- RLS policies were applied and verified via the Supabase security advisor and a two-account test, but "secure" is never a one-time claim: policy coverage was checked against these six tables only; new tables would need the same treatment.
+- RLS policies were applied and verified via the Supabase security advisor and a two-account test, but "secure" is never a one-time claim: policy coverage was checked against these seven tables only; new tables would need the same treatment.
 - The twin-chat edge function now queries the database with the caller's JWT (not the service-role key), so live-mode context is scoped by the same RLS. The service-role key remains available server-side for other future needs and is never exposed to the browser.
 - Rate limiting and abuse prevention on auth endpoints are Supabase platform defaults, not app-enforced.
 - Email-confirmation behavior depends on project settings; the sign-up flow states this in the UI when confirmation is required.
+
+### Security boundary audit (Upgrade 5 — verified against the live database, 2026-10-17)
+
+**Inventory method:** the audit read the live policy catalog (`pg_policies`), actual table/column privileges held by `anon` and `authenticated`, column defaults, RLS enablement, deployed edge functions and their secrets, the twin-chat function source, all client queries, and the export/delete flows — not just migration files.
+
+**Demo/personal boundary (verified):** the public fictional demo is rows with `user_id IS NULL`, readable by everyone (anon included) through the `select_public_or_own_*` policies, and **writable by no one** — INSERT/UPDATE/DELETE policies are scoped `TO authenticated` with `auth.uid() = user_id`, which null-owned sample rows can never satisfy. Signed-out visitors therefore cannot rewrite or delete shared seed data, and no signed-in user can write into another user's workspace: UPDATE carries `auth.uid() = user_id` on both USING and WITH CHECK, so a row cannot be reassigned. Signed-out callers also reach no personal-data processing path: `interpretation_flags` and `graph_edge_confirmations` have no anon policies at all (zero rows returned), and the twin-chat function reads memories/beliefs/flags with the caller's own JWT, so its context is RLS-scoped to public sample rows plus the caller's records.
+
+**Privilege hardening (applied migration `tighten_table_and_column_privileges` + `narrow_update_column_grants`, verified by re-querying live privileges):**
+- `TRUNCATE` revoked from `anon` and `authenticated` on all seven tables. TRUNCATE is not filtered by RLS — any role holding it could empty a table, including other users' rows and the demo — and the app never truncates. This was the one genuinely dangerous surplus privilege found by the audit.
+- `REFERENCES` revoked from both roles on all seven tables.
+- UPDATE narrowed from table-wide to **user-content columns only**: `id`, `user_id`, and `created_at` are no longer updatable through the data API by any client role. Column privileges are checked before row policies, so this holds even where a row policy would allow the write. The first attempt (column-level REVOKE alone) was verified to be ineffective — a table-level grant implies all columns — and corrected by revoking table-level UPDATE and granting user-content columns back. `memory_id`/`answer_excerpt` on `interpretation_flags` are also non-updatable: a correction stays attached to the record and excerpt it was created against.
+- INSERT grants remain table-wide by design: clients never supply `user_id` (it DEFAULTs to `auth.uid()`), forged owners fail the INSERT policies' WITH CHECK, and the graph-confirmation upsert legitimately targets its own `user_id` conflict key.
+- The Supabase security advisor reports zero findings after the changes — reported as one signal, not as proof of security.
+
+**Secrets (verified):** the client bundle and source contain only the publishable anon key and project URL; no service-role key or Anthropic key appears in `src/`, the built `dist/` output, or any committed file. Edge function secrets (names verified via the secrets API): `ANTHROPIC_API_KEY` lives server-side only. Errors returned to clients are generic messages; detailed errors go to server logs only.
+
+**Two-account failure testing (executed, `scripts/run-workspace-tests.mts`, 37/37 passing):** A can CRUD its own records; A cannot read, update, or delete B's records or insert on B's behalf (forged `user_id` rejected, rows intact after every denial); unauthenticated clients read public sample rows but can write nothing; B cannot manage history or flags on A's records; edge confirmations are private per account; export and "delete everything" touch only the signed-in account's rows (sample rows excluded by both query filter and RLS); personal Twin Chat retrieval is JWT/RLS-scoped so it cannot return another account's memories.
+
+**NOT VERIFIED (honest labeling):**
+- Live AI mode was not exercised against a real model call in this environment; the twin-chat function's server-side enforcement is verified by code inspection and the deployed `verify_jwt = true` configuration, not by a live end-to-end request.
+- Direct Postgres (non-API) connections and the Supabase REST/RPC surface were audited at the privilege level; no attempt was made to attack the platform gateway itself (rate limits, JWT forgery at the edge), which are Supabase platform responsibilities.
+- Storage buckets and realtime channels are unused by this app, so no storage/realtime policies exist to verify.
 
 The demo seed (first migration) is idempotent — it only inserts when tables are empty — and creates the fictional persona: eight memories, three open decisions plus one decided, six beliefs with history, and six timeline events.
 
