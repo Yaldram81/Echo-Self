@@ -411,9 +411,8 @@ function DecisionAnalysisSection({
   async function saveAnalysis() {
     setSaving(true);
     try {
-      await decisionsService.update(decision.id, { analysis_edited: true, analysis: null });
-      // store edited text as analysis summary via a dedicated patch
       await decisionsService.update(decision.id, {
+        analysis_edited: true,
         analysis: {
           summary: analysisText,
           options: [],
