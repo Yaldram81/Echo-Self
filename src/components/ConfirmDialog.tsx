@@ -44,7 +44,7 @@ export function ConfirmDialog({
       <div className="w-full max-w-md rounded-2xl bg-paper p-6 shadow-lifted border border-linen-dark">
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clayred-light text-clayred-DEFAULT">
-            <AlertTriangle className="w-4.5 h-4.5" aria-hidden />
+            <AlertTriangle className="w-4 h-4" aria-hidden />
           </span>
           <div>
             <h2 id="confirm-title" className="font-serif text-lg text-charcoal mb-1">

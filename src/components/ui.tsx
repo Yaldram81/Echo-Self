@@ -9,7 +9,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`card-surface p-6 transition-shadow duration-200 hover:shadow-lifted ${className}`}>
+    <div className={`card-surface p-6 ${className}`}>
       {children}
     </div>
   );

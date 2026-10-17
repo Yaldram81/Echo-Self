@@ -136,7 +136,7 @@ export function TwinChatPage() {
       {mode === 'demo' && <DemoModeBanner />}
 
       {mode === 'demo' && (
-        <div className="rounded-xl border border-terracotta/25 bg-terracotta/8 px-4 py-3 text-xs leading-relaxed text-terracotta-deep">
+        <div className="rounded-xl border border-terracotta/25 bg-terracotta/10 px-4 py-3 text-xs leading-relaxed text-terracotta-deep">
           <strong className="font-semibold">Sample conversation mode.</strong> Replies are
           composed locally from the sample persona's records using keyword retrieval — no AI
           provider is connected. Answers are grounded in the records shown in the evidence

@@ -226,7 +226,7 @@ function StatCard({
 }) {
   return (
     <div className="card-surface px-5 py-4 flex items-center gap-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-terracotta/12 text-terracotta-deep">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-terracotta/10 text-terracotta-deep">
         {icon}
       </span>
       <div>

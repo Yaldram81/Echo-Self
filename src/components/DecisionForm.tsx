@@ -136,7 +136,7 @@ export function DecisionForm({
           {values.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 rounded-full bg-terracotta/12 px-3 py-1 text-xs text-terracotta-deep"
+              className="inline-flex items-center gap-1 rounded-full bg-terracotta/10 px-3 py-1 text-xs text-terracotta-deep"
             >
               {v}
               <button

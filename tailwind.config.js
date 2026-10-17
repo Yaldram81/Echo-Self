@@ -21,9 +21,9 @@ export default {
           deep: '#7C4530',
         },
         slateink: {
-          light: '#8A949B',
-          DEFAULT: '#66727A',
-          dark: '#4A545B',
+          light: '#67717A',
+          DEFAULT: '#525C64',
+          dark: '#3E4850',
         },
         charcoal: {
           soft: '#3A3E3B',
@@ -32,15 +32,15 @@ export default {
         sage: {
           light: '#DCE5DB',
           DEFAULT: '#7C9473',
-          dark: '#5C7455',
+          dark: '#4C6345',
         },
         amberclay: {
           light: '#F2E3C9',
-          DEFAULT: '#C89B4B',
+          DEFAULT: '#7A5C28',
         },
         clayred: {
           light: '#EFD4CC',
-          DEFAULT: '#B0563F',
+          DEFAULT: '#96432E',
         },
       },
       fontFamily: {
