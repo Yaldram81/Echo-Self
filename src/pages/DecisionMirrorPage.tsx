@@ -45,7 +45,7 @@ export function DecisionMirrorPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading eyebrow="Deliberation" title="Decision Mirror" />
+      <SectionHeading eyebrow="Deliberation" title="Decision Mirror" as="h1" />
       <DemoModeBanner />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">

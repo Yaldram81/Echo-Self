@@ -118,7 +118,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading eyebrow="Trust" title="Settings & Privacy" />
+      <SectionHeading eyebrow="Trust" title="Settings & Privacy" as="h1" />
 
       <Card>
         <div className="flex items-center gap-3 mb-2">

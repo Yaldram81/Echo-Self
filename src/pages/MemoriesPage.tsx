@@ -88,7 +88,7 @@ export function MemoriesPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading eyebrow="Evidence" title="Memories" />
+      <SectionHeading eyebrow="Evidence" title="Memories" as="h1" />
       <DemoModeBanner />
 
       <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">

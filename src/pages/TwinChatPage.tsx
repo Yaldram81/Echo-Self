@@ -132,7 +132,7 @@ export function TwinChatPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeading eyebrow="Dialogue" title="Twin Chat" />
+      <SectionHeading eyebrow="Dialogue" title="Twin Chat" as="h1" />
       {mode === 'demo' && <DemoModeBanner />}
 
       {mode === 'demo' && (

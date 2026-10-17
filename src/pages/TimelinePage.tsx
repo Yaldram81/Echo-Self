@@ -147,7 +147,7 @@ export function TimelinePage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading eyebrow="Chronology" title="Timeline" />
+      <SectionHeading eyebrow="Chronology" title="Timeline" as="h1" />
       <DemoModeBanner />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">

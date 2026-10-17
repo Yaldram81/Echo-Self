@@ -135,7 +135,7 @@ export function EvidenceGraphPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeading eyebrow="Connections" title="Evidence Graph" />
+      <SectionHeading eyebrow="Connections" title="Evidence Graph" as="h1" />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
         Every line below traces to a stored record, a re-derivable keyword match, or a connection

@@ -19,10 +19,13 @@ export function SectionHeading({
   eyebrow,
   title,
   action,
+  as: Tag = 'h2',
 }: {
   eyebrow?: string;
   title: string;
   action?: ReactNode;
+  /** Render the title as h1 for the page's single top heading. */
+  as?: 'h1' | 'h2';
 }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-5">
@@ -32,9 +35,9 @@ export function SectionHeading({
             {eyebrow}
           </p>
         )}
-        <h2 className="font-serif text-2xl md:text-[1.7rem] font-medium text-charcoal leading-tight">
+        <Tag className="font-serif text-2xl md:text-[1.7rem] font-medium text-charcoal leading-tight">
           {title}
-        </h2>
+        </Tag>
       </div>
       {action}
     </div>
