@@ -125,6 +125,35 @@ npm run lint       # eslint (currently 0 errors)
 
 - **No authentication.** Single shared dataset; any visitor can read, edit, or delete everything. Isolation requires adding sign-in and scoping policies to `auth.uid()`.
 - **Live AI requires the provider key** (see above). Nothing in the app pretends otherwise.
+- **The AI endpoint requires a verified session.** The `twin-chat` edge function is deployed with `verify_jwt = true`: unauthenticated callers are rejected at the gateway, so the provider key cannot be spent by anonymous traffic. The client attaches the signed-in session token to every request; without one, live mode shows a session notice rather than an answer. Demo mode never calls the endpoint.
 - **Retrieval is keyword-based.** Both the demo composer and the server-side ranking use keyword scoring with recency/confidence weighting — not embeddings. It's honest about this in its own "gaps" output.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
 - **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.
+
+---
+
+## Migrations: rerun safety
+
+All six migrations are safe to rerun. Verified guard per migration:
+
+| Migration | Guard |
+|---|---|
+| `20261017072443_create_echo_self_core_tables` | `CREATE TABLE IF NOT EXISTS` everywhere; the seed block runs only when `memories` is empty |
+| `20261017074044_extend_memories_tags_and_ai` | `ADD COLUMN IF NOT EXISTS`; per-row updates guarded by `tags = '{}'` / `ai_interpretation IS NULL`; new rows guarded by the `demo-wave-2` marker tag |
+| `20261017074943_add_interpretation_flags` | `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS` + re-`CREATE`, `CREATE INDEX IF NOT EXISTS` |
+| `20261017075415_extend_decisions_decision_mirror` | `ADD COLUMN IF NOT EXISTS`; updates guarded by `constraints IS NULL` / `analysis IS NULL`; the new decided decision guarded by `WHERE NOT EXISTS (title …)` |
+| `20261017080451_extend_beliefs_origin_and_suggestions` | `ADD COLUMN IF NOT EXISTS`; suggestion beliefs guarded by `WHERE NOT EXISTS (statement LIKE …)` |
+| `20261017090840_add_decision_classification_overrides` | single `ADD COLUMN IF NOT EXISTS` |
+
+No migration drops columns or tables, deletes rows, or changes column types. Live-state checks at audit time confirmed the guards match reality (8 marker-tagged memories, 2 suggestion beliefs, 1 stored reflection).
+
+## External services and tools disclosure
+
+For the Bolt Builders Week submission, the components built and running inside Bolt are: the entire React frontend, all application logic (retrieval, claim audit, decision analysis, evidence graph), the database schema and migrations, and the `twin-chat` edge function source.
+
+External services the app calls at runtime (all secrets server-side):
+
+- **Supabase** — Postgres database, row-level security, and edge function hosting. Credentials in `.env` are the publishable anon key (designed for browsers) plus the URL; the service-role key exists only in edge function secrets.
+- **Anthropic Messages API** — called exclusively from the `twin-chat` edge function with the `ANTHROPIC_API_KEY` secret; the key never reaches client code. The endpoint is JWT-gated (see limitations).
+
+No other third-party services, analytics, or trackers are used.
