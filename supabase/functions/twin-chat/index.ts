@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 // Deployed with verify_jwt = true: Supabase's gateway rejects requests without
-// a valid project JWT before this function runs, so the Anthropic key cannot be
+// a valid project JWT before this function runs, so the Gemini key cannot be
 // spent by anonymous callers. The client sends the user's session token.
 
 const corsHeaders = {
@@ -185,27 +185,35 @@ function buildContextBlock(
 }
 
 function providerRequest(prompt: string, question: string, apiKey: string): Promise<Response> {
-  return fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1200,
-      system: prompt,
-      messages: [{ role: 'user', content: question }],
-    }),
-  });
+  return fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: prompt }] },
+        contents: [{ role: 'user', parts: [{ text: question }] }],
+        generationConfig: {
+          maxOutputTokens: 2048,
+          temperature: 0.2,
+          // The prompt requires a bare JSON object; the JSON mode keeps the
+          // model from wrapping it in prose or markdown fences.
+          responseMimeType: 'application/json',
+        },
+      }),
+    }
+  );
 }
 
-function parseProviderContent(data: { content?: { type: string; text?: string }[] }): string {
-  if (!Array.isArray(data.content)) return '';
-  return data.content
-    .filter((c) => c.type === 'text' && typeof c.text === 'string')
-    .map((c) => c.text)
+function parseProviderContent(data: { candidates?: { content?: { parts?: { text?: string }[] } }[] }): string {
+  const parts = data.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .filter((p) => typeof p.text === 'string')
+    .map((p) => p.text as string)
     .join('');
 }
 
@@ -299,7 +307,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'AI_NOT_CONFIGURED' }),

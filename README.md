@@ -98,7 +98,7 @@ These limitations are accepted for the current approach. The implementation is n
 `VITE_TWIN_DEMO_MODE=true` in `.env` selects the mode:
 
 - **Demo mode (default in this repo):** answers are composed locally from the sample persona's real records using keyword retrieval, routed by question type (priorities, conflicts, changes over time, general lookup). Replies are explicitly labeled as sample output and grounded in the records shown in the evidence panels. Missing evidence yields an honest "I don't find recorded evidence touching that" — the same behavior the live mode is required to have.
-- **Live mode:** calls the `twin-chat` edge function. The function ranks relevant memories server-side (keyword score × recency × your confidence rating), injects your saved corrections into the context as authoritative user statements, builds a strict evidence-only system prompt, calls Anthropic (Claude), then **coerces and validates the response**: citations that don't resolve to supplied memory IDs are dropped, inline `[id]` citations in the answer text are honored, invented quotes and dates are stripped client-side, and malformed responses surface a generic error instead of partial fabrications. A missing provider key returns a distinct `503 AI_NOT_CONFIGURED`, which the UI renders as a setup notice — not a fake answer.
+- **Live mode:** calls the `twin-chat` edge function. The function ranks relevant memories server-side (keyword score × recency × your confidence rating), injects your saved corrections into the context as authoritative user statements, builds a strict evidence-only system prompt, calls Google Gemini, then **coerces and validates the response**: citations that don't resolve to supplied memory IDs are dropped, inline `[id]` citations in the answer text are honored, invented quotes and dates are stripped client-side, and malformed responses surface a generic error instead of partial fabrications. A missing provider key returns a distinct `503 AI_NOT_CONFIGURED`, which the UI renders as a setup notice — not a fake answer.
 
 **Claim-level Evidence Inspector (both modes):** every reply is decomposed into claims, each typed as directly supported (backed by verbatim user-authored text), interpretation (the twin's reading, AI-generated), conflicting evidence, or unknown. Source previews link each claim — not just the answer — to the exact memory record. Saved user corrections are loaded with the records, rank as user-authored evidence in retrieval, and are shown **side by side** with the original record (like conflicts: both sides, no winner picked). Explicit uncertainty is declared when records are sparse (one match), stale (newest match > 6 months), or only incidentally relevant. Quoted passages that appear verbatim in no record, and dates no record supports, are removed from answers and their removal declared in the gaps list — a valid citation ID alone is never treated as proof.
 
@@ -215,7 +215,7 @@ The **demo is now read-only for signed-out visitors**: sample rows (owner NULL) 
 - INSERT grants remain table-wide by design: clients never supply `user_id` (it DEFAULTs to `auth.uid()`), forged owners fail the INSERT policies' WITH CHECK, and the graph-confirmation upsert legitimately targets its own `user_id` conflict key.
 - The Supabase security advisor reports zero findings after the changes — reported as one signal, not as proof of security.
 
-**Secrets (verified):** the client bundle and source contain only the publishable anon key and project URL; no service-role key or Anthropic key appears in `src/`, the built `dist/` output, or any committed file. Edge function secrets (names verified via the secrets API): `ANTHROPIC_API_KEY` lives server-side only. Errors returned to clients are generic messages; detailed errors go to server logs only.
+**Secrets (verified):** the client bundle and source contain only the publishable anon key and project URL; no service-role key or Gemini key appears in `src/`, the built `dist/` output, or any committed file. Edge function secrets (names verified via the secrets API): `GEMINI_API_KEY` lives server-side only. Errors returned to clients are generic messages; detailed errors go to server logs only.
 
 **Two-account failure testing (executed, `scripts/run-workspace-tests.mts`, 37/37 passing):** A can CRUD its own records; A cannot read, update, or delete B's records or insert on B's behalf (forged `user_id` rejected, rows intact after every denial); unauthenticated clients read public sample rows but can write nothing; B cannot manage history or flags on A's records; edge confirmations are private per account; export and "delete everything" touch only the signed-in account's rows (sample rows excluded by both query filter and RLS); personal Twin Chat retrieval is JWT/RLS-scoped so it cannot return another account's memories.
 
@@ -255,7 +255,7 @@ npx tsx --env-file=.env scripts/run-all-eval.mts          # every suite in seque
 
 **Database:** the bundled Supabase project is pre-provisioned; credentials live in `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Migrations are applied via the Supabase tooling; the seed data is idempotent.
 
-**Enabling live AI (the only deployment prerequisite):** add an `ANTHROPIC_API_KEY` secret to the `twin-chat` edge function, and set `VITE_TWIN_DEMO_MODE=false` (or remove it). Until then the app runs in labeled sample mode and Twin Chat states plainly that no model is connected.
+**Enabling live AI (the only deployment prerequisite):** add a `GEMINI_API_KEY` secret to the `twin-chat` edge function (a Google AI Studio API key), and set `VITE_TWIN_DEMO_MODE=false` (or remove it). Until then the app runs in labeled sample mode and Twin Chat states plainly that no model is connected.
 
 **Verifying the published app:**
 1. Explore each nav item; confirm sample-data banners are present everywhere.
@@ -308,6 +308,6 @@ For the Bolt Builders Week submission, the components built and running inside B
 External services the app calls at runtime (all secrets server-side):
 
 - **Supabase** — Postgres database, row-level security, and edge function hosting. Credentials in `.env` are the publishable anon key (designed for browsers) plus the URL; the service-role key exists only in edge function secrets.
-- **Anthropic Messages API** — called exclusively from the `twin-chat` edge function with the `ANTHROPIC_API_KEY` secret; the key never reaches client code. The endpoint is JWT-gated (see limitations).
+- **Google Gemini API (generativelanguage.googleapis.com)** — called exclusively from the `twin-chat` edge function with the `GEMINI_API_KEY` secret; the key never reaches client code. The endpoint is JWT-gated (see limitations).
 
 No other third-party services, analytics, or trackers are used.
