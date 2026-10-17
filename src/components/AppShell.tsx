@@ -26,9 +26,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         setAccountOpen(false);
       }
     };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (accountOpen && target && !target.closest('[data-account-menu]')) setAccountOpen(false);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [accountOpen]);
 
   async function handleSignOut() {
     setAccountOpen(false);
@@ -99,7 +107,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           </nav>
 
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative" data-account-menu>
               <button
                 onClick={() => setAccountOpen((o) => !o)}
                 aria-expanded={accountOpen}
@@ -151,7 +159,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             </div>
 
             <button
-              className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-full text-charcoal hover:bg-linen"
+              className="lg:hidden inline-flex items-center justify-center h-11 w-11 rounded-full text-charcoal hover:bg-linen"
               onClick={() => setMenuOpen((o) => !o)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}

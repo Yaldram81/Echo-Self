@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, Quote, ChevronDown, Flag, Pencil, AlertTriangle, Settings2, ShieldAlert } from 'lucide-react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { memoriesService, beliefsService, flagsService } from '@/lib/services';
 import { askTwin, twinMode, TwinUnavailableError } from '@/lib/twinService';
 import type { TwinMode } from '@/lib/twinService';
@@ -49,6 +50,8 @@ export function TwinChatPage() {
   const [flagState, setFlagState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showCorrections, setShowCorrections] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const flagDialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(flagging !== null, () => setFlagging(null), flagDialogRef);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -164,7 +167,7 @@ export function TwinChatPage() {
         <ErrorState message={error} onRetry={() => { memories.reload(); beliefs.reload(); }} />
       ) : (
         <div className="card-surface flex flex-col h-[70vh] min-h-[460px]">
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5" aria-live="polite">
+          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-4">
                 <Sparkles className="w-7 h-7 text-terracotta/70 mb-3" aria-hidden />
@@ -219,7 +222,7 @@ export function TwinChatPage() {
             {thinking && (
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-md bg-linen-light border border-linen-dark/60 px-4 py-3">
-                  <span className="flex gap-1.5" aria-label="Twin is thinking">
+                  <span className="flex gap-1.5" role="img" aria-label="Twin is thinking">
                     {[0, 1, 2].map((i) => (
                       <span
                         key={i}
@@ -235,7 +238,7 @@ export function TwinChatPage() {
           </div>
 
           {sendError && (
-            <p role="alert" className="mx-5 mb-2 rounded-lg bg-clayred-light px-3 py-2 text-xs text-clayred-DEFAULT">
+            <p role="alert" className="mx-5 mb-2 rounded-lg bg-clayred-light px-3 py-2 text-xs text-clayred-DEFAULT" aria-live="assertive">
               {sendError}
             </p>
           )}
@@ -304,7 +307,10 @@ export function TwinChatPage() {
             if (e.target === e.currentTarget) setFlagging(null);
           }}
         >
-          <div className="w-full max-w-md rounded-2xl bg-paper p-6 shadow-lifted border border-linen-dark">
+          <div
+            ref={flagDialogRef}
+            className="w-full max-w-md rounded-2xl bg-paper p-6 shadow-lifted border border-linen-dark"
+          >
             <div className="flex items-start gap-3 mb-4">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amberclay-light text-amberclay-DEFAULT">
                 <Flag className="w-4 h-4" aria-hidden />
@@ -658,7 +664,7 @@ function TwinMessage({
         )}
 
         {message.flagged && (
-          <p className="mt-2 text-[11px] text-amberclay-DEFAULT flex items-center gap-1">
+          <p className="mt-2 text-[11px] text-amberclay-DEFAULT flex items-center gap-1" role="status">
             <Flag className="w-3 h-3" aria-hidden /> Flagged for correction.
           </p>
         )}

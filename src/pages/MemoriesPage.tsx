@@ -264,14 +264,14 @@ function MemoryCard({
           <a
             href={`/memory/${memory.id}`}
             aria-label={`Open memory: ${memory.title}`}
-            className="rounded-full p-1.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
+            className="rounded-full p-2.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
             <ChevronRight className="w-4 h-4" aria-hidden />
           </a>
           <button
             onClick={onDelete}
             aria-label={`Delete memory: ${memory.title}`}
-            className="rounded-full p-1.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="rounded-full p-2.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-4 h-4" aria-hidden />
           </button>

@@ -324,14 +324,14 @@ function BeliefCard({
           <button
             onClick={onEdit}
             aria-label={`Edit statement: ${belief.statement}`}
-            className="rounded-full p-1.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
+            className="rounded-full p-2.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
             <Edit3 className="w-4 h-4" aria-hidden />
           </button>
           <button
             onClick={onDelete}
             aria-label={`Delete statement: ${belief.statement}`}
-            className="rounded-full p-1.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="rounded-full p-2.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-4 h-4" aria-hidden />
           </button>
