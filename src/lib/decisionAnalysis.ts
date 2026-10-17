@@ -6,11 +6,13 @@ import type { AnalysisSnapshot, Belief, BeliefProposal, Decision, Memory, ScoreT
  * Transparent and reproducible: every score traces to the user's stated value
  * weights and to identifiable records. Classifications are labeled explicit
  * (user-authored pros/cons) or inferred (keyword match, with rationale) and can
- * be overridden by the user. Missing evidence is UNKNOWN, never for/against.
- * Scores are preference alignment, not probability of success.
+ * be approved, rejected, or corrected by the user. Missing evidence is UNKNOWN,
+ * never for/against. Options with different evidence coverage are compared only
+ * on commonly assessed values; an overall ranking is withheld when it would not
+ * be defensible. Scores are preference alignment, not probability of success.
  */
 
-export const ANALYSIS_VERSION = 'dm-4';
+export const ANALYSIS_VERSION = 'dm-5';
 
 export type Classification = 'for' | 'against' | 'neutral' | 'unknown';
 export type ClassificationOrigin = 'explicit' | 'inferred' | 'override';
@@ -38,13 +40,19 @@ export interface ValueAlignmentResult {
   contradictingMemories: number;
   unknownMemories: number;
   alignmentNote: string;
+  /** Judgments that came from you: explicit pros/cons plus your corrections. */
+  userProvidedCount: number;
+  /** Judgments proposed by keyword inference (not yet approved by you). */
+  inferredCount: number;
 }
 
 export interface OptionAlignment {
   label: string;
   /**
    * Preference alignment in [-1, 1]. Normalized by the option's own classified
-   * evidence so options with different amounts of evidence are comparable.
+   * evidence so a 2-1 split scores the same regardless of pile size. NOTE: a
+   * score is only comparable across options when the options share assessed
+   * values — see `coverage` and the comparability gate in `rankOptions`.
    * 0 with unknownCount > 0 means "not assessable", not "neutral".
    */
   score: number;
@@ -56,6 +64,37 @@ export interface OptionAlignment {
   classifications: MemoryClassification[];
   /** Full arithmetic trace behind the score. */
   trace: ScoreTrace;
+  /** Which of the decision's values this option actually has assessed evidence on. */
+  coverage: OptionCoverage;
+}
+
+/**
+ * Which of the decision's values an option actually has assessed (directional)
+ * evidence on. Options with different coverage are only compared on their
+ * common assessed values — see `rankOptions`.
+ */
+export interface OptionCoverage {
+  /** Values with at least one for/against classification for this option. */
+  assessedValues: string[];
+  /** Decision values with no directional evidence for this option (unknown, not zero). */
+  unassessedValues: string[];
+  /** Weighted mass of the assessed values: Σ (for + against) × weight. */
+  assessedWeightMass: number;
+  /** Weighted mass of all decision values: Σ weight. */
+  totalWeightMass: number;
+}
+
+/**
+ * The result of the comparability gate. `preferred` is only set when naming a
+ * leader is defensible; `withheld` carries the plain-language reason when it is
+ * not. `commonValues` lists the values every assessable option was assessed on.
+ */
+export interface RankingResult {
+  preferred: string | null;
+  withheld: string | null;
+  commonValues: string[];
+  /** Shown when the full-input leader differs from the common-dimension leader. */
+  disclosure: string | null;
 }
 
 export interface WeightSensitivity {
@@ -107,6 +146,8 @@ export interface DecisionReport {
   relevantMemories: RelevantMemory[];
   optionAlignments: OptionAlignment[];
   preferredOption: string | null;
+  /** Full comparability-gate outcome: withheld reason, common values, disclosure. */
+  ranking: RankingResult;
   weightSensitivities: WeightSensitivity[];
   /** Per-value weight span over which the current leader stays ahead. */
   stabilityRanges: StabilityRange[];
@@ -196,7 +237,7 @@ export function findRelevantMemories(
  * classification carries its rationale and can be corrected by the user.
  * A memory whose text mentions the value but nothing directional is UNKNOWN.
  */
-const FOR_SIGNALS = /\b(chose|choosing|glad|relieved|clearer|declined|said no to|protect|boundar|rest|freedom|preferr)\w*/i;
+const FOR_SIGNALS = /\b(chose|choosing|glad|relieved|clearer|declined|said no to|protect|boundar|preferr)\w*/i;
 const AGAINST_SIGNALS = /\b(regret|fumbled|avoid|guilt|dread|pressure|stuck|exhaust|resent|overload)\w*/i;
 
 function classifyOptionAgainstMemory(
@@ -322,6 +363,9 @@ export function analyzeOptionValues(
     }
 
   const weight = typeof weights[value] === 'number' ? weights[value] : 0.5;
+  const userProvided = explicitItems.filter((e) => e.value === value).length +
+    classifications.filter((c) => c.value === value && c.origin === 'override').length;
+  const inferred = classifications.filter((c) => c.value === value && c.origin === 'inferred').length;
   const alignmentNote =
       touching.length === 0 && explicitItems.filter((e) => e.value === value).length === 0
         ? `No recorded memories or explicit pros/cons mention "${value}", so alignment on this value is unknown, not favorable.`
@@ -329,12 +373,11 @@ export function analyzeOptionValues(
           ? `Records mentioning "${value}" carry no clear direction for this option (${unknownCount} unresolved); it counts as unknown, not as support.`
           : `${supporting} item${supporting === 1 ? '' : 's'} point toward this option on ${value}${contradicting > 0 ? `, ${contradicting} point away` : ''}${unknownCount > 0 ? `, ${unknownCount} unresolved` : ''}.`;
 
-    valueResults.push({ value, weight, supportingMemories: supporting, contradictingMemories: contradicting, unknownMemories: unknownCount, alignmentNote });
+    valueResults.push({ value, weight, supportingMemories: supporting, contradictingMemories: contradicting, unknownMemories: unknownCount, alignmentNote, userProvidedCount: userProvided, inferredCount: inferred });
   }
 
   // Normalized: net weighted signal divided by the option's own classified
-  // weight mass, so a 2-1 split scores the same regardless of pile size and
-  // options with unequal evidence are comparable. All-unknown → 0 + flagged.
+  // weight mass, so a 2-1 split scores the same regardless of pile size. All-unknown → 0 + flagged.
   const net = valueResults.reduce(
     (acc, v) => acc + (v.supportingMemories - v.contradictingMemories) * v.weight, 0
   );
@@ -342,6 +385,21 @@ export function analyzeOptionValues(
     (acc, v) => acc + (v.supportingMemories + v.contradictingMemories) * v.weight, 0
   );
   const score = classifiedMass > 0 ? Math.max(-1, Math.min(1, net / classifiedMass)) : 0;
+
+  const assessedValues = valueResults
+    .filter((v) => v.supportingMemories + v.contradictingMemories > 0)
+    .map((v) => v.value);
+  const unassessedValues = valueResults
+    .filter((v) => v.supportingMemories + v.contradictingMemories === 0)
+    .map((v) => v.value);
+  const coverage: OptionCoverage = {
+    assessedValues,
+    unassessedValues,
+    assessedWeightMass: classifiedMass,
+    totalWeightMass: decision.values.reduce(
+      (acc, v) => acc + (typeof weights[v] === 'number' ? weights[v] : 0.5), 0
+    ),
+  };
 
   // An all-zero comparison must never read as a real "neutral" result.
   const totalWeight = decision.values.reduce(
@@ -385,17 +443,104 @@ export function analyzeOptionValues(
     values: valueResults,
     classifications,
     trace,
+    coverage,
+  };
+}
+
+/**
+ * Comparability gate + ranking. A leader is only named when it is defensible:
+ *
+ * 1. Both options must have assessable evidence (not insufficient, not blocked
+ *    by a zero-weight/no-value incompleteness).
+ * 2. If the two options were assessed on substantially different values, the
+ *    bare normalized scores are NOT directly comparable — a full-score leader
+ *    can rest on evidence the other option never got to show. In that case the
+ *    comparison falls back to the COMMON assessed values, and if the full-score
+ *    leader differs from the common-dimension leader, an overall ranking is
+ *    withheld with an explicit reason. When both methods agree, the leader is
+ *    named with a disclosure of the coverage difference.
+ *
+ * This is deterministic arithmetic, not judgment: same inputs, same outcome.
+ */
+export function rankOptions(alignments: OptionAlignment[]): RankingResult {
+  const assessable = alignments.filter((a) => !a.insufficientEvidence && !a.incompleteness);
+  const commonValues = alignments.length > 0
+    ? assessable.reduce<string[]>(
+        (acc, a) => acc.filter((v) => a.coverage.assessedValues.includes(v)),
+        assessable.length > 0 ? [...assessable[0].coverage.assessedValues] : []
+      )
+    : [];
+
+  if (assessable.length === 0) {
+    return {
+      preferred: null,
+      withheld: null,
+      commonValues,
+      disclosure: null,
+    };
+  }
+
+  const best = assessable.reduce((a, b) => (b.score > a.score ? b : a));
+  const tied = assessable.filter((a) => a.score === best.score);
+  if (tied.length > 1) {
+    return { preferred: null, withheld: `Options tie at ${(best.score * 100).toFixed(0)}% alignment; no leader is named.`, commonValues, disclosure: null };
+  }
+  if (best.score <= 0) {
+    return { preferred: null, withheld: null, commonValues, disclosure: null };
+  }
+
+  // Coverage difference: values the best option was assessed on that at least
+  // one other assessable option was not.
+  const others = assessable.filter((a) => a !== best);
+  const bestOnlyValues = best.coverage.assessedValues.filter((v) =>
+    others.some((o) => !o.coverage.assessedValues.includes(v))
+  );
+  if (bestOnlyValues.length === 0) {
+    return { preferred: best.label, withheld: null, commonValues, disclosure: null };
+  }
+
+  // Recompute the leader from ONLY the commonly assessed values.
+  const commonNet = (a: OptionAlignment): number =>
+    a.trace.lines
+      .filter((l) => commonValues.includes(l.value))
+      .reduce((acc, l) => acc + l.contribution, 0);
+  const commonMass = (a: OptionAlignment): number =>
+    a.trace.lines
+      .filter((l) => commonValues.includes(l.value))
+      .reduce((acc, l) => acc + (l.supporting + l.contradicting) * l.weight, 0);
+  const commonScore = (a: OptionAlignment): number =>
+    commonMass(a) > 0 ? commonNet(a) / commonMass(a) : 0;
+
+  const commonAssessable = assessable.filter((a) => commonMass(a) > 0);
+  if (commonAssessable.length === 0) {
+    return {
+      preferred: null,
+      withheld: `The lead for "${best.label}" rests on values the other option${others.length === 1 ? ' was never' : 's were never'} assessed on; a ranking from the common values is not computable. Overall ranking withheld.`,
+      commonValues,
+      disclosure: null,
+    };
+  }
+  const commonBest = commonAssessable.reduce((a, b) => (commonScore(b) > commonScore(a) ? b : a));
+  const commonTied = commonAssessable.filter((a) => commonScore(a) === commonScore(commonBest));
+
+  if (commonBest.label === best.label && commonTied.length === 1) {
+    return {
+      preferred: best.label,
+      withheld: null,
+      commonValues,
+      disclosure: `"${best.label}" was additionally assessed on ${bestOnlyValues.map((v) => `"${v}"`).join(', ')} — value${bestOnlyValues.length === 1 ? '' : 's'} the other option${others.length === 1 ? ' has' : 's have'} no recorded evidence on. The lead also holds when comparing only the values both options were assessed on.`,
+    };
+  }
+  return {
+    preferred: null,
+    withheld: `The lead for "${best.label}" rests on ${bestOnlyValues.map((v) => `"${v}"`).join(', ')} — value${bestOnlyValues.length === 1 ? '' : 's'} the other option${others.length === 1 ? ' has' : 's have'} no recorded evidence on. Comparing only the commonly assessed values, no option leads clearly. Overall ranking withheld.`,
+    commonValues,
+    disclosure: null,
   };
 }
 
 export function preferredOption(alignments: OptionAlignment[]): string | null {
-  const assessable = alignments.filter((a) => !a.insufficientEvidence && !a.incompleteness);
-  if (assessable.length === 0) return null;
-  const best = assessable.reduce((a, b) => (b.score > a.score ? b : a));
-  if (best.score <= 0) return null;
-  // A preference is only named when it is strictly ahead of the others.
-  const tied = assessable.filter((a) => a.score === best.score);
-  return tied.length > 1 ? null : best.label;
+  return rankOptions(alignments).preferred;
 }
 
 /**
@@ -695,6 +840,16 @@ export function buildAnalysisSnapshot(
       evidenceMemoryIds: report.method.inputs.evidenceMemoryIds,
       explicitItems: report.method.inputs.explicitItems,
       overrideCount: Object.keys(overrides).length,
+      // dm-5 additions: what the user approved/corrected, how much of each
+      // option's value set was actually assessed, and what was withheld.
+      approvedClassifications: overrides,
+      coverage: report.optionAlignments.map((a) => ({
+        option: a.label,
+        assessedValues: a.coverage.assessedValues,
+        unassessedValues: a.coverage.unassessedValues,
+      })),
+      commonAssessedValues: report.ranking.commonValues,
+      withheldRanking: report.ranking.withheld,
     },
   };
 }
@@ -738,14 +893,18 @@ export function buildSummary(
       ? ` It also surfaces ${contradictions.length} tension${contradictions.length === 1 ? '' : 's'} between your stated priorities and your records.`
       : '';
   const preferred = preferredOption(alignments);
+  const ranking = rankOptions(alignments);
   const preferredLine = preferred
     ? ` At the current weights, "${preferred}" leads on alignment.`
-    : ' At the current weights, no option leads clearly: either the evidence is missing, the options tie, or every assessed option nets negative.';
+    : ranking.withheld
+      ? ` ${ranking.withheld}`
+      : ' At the current weights, no option leads clearly: either the evidence is missing, the options tie, or every assessed option nets negative.';
   const sensitivityLine =
     sensitivities.length > 0
       ? ` The lead is weight-sensitive: nudging ${sensitivities.map((s) => `"${s.value}"`).join(' or ')} by 0.1 changes the preferred option, so treat the ranking as unsettled.`
       : '';
-  return `${decision.title}: ${evidenceLine} The stated values in play are ${valueList}.${contradictionLine}${preferredLine}${sensitivityLine} Alignment reflects preference weighting you control; it is not a prediction of how either option will turn out.`;
+  const coverageNote = ranking.disclosure ? ` ${ranking.disclosure}` : '';
+  return `${decision.title}: ${evidenceLine} The stated values in play are ${valueList}.${contradictionLine}${preferredLine}${coverageNote}${sensitivityLine} Alignment reflects preference weighting you control; it is not a prediction of how either option will turn out.`;
 }
 
 /**
@@ -827,6 +986,7 @@ export function analyzeDecision(
   const optionAlignments = decision.options.map((o) =>
     analyzeOptionValues(o.label, decision, memories, relevant, overrides)
   );
+  const ranking = rankOptions(optionAlignments);
   const sensitivities = findWeightSensitivities(decision, memories, relevant, overrides);
   const stability = findStabilityRanges(decision, memories, relevant, overrides);
   const contradictions = findContradictions(decision, beliefs, memories);
@@ -852,7 +1012,8 @@ export function analyzeDecision(
     },
     relevantMemories: relevant,
     optionAlignments,
-    preferredOption: preferredOption(optionAlignments),
+    preferredOption: ranking.preferred,
+    ranking,
     weightSensitivities: sensitivities,
     stabilityRanges: stability,
     inputHash: analysisInputHash(decision, memories, overrides),
@@ -867,6 +1028,7 @@ export function analyzeDecision(
       'Memories you have not recorded are invisible here; absence of evidence is not evidence of absence, and missing evidence is reported as unknown.',
       'Constraint checks flag possible conflicts in your records; they never certify that an option satisfies a constraint.',
       'Unknown and neutral classifications never count as evidence for or against an option; only records you wrote or classifications you confirmed move a score.',
+  'Options with different evidence coverage are compared on their commonly assessed values first; an overall ranking is withheld when the lead rests on values the other option was never assessed on.',
     ],
   };
 }

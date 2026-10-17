@@ -10,6 +10,7 @@ import {
   analyzeOptionValues,
   analyzeDecision,
   preferredOption,
+  rankOptions,
   findWeightSensitivities,
   findStabilityRanges,
   assessConstraints,
@@ -508,6 +509,231 @@ const beliefs: Belief[] = [];
   const repEdited = analyzeDecision(edited, mems, beliefs);
   check('edge: an edited analysis still computes a fresh report when asked, without overwriting the user text',
     repEdited.summary.length > 0 && edited.analysis!.summary === 'My own words.');
+}
+
+// --- 22. dm-5: coverage disclosure and the comparability gate ---
+{
+  const d = decision({ value_weights: { freedom: 0.6, security: 0.6 } });
+  // Both options assessed on freedom (netting 0); only A assessed on security (for).
+  // Full: A = 0.6/1.8 = 1/3 > B = 0, but on common values both tie at 0 → withheld.
+  const mems = [
+    memory('g1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('g2', 'Offer freedom drained', 'The offer left me exhausted and resentful about freedom.'),
+    memory('g3', 'Offer gave security', 'The offer gave me security; relieved.'),
+    memory('g4', 'Staying gave freedom', 'Staying in the current role gave me freedom; glad.'),
+    memory('g5', 'Staying freedom drained', 'Staying in the current role left me exhausted about freedom.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const b = analyzeOptionValues('Stay in current role', d, mems, []);
+  check('coverage: an option with directional evidence on both values reports both',
+    a.coverage.assessedValues.length === 2 && a.coverage.unassessedValues.length === 0,
+    JSON.stringify(a.coverage));
+  check('coverage: an option with evidence on one value marks the other unassessed',
+    b.coverage.assessedValues.includes('freedom') && b.coverage.unassessedValues.includes('security'),
+    JSON.stringify(b.coverage));
+
+  const gate = rankOptions([a, b]);
+  check('comparability: differing coverage triggers the gate (common values computed)',
+    gate.commonValues.length === 1 && gate.commonValues[0] === 'freedom', JSON.stringify(gate));
+  check('comparability: full-score lead not confirmed on common values is withheld with a reason',
+    gate.preferred === null && gate.withheld !== null && gate.withheld.includes('security'),
+    JSON.stringify(gate));
+}
+
+// --- 23. dm-5: gate names the leader when common-dimension comparison agrees ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0.5 } });
+  // A: freedom for + security for (full = 1). B: freedom 1-for-1-against (full = 0).
+  // Common values (freedom): A = 1 > B = 0 → agree → named with disclosure.
+  const mems = [
+    memory('h1a', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('h2a', 'Offer security kept', 'The offer kept my security intact; relieved.'),
+    memory('h3a', 'Staying gave freedom', 'Staying in the current role gave me freedom; glad.'),
+    memory('h4a', 'Staying freedom drained', 'Staying in the current role left me exhausted about freedom.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const b = analyzeOptionValues('Stay in current role', d, mems, []);
+  const gate = rankOptions([a, b]);
+  check('comparability: leader named when common-dimension comparison agrees',
+    gate.preferred === 'Take the offer' && gate.withheld === null,
+    JSON.stringify(gate));
+  check('comparability: disclosure names the coverage difference',
+    gate.disclosure !== null && gate.disclosure.includes('security'), gate.disclosure ?? 'none');
+}
+
+// --- 24. dm-5: gate withheld when common-dimension leader differs from full leader ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  // A leads full only because of security (B never assessed on it); on common freedom, B ties.
+  const mems = [
+    memory('i1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('i2', 'Offer security risk', 'The offer put my security at risk; I dreaded it.'),
+    memory('i3', 'Staying gave freedom', 'Staying in the current role kept my freedom; glad.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const b = analyzeOptionValues('Stay in current role', d, mems, []);
+  // Full: A = (1 + −1×0)/1 = 1, B = 1 → actually tie. Make A clearly ahead full: add a pro.
+  const aWithPro = analyzeOptionValues('Take the offer', { ...d, options: [{ label: 'Take the offer', pros: ['more freedom in schedule'], cons: [] }, STAY] }, mems, []);
+  const b2 = analyzeOptionValues('Stay in current role', { ...d, options: [{ label: 'Take the offer', pros: ['more freedom in schedule'], cons: [] }, STAY] }, mems, []);
+  const gate = rankOptions([aWithPro, b2]);
+  // Common values: both = 1 → tie on common → withheld.
+  check('comparability: full-score lead not confirmed on common values is withheld',
+    gate.preferred === null && gate.withheld !== null, JSON.stringify(gate));
+  void a; void b;
+}
+
+// --- 25. dm-5: identical coverage keeps the simple ranking ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const mems = [
+    memory('j1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('j2', 'Staying freedom drain', 'Staying in the current role traded freedom for exhaustion; resentful.'),
+    memory('j3', 'Offer security risk', 'The offer put my security at risk; I dreaded it.'),
+    memory('j4', 'Staying security good', 'Staying gave me security; relieved.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const b = analyzeOptionValues('Stay in current role', d, mems, []);
+  check('coverage: both options assessed on both values',
+    a.coverage.assessedValues.length === 2 && b.coverage.assessedValues.length === 2, JSON.stringify([a.coverage, b.coverage]));
+  const gate = rankOptions([a, b]);
+  // Full: A = (1 + −1)/2 = 0, B = (−1 + 1)/2 = 0 → tie, no leader. With a pro on A:
+  void gate;
+  const d2 = { ...d, options: [{ label: 'Take the offer', pros: ['more freedom in schedule'], cons: [] }, STAY] };
+  const a2 = analyzeOptionValues('Take the offer', d2, mems, []);
+  const b2 = analyzeOptionValues('Stay in current role', d2, mems, []);
+  const gate2 = rankOptions([a2, b2]);
+  // A full = (1+1−1)/3 = 0.333; B = (−1+1)/2 = 0. Common = same values → A leads, named, no disclosure.
+  check('comparability: same coverage → straightforward ranking, no gate disclosure',
+    gate2.preferred === 'Take the offer' && gate2.disclosure === null && gate2.withheld === null,
+    JSON.stringify(gate2));
+}
+
+// --- 26. dm-5: snapshot records coverage, common values, withheld reason ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const mems = [
+    memory('s1a', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('s2a', 'Staying gave freedom', 'Staying in the current role kept my freedom; glad.'),
+  ];
+  const rep = analyzeDecision(d, mems, beliefs);
+  const snap = buildAnalysisSnapshot(d, mems, beliefs, {}, rep);
+  check('snapshot: coverage per option recorded',
+    Array.isArray(snap.inputs.coverage) && snap.inputs.coverage!.length === 2 &&
+    snap.inputs.coverage!.every((c) => c.assessedValues.includes('freedom')),
+    JSON.stringify(snap.inputs.coverage));
+  check('snapshot: common assessed values recorded',
+    snap.inputs.commonAssessedValues!.includes('freedom'), JSON.stringify(snap.inputs.commonAssessedValues));
+  check('snapshot: withheld reason recorded when ranking withheld',
+    snap.inputs.withheldRanking === rep.ranking.withheld, `${snap.inputs.withheldRanking}`);
+  check('snapshot: approved classifications recorded (empty here)',
+    snap.inputs.approvedClassifications !== undefined && Object.keys(snap.inputs.approvedClassifications!).length === 0,
+    JSON.stringify(snap.inputs.approvedClassifications));
+}
+
+// --- 27. dm-5: changed weight produces the mathematically expected score change ---
+{
+  const d = decision({ value_weights: { freedom: 0.5, security: 0.5 } });
+  const mems = [
+    memory('k1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('k2', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+  ];
+  // Option A: freedom for (1), security against (−1). mass = 0.5 + 0.5 = 1, net = 0.5 − 0.5 = 0.
+  const base = analyzeOptionValues('Take the offer', d, mems, []);
+  check('weight math: 0.5/0.5 split with symmetric evidence scores 0',
+    base.score === 0, `got ${base.score}`);
+  // freedom = 0.8: net = 1×0.8 + (−1)×0.5 = 0.3; mass = 0.8 + 0.5 = 1.3; score = 0.3/1.3.
+  const d2 = { ...d, value_weights: { freedom: 0.8, security: 0.5 } };
+  const after = analyzeOptionValues('Take the offer', d2, mems, []);
+  const expected = (1 * 0.8 + (-1) * 0.5) / (0.8 + 0.5);
+  check('weight math: raising freedom to 0.8 yields (0.8−0.5)/(0.8+0.5)',
+    Math.abs(after.score - expected) < 1e-9, `got ${after.score}, expected ${expected}`);
+  // freedom = 1, security = 0: score must be exactly 1.
+  const d3 = { ...d, value_weights: { freedom: 1, security: 0 } };
+  const full = analyzeOptionValues('Take the offer', d3, mems, []);
+  check('weight math: weight 1/0 scores exactly 1', full.score === 1, `got ${full.score}`);
+}
+
+// --- 28. dm-5: inferred counts are separated from user-provided judgments ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const mems = [memory('n1a', 'Offer gave freedom', 'The offer gave me freedom; glad.')];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const line = a.values.find((v) => v.value === 'freedom')!;
+  check('origins: keyword-only evidence reports inferredCount 1, userProvidedCount 0',
+    line.inferredCount === 1 && line.userProvidedCount === 0, JSON.stringify(line));
+  // After a correction the same record is user-provided.
+  const corrected = analyzeOptionValues('Take the offer', d, mems, [], { 'd-test:Take the offer:freedom:n1a': 'against' as const });
+  const line2 = corrected.values.find((v) => v.value === 'freedom')!;
+  check('origins: after correction the judgment counts as user-provided',
+    line2.userProvidedCount === 1 && line2.inferredCount === 0, JSON.stringify(line2));
+  // Explicit pros count as user-provided.
+  const d2 = { ...d, options: [{ label: 'Take the offer', pros: ['more freedom in schedule'], cons: [] }, STAY] };
+  const explicit = analyzeOptionValues('Take the offer', d2, [], []);
+  const line3 = explicit.values.find((v) => v.value === 'freedom')!;
+  check('origins: explicit pros count as user-provided',
+    line3.userProvidedCount === 1 && line3.inferredCount === 0, JSON.stringify(line3));
+}
+
+// --- 29. dm-5: sparse and empty evidence under dm-5 shapes ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const a = analyzeOptionValues('Take the offer', d, [], []);
+  check('sparse: no evidence → everything unassessed, insufficient flag',
+    a.insufficientEvidence && a.coverage.assessedValues.length === 0 &&
+    a.coverage.unassessedValues.length === 2, JSON.stringify(a.coverage));
+  const gate = rankOptions([a]);
+  check('sparse: single insufficient option produces no leader and no withheld reason',
+    gate.preferred === null && gate.withheld === null && gate.commonValues.length === 0,
+    JSON.stringify(gate));
+  // One-sided sparse: A has evidence, B has none → no defensible comparison.
+  const b = analyzeOptionValues('Stay in current role', d, [memory('sp1', 'Offer gave freedom', 'The offer gave me freedom; glad.')], []);
+  const gate2 = rankOptions([a, b]);
+  check('sparse: option with no evidence cannot be ranked against one with evidence',
+    gate2.preferred === null, JSON.stringify(gate2));
+  void gate2.withheld;
+}
+
+// --- 30. dm-5: contradictory records under the gate keep netting out ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const mems = [
+    memory('cc1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('cc2', 'Offer drained', 'The offer left me exhausted and resentful about freedom.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  check('contradictions: 1-for-1-against still scores 0 under dm-5',
+    a.score === 0 && !a.insufficientEvidence, `score=${a.score}`);
+  const gate = rankOptions([a, { ...a, label: 'Stay in current role', coverage: { ...a.coverage } }]);
+  check('contradictions: identical mirrored options tie under the gate',
+    gate.preferred === null, JSON.stringify(gate));
+}
+
+// --- 31. dm-5: constraints that disqualify remain flagged, never silently ranked ---
+{
+  const d = decision({ constraints: 'Must not lose healthcare coverage.' });
+  const blocking = [memory('dq1', 'The coverage rule', 'I cannot accept any role without healthcare coverage; refused the last one.')];
+  const statuses = assessConstraints(d, blocking);
+  check('constraints: disqualifying evidence flags evidence_against under dm-5',
+    statuses.length === 1 && statuses[0].status === 'evidence_against', JSON.stringify(statuses));
+  // The engine never removes the option; the flag is the mechanism.
+  const rep = analyzeDecision(d, blocking, beliefs);
+  check('constraints: options are never auto-removed, only flagged',
+    rep.optionAlignments.length === 2 && rep.constraintStatuses[0].status === 'evidence_against',
+    JSON.stringify(rep.constraintStatuses));
+}
+
+// --- 32. dm-5: inferred ratings are never fabricated into scores ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  // A record that mentions freedom with no direction: stays neutral/unknown, contributes nothing.
+  const mems = [memory('f1a', 'Offer schedule', 'The offer schedule mentioned freedom in passing.')];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  check('no fabrication: directionless mention contributes nothing to net or mass',
+    a.score === 0 && a.insufficientEvidence, `score=${a.score} flagged=${a.insufficientEvidence}`);
+  const line = a.values.find((v) => v.value === 'freedom')!;
+  check('no fabrication: the value is marked unassessed, unknown not zero',
+    line.supportingMemories === 0 && line.contradictingMemories === 0 &&
+    a.coverage.unassessedValues.includes('freedom'), JSON.stringify(line));
 }
 
 console.log(`\nDecision engine tests: ${passed} passed, ${failed} failed`);

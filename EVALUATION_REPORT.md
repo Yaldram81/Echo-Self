@@ -1,6 +1,6 @@
 # EchoSelf Evaluation Report
 
-Generated: 2026-10-17T22:19:12.699Z
+Generated: 2026-10-17T22:49:54.691Z
 
 ## How to read this report
 
@@ -11,7 +11,7 @@ Generated: 2026-10-17T22:19:12.699Z
 
 ## Summary
 
-- Deterministic: **485 passed, 0 failed** across 9 suites.
+- Deterministic: **513 passed, 0 failed** across 9 suites.
 - Live-service: **86 passed, 0 failed** across 3 executed suites.
 - Skipped: 0 suite(s).
 - Crashed: 0 suite(s).
@@ -23,7 +23,7 @@ Generated: 2026-10-17T22:19:12.699Z
 | Retrieval engine | deterministic | `npx tsx scripts/run-retrieval-tests.mts` | passed | 100 | 0 |
 | Claim integrity (evidence audit) | deterministic | `npx tsx scripts/run-claim-integrity-tests.mts` | passed | 68 | 0 |
 | Correction lifecycle | deterministic | `npx tsx scripts/run-correction-tests.mts` | passed | 46 | 0 |
-| Decision engine (fixed-input math) | deterministic | `npx tsx scripts/run-decision-tests.mts` | passed | 57 | 0 |
+| Decision engine (fixed-input math) | deterministic | `npx tsx scripts/run-decision-tests.mts` | passed | 85 | 0 |
 | Twin Chat eval cases (audit pipeline) | deterministic | `npx tsx scripts/run-eval.mjs` | passed | 26 | 0 |
 | Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | passed | 18 | 0 |
 | Relationship analysis (counterevidence candidates) | deterministic | `npx tsx scripts/run-relationship-tests.mts` | passed | 25 | 0 |

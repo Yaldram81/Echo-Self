@@ -533,6 +533,10 @@ function GeneratedReport({
   const snapshotStale = isSnapshotStale(
     decision.analysis_snapshot, decision, memories, decision.classification_overrides ?? {}
   );
+  const approvedCount = Object.keys(decision.classification_overrides ?? {}).length;
+  const inferredCount = report.optionAlignments.reduce(
+    (acc, a) => acc + a.classifications.filter((c) => c.origin === 'inferred').length, 0
+  );
   return (
     <div className="space-y-6">
       <div className="card-surface p-6 md:p-8">
@@ -553,6 +557,18 @@ function GeneratedReport({
             are not recommendations. The choice is yours.
           </p>
         </div>
+        {report.ranking.withheld && (
+          <p className="mt-3 rounded-xl bg-clayred-light/60 border border-clayred-DEFAULT/30 px-4 py-3 text-[11px] leading-relaxed text-clayred-DEFAULT" role="status">
+            <ShieldAlert className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
+            <strong className="font-semibold">Overall ranking withheld.</strong> {report.ranking.withheld}
+          </p>
+        )}
+        {!report.ranking.withheld && report.ranking.disclosure && (
+          <p className="mt-3 rounded-xl bg-amberclay-light/40 border border-amberclay-DEFAULT/30 px-4 py-3 text-[11px] leading-relaxed text-charcoal-soft" role="status">
+            <AlertTriangle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
+            {report.ranking.disclosure}
+          </p>
+        )}
       </div>
 
       <OptionComparison
@@ -692,6 +708,14 @@ function GeneratedReport({
           <li>· Explicit pros/cons counted: {report.method.inputs.explicitItems.length}; user-corrected classifications: {report.method.inputs.overrideCount}</li>
           <li>· Generated from: {report.method.inputs.generatedFrom}</li>
         </ul>
+        {inferredCount > 0 && approvedCount === 0 && (
+          <p className="mt-3 rounded-lg bg-amberclay-light/40 px-3 py-2 text-[11px] leading-relaxed text-charcoal-soft">
+            <Sparkles className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
+            {inferredCount} classification{inferredCount === 1 ? '' : 's'} below are keyword-inferred
+            proposals, not your judgments — review them under each value and confirm or correct
+            any that read wrong. Nothing inferred is treated as your assessment until you act on it.
+          </p>
+        )}
       </div>
 
       <EvidencePanel report={report} open={showEvidence} onToggle={onToggleEvidence} />
@@ -848,8 +872,19 @@ function OptionComparison({
               {a.values.map((v) => (
                 <li key={v.value} className="text-xs leading-relaxed">
                   <span className="font-medium capitalize text-charcoal">{v.value}</span>{' '}
-                  <span className={v.supportingMemories > v.contradictingMemories ? 'text-sage-dark' : v.contradictingMemories > v.supportingMemories ? 'text-clayred-DEFAULT' : 'text-slateink'}>
-                    ({v.supportingMemories} for / {v.contradictingMemories} against{v.unknownMemories > 0 ? ` / ${v.unknownMemories} unknown` : ''} in your records)
+                  {v.supportingMemories === 0 && v.contradictingMemories === 0 ? (
+                    <span className="rounded bg-amberclay-light px-1.5 py-0.5 text-[10px] font-medium text-amberclay-DEFAULT" title="No directional evidence for this option on this value; it contributes nothing to the score">
+                      unassessed
+                    </span>
+                  ) : (
+                    <span className={v.supportingMemories > v.contradictingMemories ? 'text-sage-dark' : v.contradictingMemories > v.supportingMemories ? 'text-clayred-DEFAULT' : 'text-slateink'}>
+                      ({v.supportingMemories} for / {v.contradictingMemories} against{v.unknownMemories > 0 ? ` / ${v.unknownMemories} unknown` : ''} in your records)
+                    </span>
+                  )}
+                  <span className="ml-1.5 text-slateink-light">
+                    weight {v.weight.toFixed(1)}
+                    {v.userProvidedCount > 0 && ` · ${v.userProvidedCount} from you`}
+                    {v.inferredCount > 0 && ` · ${v.inferredCount} inferred`}
                   </span>
                   <p className="text-slateink mt-0.5">{v.alignmentNote}</p>
                   <ClassificationReview
@@ -873,9 +908,19 @@ function OptionComparison({
         <div className="space-y-3">
           {allValues.map((v) => {
             const w = typeof weights[v] === 'number' ? weights[v] : 0.5;
+            const unassessedEverywhere = alignments.every(
+              (a) => a.coverage.unassessedValues.includes(v)
+            );
             return (
               <div key={v} className="flex items-center gap-3">
-                <span className="w-24 text-xs capitalize text-charcoal">{v}</span>
+                <span className="w-24 text-xs capitalize text-charcoal">
+                  {v}
+                  {unassessedEverywhere && (
+                    <span className="ml-1.5 rounded bg-amberclay-light px-1.5 py-0.5 text-[9px] font-medium text-amberclay-DEFAULT" title="No directional evidence on this value for any option; it does not affect any score">
+                      unassessed
+                    </span>
+                  )}
+                </span>
                 <input
                   type="range"
                   min={0}
@@ -952,7 +997,16 @@ function ClassificationReview({
                 <p className="mt-0.5 text-slateink">{c.rationale}</p>
                 {!c.memoryId.startsWith('explicit:') && (
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <span className="text-slateink-light">Correct to:</span>
+                    {c.origin === 'inferred' && (
+                      <button
+                        onClick={() => onOverride(key, c.classification === 'unknown' ? 'neutral' : c.classification)}
+                        className="rounded-full bg-sage-light/60 px-2 py-0.5 text-[10px] font-medium text-sage-dark hover:bg-sage-light transition-colors"
+                        title="I have read this proposed classification and agree with it"
+                      >
+                        Looks right
+                      </button>
+                    )}
+                    <span className="text-slateink-light">or set:</span>
                     {(['for', 'against', 'neutral', 'unknown'] as const).map((opt) => (
                       <button
                         key={opt}

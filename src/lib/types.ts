@@ -202,6 +202,18 @@ export interface AnalysisSnapshot {
     evidenceMemoryIds: string[];
     explicitItems: { option: string; kind: 'pro' | 'con'; text: string }[];
     overrideCount: number;
+    /** dm-5: the user's approved/corrected classifications (key → label). */
+    approvedClassifications?: Record<string, 'for' | 'against' | 'neutral' | 'unknown'>;
+    /** dm-5: per-option assessed/unassessed value coverage at snapshot time. */
+    coverage?: {
+      option: string;
+      assessedValues: string[];
+      unassessedValues: string[];
+    }[];
+    /** dm-5: values assessed for EVERY assessable option at snapshot time. */
+    commonAssessedValues?: string[];
+    /** dm-5: plain-language reason an overall ranking was withheld, if it was. */
+    withheldRanking?: string | null;
   };
 }
 
