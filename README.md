@@ -21,7 +21,7 @@ Every destination is a distinct URL that survives refresh, supports deep links, 
 | `/beliefs` | Beliefs & Values | Beliefs and values with strength scores, evolution history, AI-suggested patterns (explicitly labeled until you confirm or dismiss them), and contradiction detection against recorded memories. |
 | `/timeline` | Timeline | Unified chronology assembled from memories, decisions, belief changes, and reflections — with deep links into each source record. |
 | `/settings` | Settings & Privacy | Record counts, full JSON/CSV export (all seven tables), delete-everything, and an honest statement of what this build does and does not guarantee. |
-| `/signin`, `/signup` | Account | Email/password sign-in and sign-up; personal pages redirect signed-out visitors here. |
+| `/signin`, `/signup` | Account | Email/password sign-in and sign-up; signed-in users skip these pages. Signed-out visitors can still browse the personal pages and see the public sample persona (read-only, enforced by row-level security, with a sample-data banner on every page). |
 
 ### The honesty model (the core design constraint)
 
@@ -248,7 +248,9 @@ npx tsx scripts/run-decision-tests.mts                    # decision engine suit
 npx tsx scripts/run-retrieval-tests.mts                   # retrieval engine suite (65 checks)
 npx tsx scripts/run-correction-tests.mts                  # correction lifecycle suite (46 checks)
 npx tsx --env-file=.env scripts/run-eval.mjs              # evidence inspector eval (26 cases)
-npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey (20 checks)
+npx tsx scripts/run-static-checks.mts                     # static verification: routes, links, SEO, robots, a11y invariants (78 checks)
+npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey incl. sign-out/sign-in (23 checks)
+npx tsx --env-file=.env scripts/run-all-eval.mts          # every suite in sequence; writes EVALUATION_REPORT.md (444 checks total)
 ```
 
 **Database:** the bundled Supabase project is pre-provisioned; credentials live in `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Migrations are applied via the Supabase tooling; the seed data is idempotent.
