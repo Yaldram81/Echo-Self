@@ -3,6 +3,7 @@ import type {
   ClaimEvidence,
   EvidenceConflict,
   EvidenceCorrection,
+  EvidenceStatus,
   InterpretationFlag,
   Memory,
   SourceRef,
@@ -17,6 +18,14 @@ import { expandSynonyms } from './retrieval';
  * A claim counts as "directly supported" only when its key terms overlap the
  * user-authored text (or title) of a supplied record. AI-generated interpretations
  * are never treated as user evidence and cannot back a supported claim.
+ *
+ * Two separate checks run per claim:
+ *  A. Source validity (deterministic): the cited ID exists in the retrieved
+ *     context, and every excerpt is verbatim from the stored record text.
+ *  B. Claim support (deterministic): the claim's key terms overlap the record's
+ *     user-authored text, the claim does not overreach into causality or
+ *     personality traits on thin evidence, and it carries the correction or
+ *     conflict when one exists for its records.
  */
 
 const MIN_OVERLAP = 2;
@@ -108,6 +117,37 @@ export function findSupportingRecords(claim: string, memories: Memory[]): Memory
   });
 }
 
+/* ---------------- claim-support heuristics (deterministic) ---------------- */
+
+/** Causal framing that turns correlation or a single event into an explanation. */
+const CAUSAL_RE =
+  /\b(because of this|caused by|leads? to|led to|that'?s why|which is why|made (you|me|him|her|them)|the reason (you|I|i) )\b/i;
+
+/** Single-example leaps to stable traits or permanent characterizations. */
+const TRAIT_RE =
+  /\b(you are (a|an|always|someone who)|you'?re (a|an|always|someone who)|i am (a|an|always|someone who)|have always been|is a habit of yours|defines you|your personality)\b/i;
+
+/** Absolute generalizations that thin evidence cannot establish. */
+const ABSOLUTE_RE = /\b(always|never|every time|in every|without exception|constantly|each time)\b/i;
+
+/** Psychological/clinical overreach: states or diagnoses the user's mind. */
+const PSYCH_RE =
+  /\b(you have (adhd|depression|anxiety|ocd|ptsd)|diagnos\w*|neurotic|avoidant attachment|self-?sabotag\w*|trauma response|your subconscious)\b/i;
+
+/** Present-progressive identity/activity assertions a single past record can't establish. */
+const PROGRESSIVE_RE = /\b(you are|i am|you're)\s+\w+ing\b/i;
+
+/** True when the claim's wording outruns what thin evidence could establish. */
+export function claimOverreaches(claim: string, evidenceCount: number): boolean {
+  if (evidenceCount === 0) return false;
+  if (PSYCH_RE.test(claim)) return true;
+  if (TRAIT_RE.test(claim) && evidenceCount < 3) return true;
+  if (CAUSAL_RE.test(claim) && evidenceCount < 3) return true;
+  if (ABSOLUTE_RE.test(claim) && evidenceCount < 3) return true;
+  if (PROGRESSIVE_RE.test(claim) && evidenceCount < 3) return true;
+  return false;
+}
+
 /**
  * Guard against weak keyword matches: a question whose terms barely overlap a
  * single record (no title/tag hit and only one incidental body term) is treated
@@ -189,55 +229,185 @@ export function findConflictingPairs(memories: Memory[]): EvidenceConflict[] {
 }
 
 /**
- * Decompose a reply's sources into audited claims. Each claim becomes either
- * directly_supported (with verbatim evidence excerpts) or interpretation, and
- * sources whose IDs are absent from the retrieved context become unknown claims.
+ * Audits a reply's claims against the retrieved records, running two distinct
+ * checks:
+ *
+ * A. Source validity — a cited ID must exist in the retrieved context for this
+ *    request (authorization and deletion are handled upstream by RLS and by the
+ *    caller passing only records the user may see). An ID outside context
+ *    becomes an unknown claim, never evidence.
+ *
+ * B. Claim support — the record's user-authored text must actually overlap the
+ *    claim's key terms. The model's own "supported"/"direct" label is advisory
+ *    only: here the audit decides. Overreach (causality, traits, psychological
+ *    claims on thin evidence) and ignored conflicts downgrade the status.
+ *
+ * Every excerpt is re-derived verbatim from the stored record — a model-supplied
+ * excerpt that does not match the record is replaced, never shown.
+ *
+ * Claims present on the reply are audited directly by their own text; when a
+ * reply carries no claims (demo mode), each source becomes one audited claim
+ * keyed on its record title.
  */
 export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinReply {
   const claims: AnswerClaim[] = [];
-  const seen = new Set<string>();
+  let claimCounter = 0;
+  const nextId = () => `c${++claimCounter}`;
 
-  const auditedSources: SourceRef[] = reply.sources.filter((s) => {
-    if (seen.has(s.memoryId)) return false;
-    seen.add(s.memoryId);
-    return true;
-  });
-
-  for (const s of auditedSources) {
-    const mem = contextMemories.find((m) => m.id === s.memoryId);
-    if (!mem) {
-      claims.push({
-        claim: `Cited a record ("${s.title}") that was not supplied in the retrieved context for this question.`,
-        type: 'unknown',
-        evidence: [],
-      });
-      continue;
-    }
-    const supporting = findSupportingRecords(s.title, [mem]);
-    const supported = supporting.length > 0;
-    const excerpt = supported ? excerptFor(s.title, mem) : null;
-    const evidence: ClaimEvidence[] = supported && excerpt
-      ? [{ memoryId: mem.id, title: mem.title, excerpt }]
-      : [];
-    claims.push({
-      claim: s.title,
-      type: supported ? 'directly_supported' : 'interpretation',
-      evidence,
-    });
+  const auditedSources: SourceRef[] = [];
+  const seenSources = new Set<string>();
+  for (const s of reply.sources) {
+    if (seenSources.has(s.memoryId)) continue;
+    seenSources.add(s.memoryId);
+    auditedSources.push(s);
   }
 
-  // Drop sources whose support could not be verified against the record text:
-  // out-of-context IDs and records whose text does not actually back the claim.
+  const ctxIds = new Set(contextMemories.map((m) => m.id));
+  const hasModelClaims = Array.isArray(reply.claims) && reply.claims.length > 0;
+
+  const auditOne = (
+    rawText: string,
+    modelEvidence: Array<{ memoryId: string; excerpt?: string; relation?: string }>,
+    fallbackTitle?: string
+  ): AnswerClaim => {
+    const id = nextId();
+    // A fabricated quote inside the claim text is stripped up front — never
+    // shown attached to a genuine source, whether or not evidence verifies.
+    const contextCorpus = contextMemories.map((m) => `${m.title} ${m.content}`);
+    const badQuotes = findUnverifiedQuotes(rawText, contextCorpus);
+    let text = rawText;
+    let fabricatedQuote = false;
+    for (const q of badQuotes) {
+      text = text.split(`“${q}”`).join('[unverified quote removed]').split(`"${q}"`).join('[unverified quote removed]');
+      fabricatedQuote = true;
+    }
+
+    // A. source validity: every cited record must be in this request's context.
+    const validEvidence = modelEvidence.filter((e) => ctxIds.has(e.memoryId));
+    const outOfContext = modelEvidence.length - validEvidence.length;
+
+    if (validEvidence.length === 0 && modelEvidence.length > 0) {
+      // Cited something, but none of it was supplied for this request.
+      return {
+        claimId: id,
+        claim: text,
+        type: 'unknown',
+        evidenceStatus: 'insufficient',
+        uncertainty: 'The cited record(s) could not be retrieved for this question, so nothing about them is asserted.',
+        evidence: [],
+      };
+    }
+
+    // B. claim support: does the record's user text actually overlap the claim?
+    const evidence: ClaimEvidence[] = [];
+    for (const e of validEvidence) {
+      const mem = contextMemories.find((m) => m.id === e.memoryId)!;
+      const supporting = findSupportingRecords(text, [mem]);
+      const supported = supporting.length > 0 || (fallbackTitle === mem.title && findSupportingRecords(fallbackTitle, [mem]).length > 0);
+      // Re-derive the excerpt from the record itself; never show model text.
+      const excerpt = supported ? excerptFor(text, mem) ?? excerptFor(fallbackTitle ?? text, mem) : null;
+      if (supported && excerpt) {
+        evidence.push({ memoryId: mem.id, title: mem.title, excerpt, relation: e.relation });
+      }
+    }
+
+    if (evidence.length === 0) {
+      return {
+        claimId: id,
+        claim: text,
+        type: 'interpretation',
+        evidenceStatus: 'insufficient',
+        uncertainty: fabricatedQuote
+          ? 'The claim contained a quote that appears in no record — the quote was removed and no record text supports the rest.'
+          : 'No record text overlaps this statement, so it is treated as interpretation, not fact.',
+        evidence: [],
+      };
+    }
+
+    let type: AnswerClaim['type'] = 'directly_supported';
+    let evidenceStatus: EvidenceStatus = 'direct';
+    let uncertainty: string | undefined;
+    let basis: string | undefined;
+
+    if (fabricatedQuote) {
+      type = 'interpretation';
+      evidenceStatus = 'partial';
+      uncertainty = 'The claim contained a quote that appears in no record — the quote was removed and the claim downgraded.';
+      basis = 'Fabricated quotation detected during audit.';
+      return { claimId: id, claim: text, type, evidenceStatus, uncertainty, basis, evidence };
+    }
+
+    const conflictingPair = conflictsForMemories(evidence.map((e) => e.memoryId), contextMemories);
+    if (conflictingPair) {
+      type = 'conflicting_evidence';
+      evidenceStatus = 'conflicting';
+      uncertainty = 'Records retrieved for this question pull in opposite directions — both are shown without a winner.';
+      basis = conflictingPair.explanation;
+    } else if (claimOverreaches(text, evidence.length)) {
+      type = 'interpretation';
+      evidenceStatus = 'partial';
+      uncertainty = 'The evidence records related events, but they do not by themselves establish this as fact — treated as interpretation.';
+      basis = 'Claim language suggests causality, a diagnosis, or a stable trait; the records only show what happened.';
+    } else if (evidence.length < modelEvidence.length - outOfContext || outOfContext > 0) {
+      evidenceStatus = 'partial';
+      uncertainty = 'Some cited records could not be verified against their text for this claim.';
+    }
+
+    return { claimId: id, claim: text, type, evidenceStatus, uncertainty, basis, evidence };
+  };
+
+  if (hasModelClaims) {
+    for (const mc of reply.claims!) {
+      if (!mc.claim.trim()) continue;
+      claims.push(auditOne(mc.claim, mc.evidence ?? []));
+    }
+  } else {
+    for (const s of auditedSources) {
+      const mem = contextMemories.find((m) => m.id === s.memoryId);
+      if (!mem) {
+        claims.push({
+          claimId: nextId(),
+          claim: `Cited a record ("${s.title}") that was not supplied in the retrieved context for this question.`,
+          type: 'unknown',
+          evidenceStatus: 'insufficient',
+          uncertainty: 'The cited record could not be retrieved for this question, so nothing about it is asserted.',
+          evidence: [],
+        });
+        continue;
+      }
+      claims.push(auditOne(s.title, [{ memoryId: s.memoryId }], s.title));
+    }
+  }
+
+  // Sources stay only when the audit verified them against record text.
   const verifiedIds = new Set(
-    claims.filter((c) => c.type === 'directly_supported').flatMap((c) => c.evidence.map((e) => e.memoryId))
+    claims.filter((c) => c.type === 'directly_supported' || c.type === 'conflicting_evidence')
+      .flatMap((c) => c.evidence.map((e) => e.memoryId))
   );
-  const verifiedSources = auditedSources.filter((s) => {
-    const inCtx = contextMemories.some((m) => m.id === s.memoryId);
-    return inCtx && verifiedIds.has(s.memoryId);
-  });
+  const verifiedSources = auditedSources.filter((s) => verifiedIds.has(s.memoryId));
 
   return { ...reply, sources: verifiedSources, claims };
 }
+
+/**
+ * Conflict check for a claim's evidence: a claim is conflicting when ANY of its
+ * cited records has a conflicting counterpart in the retrieved context — even
+ * if the counterpart's text did not support the claim itself. Counterevidence
+ * must not be silently omitted.
+ */
+function conflictsForMemories(ids: string[], contextMemories: Memory[]): EvidenceConflict | null {
+  for (const id of ids) {
+    const anchor = contextMemories.find((m) => m.id === id);
+    if (!anchor) continue;
+    for (const other of contextMemories) {
+      if (other.id === anchor.id) continue;
+      const reason = classifyConflict(anchor, other);
+      if (reason) return { a: evidenceSide(anchor), b: evidenceSide(other), explanation: reason };
+    }
+  }
+  return null;
+}
+
 
 /** Merge conflicts detected in the retrieved context into the reply. */
 export function withConflicts(reply: TwinReply, contextMemories: Memory[]): TwinReply {
@@ -271,7 +441,13 @@ export function withCorrections(
 
   const claims = reply.claims?.map((c) => {
     const claimFlags = relevant.filter((f) => c.evidence.some((e) => e.memoryId === f.memory_id));
-    return claimFlags.length > 0 ? { ...c, corrections: claimFlags } : c;
+    if (claimFlags.length === 0) return c;
+    return {
+      ...c,
+      corrections: claimFlags,
+      evidenceStatus: 'partial' as EvidenceStatus,
+      basis: c.basis ?? 'A later correction from you qualifies this record — see the note beside it.',
+    };
   });
 
   return { ...reply, corrections, claims: claims ?? reply.claims };

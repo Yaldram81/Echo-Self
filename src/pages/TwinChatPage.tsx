@@ -439,6 +439,14 @@ function TwinMessage({
                       {c.type.replace(/_/g, ' ')}
                     </span>
                   </div>
+                  {c.evidenceStatus && c.evidenceStatus !== 'direct' && (
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-slateink-light mb-1">
+                      Evidence: {c.evidenceStatus}
+                    </p>
+                  )}
+                  {c.basis && (
+                    <p className="text-[11px] leading-relaxed text-slateink-dark mb-1">{c.basis}</p>
+                  )}
                   {c.evidence.length > 0 && (
                     <ul className="mt-1.5 space-y-1 border-l-2 border-terracotta/30 pl-2.5">
                       {c.evidence.map((ev) => (
@@ -448,6 +456,9 @@ function TwinMessage({
                           </a>
                           {ev.excerpt && (
                             <p className="text-[11px] leading-relaxed text-slateink italic">“{ev.excerpt}”</p>
+                          )}
+                          {ev.relation && (
+                            <p className="text-[10px] leading-relaxed text-slateink-light">{ev.relation}</p>
                           )}
                         </li>
                       ))}
@@ -465,6 +476,11 @@ function TwinMessage({
                   {c.type === 'unknown' && c.evidence.length === 0 && (
                     <p className="text-[11px] text-slateink-light italic">
                       No record supplied for this request covers this — nothing was invented.
+                    </p>
+                  )}
+                  {c.uncertainty && c.type !== 'unknown' && (
+                    <p className="mt-1 text-[11px] leading-relaxed text-amberclay-DEFAULT flex items-start gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" aria-hidden /> {c.uncertainty}
                     </p>
                   )}
                 </li>

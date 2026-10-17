@@ -238,6 +238,9 @@ export interface SourceRef {
   title: string;
 }
 
+/** How well the evidence actually backs the claim, after audit. */
+export type EvidenceStatus = 'direct' | 'partial' | 'conflicting' | 'insufficient';
+
 export type ClaimType = 'directly_supported' | 'interpretation' | 'conflicting_evidence' | 'unknown';
 
 /** Per-claim evidence: which retrieved records back this claim, with the supporting excerpt. */
@@ -246,12 +249,22 @@ export interface ClaimEvidence {
   title: string;
   /** Verbatim excerpt from the user-authored record text backing the claim. */
   excerpt: string;
+  /** How this record relates to the claim (model-supplied, kept only when plausible). */
+  relation?: string;
 }
 
 /** One substantive statement from a twin answer, kept separate from the prose. */
 export interface AnswerClaim {
+  /** Unique within this reply; lets the UI and tests address a single claim. */
+  claimId: string;
   claim: string;
   type: ClaimType;
+  /** Calibrated post-audit evidence label; the model's own label is never trusted as final. */
+  evidenceStatus: EvidenceStatus;
+  /** Why the evidence does or does not establish the claim. */
+  basis?: string;
+  /** Meaningful uncertainty explanation when support is partial or insufficient. */
+  uncertainty?: string;
   /** Records retrieved for THIS request that relate to the claim. */
   evidence: ClaimEvidence[];
   /** User corrections that override or annotate this claim, when present. */

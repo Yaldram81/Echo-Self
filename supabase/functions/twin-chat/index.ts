@@ -42,7 +42,11 @@ type FlagRow = {
 
 type TwinSource = { memoryId: string; title: string };
 
-type TwinClaim = { claim: string; type: string; evidence: { memoryId: string; excerpt?: string }[] };
+type TwinClaim = {
+  claim: string;
+  type: string;
+  evidence: { memoryId: string; excerpt?: string; relation?: string }[];
+};
 
 type TwinResponse = {
   answer: string;
@@ -61,12 +65,17 @@ const SYSTEM_PROMPT = `You are EchoSelf's Twin: an evidence-grounded reflection 
 Rules:
 - Ground every claim in the provided memories. Cite memories by their exact id in square brackets, e.g. [id], immediately after the claim they support.
 - Only cite memory ids that appear in the provided context. Never invent ids, quotes, or dates.
+- Prefer fewer, well-supported claims over many speculative ones. If the records cannot answer the question, say so plainly instead of stretching thin evidence.
 - Clearly separate four kinds of claims, tagged in "claims":
   1. directly_supported: stated or clearly evidenced by the USER TEXT of a cited memory.
   2. interpretation: your reading of the evidence; label it "Interpretation:".
   3. conflicting_evidence: two supplied memories pull in opposite directions — state both sides with their dates, do not pick a winner.
   4. unknown: the records do not cover it — say plainly what is missing. NEVER invent a personal fact to complete the answer.
-- Each claim carries "evidence": the memory ids whose USER TEXT (not the TWIN INTERPRETATION field) supports it, plus a short verbatim excerpt from that text. An empty evidence list is required for interpretation and unknown claims.
+- Each claim carries "evidence": the memory ids whose USER TEXT (not the TWIN INTERPRETATION field) supports it, plus a short verbatim excerpt from that text and a one-sentence "relation" explaining how that record relates to the claim. An empty evidence list is required for interpretation and unknown claims.
+- Evidence status: set "evidenceStatus" per claim — "direct" (the record text states it), "partial" (the record only partly covers it), "conflicting" (records disagree), "insufficient" (no record establishes it). Do not upgrade partial or conflicting evidence to direct.
+- Never present a correlation or repeated event as a cause, and never turn a single example into a stable personality trait. Phrase those as interpretations instead.
+- Do not omit relevant counterevidence: when a supplied record cuts against the claim, say so or tag the claim conflicting_evidence.
+- An interpretation is never presented as a direct user statement.
 - Do not cite the TWIN INTERPRETATION field as evidence for a directly_supported claim — it is AI-generated, not user-authored.
 - USER CORRECTIONS are the user's own later statements about a record. Treat them as authoritative USER TEXT; when a correction conflicts with the record's original text, present BOTH side by side with their dates and do not pick a winner.
 - Quotes and dates: only quote text that appears verbatim in the records, and only state dates that a record itself carries. If the records support the claim without an exact quote, paraphrase instead of quoting. Never reconstruct a date from context.
@@ -77,7 +86,7 @@ Respond in exactly this JSON shape (no markdown fence, no extra keys):
 {
   "answer": "3-6 sentences. Concise. Use [id] citations inline where claims are supported.",
   "claims": [
-    { "claim": "...", "type": "directly_supported|interpretation|conflicting_evidence|unknown", "evidence": [{ "memoryId": "<id>", "excerpt": "verbatim user text" }] }
+    { "claim": "...", "type": "directly_supported|interpretation|conflicting_evidence|unknown", "evidenceStatus": "direct|partial|conflicting|insufficient", "evidence": [{ "memoryId": "<id>", "excerpt": "verbatim user text", "relation": "how this record relates to the claim" }] }
   ],
   "sources": ["<memory id>", "<memory id>"],
   "inferences": ["Interpretation: ...", "..."],
@@ -85,7 +94,7 @@ Respond in exactly this JSON shape (no markdown fence, no extra keys):
   "followUps": ["A question the user might ask next", "..."]
 }
 - "sources" must contain ONLY memory ids you actually cited or relied on, from the provided context.
-- "claims" must decompose the answer into its substantive statements, one object each. Every directly_supported or conflicting_evidence claim must list the memory ids it rests on.
+- "claims" must decompose the answer into its substantive statements, one object each. Every directly_supported or conflicting_evidence claim must list the memory ids it rests on. Every claim requires "evidenceStatus".
 - "inferences" must be empty if you made none.
 - All six keys are required; use empty arrays when a list is empty.`;
 
@@ -225,27 +234,44 @@ function coerceResponse(raw: Record<string, unknown> | null, memories: MemoryRow
 
   // Coerce claims: keep only valid ids and excerpt-bearing evidence. Unsupported
   // claims are downgraded to interpretation here so the client audit can re-check.
+  // The model's own evidenceStatus is advisory: anything missing or invalid
+  // becomes "insufficient", and a "direct" label never survives without evidence.
   const VALID_TYPES = new Set(['directly_supported', 'interpretation', 'conflicting_evidence', 'unknown']);
+  const VALID_STATUSES = new Set(['direct', 'partial', 'conflicting', 'insufficient']);
   const rawClaims = Array.isArray(raw?.claims) ? raw.claims : [];
   const claims: TwinClaim[] = [];
   for (const rc of rawClaims) {
     if (!rc || typeof rc.claim !== 'string' || !rc.claim.trim()) continue;
     const type = VALID_TYPES.has(rc.type) ? rc.type : 'interpretation';
-    const evidence: { memoryId: string; excerpt?: string }[] = [];
+    let evidenceStatus = VALID_STATUSES.has(rc.evidenceStatus) ? rc.evidenceStatus : 'insufficient';
+    const evidence: { memoryId: string; excerpt?: string; relation?: string }[] = [];
     if (Array.isArray(rc.evidence)) {
       for (const ev of rc.evidence) {
         if (!ev || typeof ev.memoryId !== 'string') continue;
         const id = ev.memoryId.trim();
         if (!validIds.has(id)) continue;
         if (type === 'directly_supported' && typeof ev.excerpt !== 'string') continue;
-        evidence.push({ memoryId: id, excerpt: typeof ev.excerpt === 'string' ? ev.excerpt : undefined });
+        evidence.push({
+          memoryId: id,
+          excerpt: typeof ev.excerpt === 'string' ? ev.excerpt : undefined,
+          relation: typeof ev.relation === 'string' && ev.relation.trim() ? ev.relation.trim().slice(0, 200) : undefined,
+        });
       }
     }
-    claims.push({
-      claim: rc.claim.trim(),
-      type: type === 'directly_supported' && evidence.length === 0 ? 'interpretation' : type,
-      evidence,
-    });
+    if (type === 'directly_supported' && evidence.length === 0) {
+      claims.push({ claim: rc.claim.trim(), type: 'interpretation', evidence, evidenceStatus: 'insufficient' });
+      continue;
+    }
+    // "direct" support is claimed by the model — hold it to the strictest label
+    // it can defend; the client-side audit makes the final call.
+    if (type === 'directly_supported' && evidenceStatus === 'direct' && evidence.length < 2) {
+      const mem = memories.find((m) => m.id === evidence[0]?.memoryId);
+      const terms = rc.claim.toLowerCase().match(/[a-z]{4,}/g) ?? [];
+      const overlap = terms.filter((t) => mem && `${m.title} ${m.content}`.toLowerCase().includes(t)).length;
+      if (overlap < 2) evidenceStatus = 'partial';
+    }
+    if (type === 'unknown') evidenceStatus = 'insufficient';
+    claims.push({ claim: rc.claim.trim(), type, evidence, evidenceStatus });
   }
 
   return {

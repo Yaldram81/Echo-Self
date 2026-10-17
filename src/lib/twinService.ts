@@ -1,4 +1,4 @@
-import type { Belief, InterpretationFlag, Memory, SourceRef, TwinReply } from './types';
+import type { Belief, ClaimType, InterpretationFlag, Memory, SourceRef, TwinReply } from './types';
 import { findBeliefConflicts, formatMemoryForContext, retrieveMemories } from './retrieval';
 import {
   auditReply,
@@ -98,7 +98,36 @@ async function askLive(question: string): Promise<TwinReply> {
     gaps: Array.isArray(payload.gaps) ? payload.gaps : [],
     followUps: Array.isArray(payload.followUps) ? payload.followUps : [],
     mode: 'live',
+    claims: sanitizeIncomingClaims(payload.claims),
   };
+}
+
+/**
+ * Strict shape check on model-derived claims arriving from the edge function.
+ * Anything malformed is dropped rather than repaired into something misleading:
+ * only plain-string claim text and string evidence IDs survive. Excerpts are
+ * NOT trusted from the wire — the client audit re-derives them from records.
+ */
+function sanitizeIncomingClaims(raw: unknown): TwinReply['claims'] {
+  if (!Array.isArray(raw)) return undefined;
+  const claims: NonNullable<TwinReply['claims']> = [];
+  for (const rc of raw) {
+    if (!rc || typeof rc !== 'object') continue;
+    const obj = rc as Record<string, unknown>;
+    if (typeof obj.claim !== 'string' || !obj.claim.trim()) continue;
+    const VALID_TYPES = ['directly_supported', 'interpretation', 'conflicting_evidence', 'unknown'];
+    const type = typeof obj.type === 'string' && VALID_TYPES.includes(obj.type)
+      ? (obj.type as ClaimType)
+      : 'interpretation';
+    const evidence = Array.isArray(obj.evidence)
+      ? obj.evidence
+          .filter((e): e is { memoryId: string } =>
+            !!e && typeof e === 'object' && typeof (e as { memoryId?: unknown }).memoryId === 'string')
+          .map((e) => ({ memoryId: e.memoryId, title: '', excerpt: '' }))
+      : [];
+    claims.push({ claimId: `c${claims.length + 1}`, claim: obj.claim.trim(), type, evidenceStatus: 'insufficient', evidence });
+  }
+  return claims.length > 0 ? claims : undefined;
 }
 
 function validateSources(reply: TwinReply, contextMemories: Memory[]): TwinReply {
