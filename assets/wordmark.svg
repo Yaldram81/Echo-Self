@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="88" viewBox="0 0 360 88" role="img" aria-label="EchoSelf wordmark">
+  <!-- EchoSelf brand mark: terracotta echo arcs over charcoal editorial serif. -->
+  <g fill="none" stroke="#C4643B" stroke-width="3" stroke-linecap="round">
+    <path d="M22 62 a14 14 0 0 1 0 -28"/>
+    <path d="M32 68 a22 22 0 0 1 0 -40" opacity="0.65"/>
+    <path d="M42 74 a30 30 0 0 1 0 -52" opacity="0.35"/>
+  </g>
+  <circle cx="22" cy="48" r="4" fill="#C4643B"/>
+  <text x="62" y="58" font-family="Fraunces, Georgia, 'Times New Roman', serif" font-size="34" font-weight="600" fill="#2B2A26" letter-spacing="0.5">EchoSelf</text>
+  <text x="63" y="76" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10.5" fill="#6B6558" letter-spacing="2.4">AN EVIDENCE-GROUNDED AI TWIN</text>
+</svg>
