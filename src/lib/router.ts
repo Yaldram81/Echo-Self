@@ -23,6 +23,7 @@ export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 't
 
 export type Route =
   | { kind: 'auth'; mode: 'signin' | 'signup' }
+  | { kind: 'notFound' }
   | { kind: 'app'; page: PageId; detailKind: 'memory' | 'decision' | null; detailId: string | null };
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -34,17 +35,19 @@ export function routeFromPath(pathname: string): Route {
   if (memoryMatch) {
     return UUID_RE.test(memoryMatch[1])
       ? { kind: 'app', page: 'memories', detailKind: 'memory', detailId: memoryMatch[1] }
-      : { kind: 'app', page: 'memories', detailKind: null, detailId: null };
+      : { kind: 'notFound' };
   }
   const decisionMatch = p.match(/^\/decision\/([^/]+)$/);
   if (decisionMatch) {
     return UUID_RE.test(decisionMatch[1])
       ? { kind: 'app', page: 'decisions', detailKind: 'decision', detailId: decisionMatch[1] }
-      : { kind: 'app', page: 'decisions', detailKind: null, detailId: null };
+      : { kind: 'notFound' };
   }
   const raw = p.replace(/^\//, '') || 'home';
-  const page = NAV_PAGES.includes(raw as PageId) ? (raw as PageId) : 'home';
-  return { kind: 'app', page, detailKind: null, detailId: null };
+  if (NAV_PAGES.includes(raw as PageId)) {
+    return { kind: 'app', page: raw as PageId, detailKind: null, detailId: null };
+  }
+  return { kind: 'notFound' };
 }
 
 export function hrefFor(target: PageId | { page: 'memory' | 'decision'; id: string }): string {
@@ -64,10 +67,12 @@ export const ROUTE_META: Record<string, { title: string; description: string }> 
   settings: { title: 'Settings & Privacy — EchoSelf', description: 'Export or delete your records; review what the app stores and what it never does.' },
   signin: { title: 'Sign in — EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
   signup: { title: 'Create account — EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
+  notFound: { title: 'Page not found — EchoSelf', description: 'This address does not match any page in EchoSelf.' },
 };
 
 export function metaFor(route: Route) {
   if (route.kind === 'auth') return ROUTE_META[route.mode];
+  if (route.kind === 'notFound') return ROUTE_META.notFound;
   if (route.detailKind === 'memory') return { title: 'Memory — EchoSelf', description: ROUTE_META.memories.description };
   if (route.detailKind === 'decision') return { title: 'Decision — EchoSelf', description: ROUTE_META.decisions.description };
   return ROUTE_META[route.page] ?? ROUTE_META.home;

@@ -20,20 +20,52 @@ import { TimelinePage } from '@/pages/TimelinePage';
 import { EvidenceGraphPage } from '@/pages/EvidenceGraphPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { AuthPage } from '@/pages/AuthPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+
+const PRODUCTION_ORIGIN = 'https://echoself.app';
 
 function setDocMeta(route: Route) {
   const { title, description } = metaFor(route);
   document.title = title;
-  let tag = document.querySelector('meta[name="description"]');
-  if (!tag) {
-    tag = document.createElement('meta');
-    tag.setAttribute('name', 'description');
-    document.head.appendChild(tag);
+
+  let desc = document.querySelector('meta[name="description"]');
+  if (!desc) {
+    desc = document.createElement('meta');
+    desc.setAttribute('name', 'description');
+    document.head.appendChild(desc);
   }
-  tag.setAttribute('content', description);
+  desc.setAttribute('content', description);
+
+  // Private app pages stay out of search results; the landing and auth pages
+  // are the only intentionally public, indexable surface.
+  const indexable = route.kind === 'auth' || (route.kind === 'app' && route.page === 'home');
+  let robots = document.querySelector('meta[name="robots"]');
+  if (!robots) {
+    robots = document.createElement('meta');
+    robots.setAttribute('name', 'robots');
+    document.head.appendChild(robots);
+  }
+  robots.setAttribute('content', indexable ? 'index, follow' : 'noindex, follow');
+
+  // Canonical: only the indexable routes declare one; others never claim a
+  // canonical URL that points at indexable content.
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonical);
+  }
+  if (indexable) {
+    canonical.setAttribute('href', route.kind === 'auth' ? `${PRODUCTION_ORIGIN}/${route.mode}` : `${PRODUCTION_ORIGIN}/`);
+  } else {
+    canonical.removeAttribute('href');
+  }
 }
 
 function Shell({ route }: { route: Route }) {
+  if (route.kind === 'notFound') {
+    return <NotFoundPage />;
+  }
   if (route.kind === 'auth') {
     return <AuthPage key={route.mode} mode={route.mode} />;
   }
@@ -65,7 +97,6 @@ function AppRoutes() {
     setDocMeta(route);
     if (route.kind === 'app') window.scrollTo({ top: 0 });
   }, [route]);
-
   // Auth redirect: signed-out visitors to personal pages go to sign-in (and
   // are sent back after signing in); signed-in users skip the sign-in page.
   useEffect(() => {

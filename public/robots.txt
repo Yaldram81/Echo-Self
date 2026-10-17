@@ -1,2 +1,13 @@
 User-agent: *
 Allow: /
+Disallow: /memories
+Disallow: /memory/
+Disallow: /chat
+Disallow: /decisions
+Disallow: /decision/
+Disallow: /beliefs
+Disallow: /timeline
+Disallow: /graph
+Disallow: /settings
+
+Sitemap: https://echoself.app/sitemap.xml
