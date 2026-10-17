@@ -4,10 +4,10 @@ import { flagsService } from '@/lib/services';
 import type { CorrectionStatus, InterpretationFlag, Memory } from '@/lib/types';
 
 const STATUS_LABEL: Record<CorrectionStatus, string> = {
-  proposed: 'Proposed — not yet part of answers',
-  confirmed: 'Confirmed — part of relevant answers',
-  superseded: 'Superseded — kept as history only',
-  dismissed: 'Dismissed — not used',
+  proposed: 'Proposed: not yet part of answers',
+  confirmed: 'Confirmed: part of relevant answers',
+  superseded: 'Superseded: kept as history only',
+  dismissed: 'Dismissed: not used',
 };
 
 const STATUS_CLASS: Record<CorrectionStatus, string> = {
@@ -47,7 +47,7 @@ export function CorrectionsPanel({
       await action();
       onChanged();
     } catch {
-      setActionError('The change could not be saved. Nothing was lost — please try again.');
+      setActionError('The change could not be saved. Nothing was lost, please try again.');
     } finally {
       setBusyId(null);
     }

@@ -44,8 +44,8 @@ export function HomePage() {
           Meet the self you can <em className="not-italic text-terracotta-deep">examine</em>.
         </h1>
         <p className="mt-4 max-w-xl text-slateink leading-relaxed">
-          Your twin reflects only what has been recorded — memories, beliefs, and open
-          decisions, each traceable to its source.
+          Your twin reflects only what has been recorded (memories, beliefs, and open
+          decisions), each traceable to its source.
         </p>
         <div className="mt-6">
           <DemoModeBanner />
@@ -197,7 +197,7 @@ export function HomePage() {
             <div>
               <h3 className="font-serif text-xl text-charcoal mb-1">Talk it through</h3>
               <p className="text-sm text-slateink max-w-md leading-relaxed">
-                Ask your twin to weigh a choice against your recorded evidence — not opinion,
+                Ask your twin to weigh a choice against your recorded evidence, not opinion,
                 only what you've logged.
               </p>
             </div>

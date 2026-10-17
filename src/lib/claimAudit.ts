@@ -197,7 +197,7 @@ function classifyConflict(a: Memory, b: Memory): string | null {
     if ((d.forward.test(textA) && d.reverse.test(textB)) ||
         (d.forward.test(textB) && d.reverse.test(textA))) {
       const newer = new Date(a.occurred_at) >= new Date(b.occurred_at) ? a : b;
-      return `These records pull in opposite directions: ${d.label}. Note the dates — "${newer.title}" is more recent.`;
+      return `These records pull in opposite directions: ${d.label}. Note the dates: "${newer.title}" is more recent.`;
     }
   }
   return null;
@@ -318,7 +318,7 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
         type: 'interpretation',
         evidenceStatus: 'insufficient',
         uncertainty: fabricatedQuote
-          ? 'The claim contained a quote that appears in no record — the quote was removed and no record text supports the rest.'
+          ? 'The claim contained a quote that appears in no record, so the quote was removed and no record text supports the rest.'
           : 'No record text overlaps this statement, so it is treated as interpretation, not fact.',
         evidence: [],
       };
@@ -332,7 +332,7 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
     if (fabricatedQuote) {
       type = 'interpretation';
       evidenceStatus = 'partial';
-      uncertainty = 'The claim contained a quote that appears in no record — the quote was removed and the claim downgraded.';
+      uncertainty = 'The claim contained a quote that appears in no record, so the quote was removed and the claim downgraded.';
       basis = 'Fabricated quotation detected during audit.';
       return { claimId: id, claim: text, type, evidenceStatus, uncertainty, basis, evidence };
     }
@@ -341,7 +341,7 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
     if (conflictingPair) {
       type = 'conflicting_evidence';
       evidenceStatus = 'conflicting';
-      uncertainty = 'Records retrieved for this question pull in opposite directions — both are shown without a winner.';
+      uncertainty = 'Records retrieved for this question pull in opposite directions; both are shown without a winner.';
       basis = conflictingPair.explanation;
     } else if (!(fallbackTitle !== undefined && text === fallbackTitle) && claimOverreaches(text, evidence.length)) {
       // Overreach applies to model-authored claim language. A claim keyed on a
@@ -349,7 +349,7 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
       // assertion — absolute words inside a title are not a generalization.
       type = 'interpretation';
       evidenceStatus = 'partial';
-      uncertainty = 'The evidence records related events, but they do not by themselves establish this as fact — treated as interpretation.';
+      uncertainty = 'The evidence records related events, but they do not by themselves establish this as fact; it is treated as interpretation.';
       basis = 'Claim language suggests causality, a diagnosis, or a stable trait; the records only show what happened.';
     } else if (evidence.length < modelEvidence.length - outOfContext || outOfContext > 0) {
       evidenceStatus = 'partial';
@@ -469,7 +469,7 @@ export function withCorrections(
       ...c,
       corrections: claimFlags,
       evidenceStatus: 'partial' as EvidenceStatus,
-      basis: c.basis ?? 'A later correction from you qualifies this record — see the note beside it.',
+      basis: c.basis ?? 'A later correction from you qualifies this record; see the note beside it.',
     };
   });
 
@@ -590,7 +590,7 @@ export function rejectInventedContent(
   return {
     ...reply,
     answer,
-    gaps: Array.from(new Set([...(reply.gaps ?? []), `Removed ${removed.join(' and ')} — they were not found in your records, so they are not shown as evidence.`])),
+    gaps: Array.from(new Set([...(reply.gaps ?? []), `Removed ${removed.join(' and ')}; they were not found in your records, so they are not shown as evidence.`])),
   };
 }
 
@@ -604,10 +604,10 @@ export function rejectInventedContent(
 export function withUncertainty(reply: TwinReply, question: string, contextMemories: Memory[]): TwinReply {
   const gaps = new Set(reply.gaps ?? []);
   if (contextMemories.length === 0) {
-    gaps.add('No records matched this question at all — the topic may simply not be recorded.');
+    gaps.add('No records matched this question at all; the topic may simply not be recorded.');
   } else {
     if (contextMemories.length === 1) {
-      gaps.add('Only one record matched — the evidence base for this answer is thin.');
+      gaps.add('Only one record matched, so the evidence base for this answer is thin.');
     }
     const newest = contextMemories
       .map((m) => new Date(m.occurred_at).getTime())
@@ -615,11 +615,11 @@ export function withUncertainty(reply: TwinReply, question: string, contextMemor
     const ageDays = (Date.now() - newest) / 86_400_000;
     if (ageDays > 180) {
       gaps.add(
-        `The most recent matching record is about ${Math.round(ageDays / 30)} months old — your thinking may have moved on since.`
+        `The most recent matching record is about ${Math.round(ageDays / 30)} months old; your thinking may have moved on since.`
       );
     }
     if (isWeakMatch(question, contextMemories)) {
-      gaps.add('The matching records share only incidental keywords with the question — they may not actually answer it.');
+      gaps.add('The matching records share only incidental keywords with the question; they may not actually answer it.');
     }
   }
   return { ...reply, gaps: Array.from(gaps) };

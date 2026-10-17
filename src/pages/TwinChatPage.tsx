@@ -141,7 +141,7 @@ export function TwinChatPage() {
       {mode === 'demo' && (
         <div className="rounded-xl border border-terracotta/25 bg-terracotta/10 px-4 py-3 text-xs leading-relaxed text-terracotta-deep">
           <strong className="font-semibold">Sample conversation mode.</strong> Replies are
-          composed locally from the sample persona's records using keyword retrieval — no AI
+          composed locally from the sample persona's records using keyword retrieval; no AI
           provider is connected. Answers are grounded in the records shown in the evidence
           panels, but they are not model-generated.
         </div>
@@ -319,7 +319,7 @@ export function TwinChatPage() {
                 <h2 className="font-serif text-lg text-charcoal mb-1">Flag this interpretation</h2>
                 <p className="text-xs text-slateink leading-relaxed">
                   About the memory "{memoryById.get(flagging.memoryId)?.title ?? 'Unknown record'}".
-                  The correction is saved beside the record — the original stays untouched. It only
+                  The correction is saved beside the record; the original stays untouched. It only
                   influences future answers after you confirm it in the corrections panel below.
                 </p>
               </div>
@@ -336,7 +336,7 @@ export function TwinChatPage() {
               placeholder="e.g. I no longer hold this belief the way it reads."
             />
             <label htmlFor="flag-topic" className="block text-xs font-medium text-slateink-dark mb-1.5 mt-3">
-              Topic it applies to <span className="font-normal text-slateink-light">(optional — keeps the correction scoped, e.g. "running")</span>
+              Topic it applies to <span className="font-normal text-slateink-light">(optional; keeps the correction scoped, e.g. "running")</span>
             </label>
             <input
               id="flag-topic"
@@ -350,7 +350,7 @@ export function TwinChatPage() {
                 <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
                 <span>
                   Saved as a proposed correction. Confirm it in the corrections panel to make it
-                  part of relevant future answers — until then it does not influence the twin.
+                  part of relevant future answers; until then it does not influence the twin.
                 </span>
               </p>
             )}
@@ -408,7 +408,7 @@ function TwinMessage({
       <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-linen-light border border-linen-dark/60 px-4 py-3">
         {mode === 'demo' && (
           <p className="text-[10px] uppercase tracking-[0.15em] text-amberclay-DEFAULT mb-2">
-            Sample reply — composed locally from records
+            Sample reply: composed locally from records
           </p>
         )}
         <p className="whitespace-pre-line text-sm leading-relaxed text-charcoal">
@@ -418,7 +418,7 @@ function TwinMessage({
         {reply && reply.conflicts && reply.conflicts.length > 0 && (
           <div className="mt-3 space-y-2">
             <p className="text-[10px] uppercase tracking-[0.15em] text-amberclay-DEFAULT flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" aria-hidden /> Conflicting records — both shown, no winner chosen
+              <AlertTriangle className="w-3 h-3" aria-hidden /> Conflicting records: both shown, no winner chosen
             </p>
             {reply.conflicts.map((c, i) => (
               <div key={i} className="rounded-xl bg-amberclay-light/40 border border-amberclay-DEFAULT/30 px-3.5 py-2.5">
@@ -446,7 +446,7 @@ function TwinMessage({
         {reply && reply.corrections && reply.corrections.length > 0 && (
           <div className="mt-3 space-y-2">
             <p className="text-[10px] uppercase tracking-[0.15em] text-sage-dark flex items-center gap-1">
-              <ShieldAlert className="w-3 h-3" aria-hidden /> Your corrections — shown beside the records, nothing overwritten
+              <ShieldAlert className="w-3 h-3" aria-hidden /> Your corrections: shown beside the records, nothing overwritten
             </p>
             {reply.corrections.map((corr, i) => (
               <div key={i} className="rounded-xl bg-sage-light/40 border border-sage-dark/25 px-3.5 py-2.5">
@@ -528,7 +528,7 @@ function TwinMessage({
                   )}
                   {c.type === 'unknown' && c.evidence.length === 0 && (
                     <p className="text-[11px] text-slateink-light italic">
-                      No record supplied for this request covers this — nothing was invented.
+                      No record supplied for this request covers this; nothing was invented.
                     </p>
                   )}
                   {c.uncertainty && c.type !== 'unknown' && (
@@ -545,7 +545,7 @@ function TwinMessage({
         {reply && reply.inferences.length > 0 && (
           <div className="mt-3 rounded-xl bg-amberclay-light/50 border border-amberclay-DEFAULT/30 px-3.5 py-2.5">
             <p className="text-[10px] uppercase tracking-[0.15em] text-amberclay-DEFAULT mb-1.5 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" aria-hidden /> Inferences — the twin's reading, not your records
+              <Sparkles className="w-3 h-3" aria-hidden /> Inferences: the twin's reading, not your records
             </p>
             <ul className="space-y-1">
               {reply.inferences.map((inf, i) => (
@@ -583,7 +583,7 @@ function TwinMessage({
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${evidenceOpen ? 'rotate-180' : ''}`}
                 aria-hidden
               />
-              Evidence ({reply.sources.length}) — {evidenceOpen ? 'hide' : 'show'} sources
+              Evidence ({reply.sources.length}): {evidenceOpen ? 'hide' : 'show'} sources
             </button>
 
             {!evidenceOpen && (
@@ -610,7 +610,7 @@ function TwinMessage({
                     return (
                       <div key={s.memoryId} className="rounded-xl bg-clayred-light/60 border border-clayred-light px-3.5 py-2.5">
                         <p className="text-xs text-clayred-DEFAULT">
-                          This source is no longer in the records — it may have been deleted.
+                          This source is no longer in the records; it may have been deleted.
                         </p>
                       </div>
                     );
@@ -657,7 +657,7 @@ function TwinMessage({
         {reply && reply.sources.length === 0 && (
           <div className="mt-3 border-t border-linen-dark/60 pt-2.5">
             <p className="text-xs text-slateink-light italic">
-              No records were cited for this answer — treat it as a statement about what's missing,
+              No records were cited for this answer; treat it as a statement about what's missing,
               not as evidence.
             </p>
           </div>

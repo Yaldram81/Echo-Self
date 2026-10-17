@@ -131,7 +131,7 @@ export function DemoModeBanner() {
         Sample data
       </span>
       <p className="text-xs leading-relaxed text-charcoal-soft">
-        Everything here is a fictional demo persona, not your data. Explore freely — add or
+        Everything here is a fictional demo persona, not your data. Explore freely: add or
         remove things to see how the app behaves.
       </p>
     </div>

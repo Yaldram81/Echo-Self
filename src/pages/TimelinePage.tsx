@@ -56,7 +56,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
       title: d.title,
       description:
         d.status === 'decided'
-          ? `Chose "${d.chosen_option}"${d.rationale ? ` — ${d.rationale}` : ''}`
+          ? `Chose "${d.chosen_option}"${d.rationale ? `; ${d.rationale}` : ''}`
           : d.context,
       occurredAt: d.status === 'decided' && d.decided_at ? d.decided_at : d.created_at,
       href: `/decision/${d.id}`,
@@ -249,7 +249,7 @@ export function TimelinePage() {
                           <span className="text-[10px] text-slateink-light self-center italic">
                             {e.linkDemonstrated
                               ? 'linked through recorded values in the decision itself'
-                              : 'nearby in time only — not a demonstrated cause'}
+                              : 'nearby in time only; not a demonstrated cause'}
                           </span>
                         </div>
                       )}

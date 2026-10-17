@@ -93,7 +93,7 @@ export function MemoryForm({
 
       <div>
         <label htmlFor="memory-content" className="block text-xs font-medium text-slateink-dark mb-1.5">
-          Original text — written by you
+          Original text (written by you)
         </label>
         <textarea
           id="memory-content"

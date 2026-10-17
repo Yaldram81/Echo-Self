@@ -139,7 +139,7 @@ export function EvidenceGraphPage() {
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
         Every line below traces to a stored record, a re-derivable keyword match, or a connection
-        you confirmed yourself — nothing is drawn just to fill the picture. Dashed red lines mark
+        you confirmed yourself; nothing is drawn just to fill the picture. Dashed red lines mark
         contradictions; both sides stay visible. Solid lines are recorded directly in your data or
         confirmed by you; lighter lines are inferred and labeled with how.
       </p>
@@ -215,7 +215,7 @@ export function EvidenceGraphPage() {
           title="No connections in this view"
           description={
             graph.edges.length === 0
-              ? 'No supported connections exist between your records yet. Edges appear when a decision cites a value, a belief history note names a memory, or record texts share clear keywords — never invented for looks.'
+              ? 'No supported connections exist between your records yet. Edges appear when a decision cites a value, a belief history note names a memory, or record texts share clear keywords; never invented for looks.'
               : 'Nothing matches the current filters. Widen the time period or re-enable an entity type.'
           }
         />
@@ -257,7 +257,7 @@ export function EvidenceGraphPage() {
                 <Card className="p-5">
                   <h3 className="font-serif text-lg text-charcoal mb-1">Inspect a node</h3>
                   <p className="text-xs text-slateink leading-relaxed">
-                    Select any circle — or Tab to it and press Enter — to read the original record,
+                    Select any circle, or Tab to it and press Enter, to read the original record,
                     its metadata, and every edge with its exact source.
                   </p>
                   <p className="mt-3 text-xs text-slateink-light">
@@ -385,7 +385,7 @@ function GraphCanvas({
                 strokeDasharray={style.dash}
                 className={style.color}
               />
-              <title>{`${e.label} (${e.basis}) — trace: ${e.trace}`}</title>
+              <title>{`${e.label} (${e.basis}); trace: ${e.trace}`}</title>
             </g>
           );
         })}
@@ -437,7 +437,7 @@ function GraphCanvas({
               >
                 {label}
               </text>
-              <title>{`${p.node.title} — ${p.node.meta}`}</title>
+              <title>{`${p.node.title}: ${p.node.meta}`}</title>
             </g>
           );
         })}
@@ -585,7 +585,7 @@ function NodeInspector({
         <div className="rounded-xl bg-clayred-light/60 px-4 py-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-clayred-DEFAULT mb-1">
             <AlertTriangle className="w-3.5 h-3.5" aria-hidden />
-            Conflicting evidence — both sides shown
+            Conflicting evidence: both sides shown
           </p>
           <ul className="space-y-1 text-[11px] text-charcoal-soft">
             {contradictions.map((c) => (
@@ -601,7 +601,7 @@ function NodeInspector({
         </h4>
         {mine.length === 0 ? (
           <p className="text-xs text-slateink-light italic">
-            No supported connections for this record yet. The graph does not invent edges —
+            No supported connections for this record yet. The graph does not invent edges;
             connections appear when your data supports them.
           </p>
         ) : (

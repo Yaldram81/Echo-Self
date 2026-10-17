@@ -72,7 +72,7 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
           <p className="text-sm text-slateink leading-relaxed">
             {mode === 'signin'
               ? 'Sign in to reach your personal workspace. The public sample persona stays browsable without an account.'
-              : 'A new account starts with an empty, private workspace only you can see. Email and password — no other details.'}
+              : 'A new account starts with an empty, private workspace only you can see. Email and password, nothing else.'}
           </p>
         </div>
 

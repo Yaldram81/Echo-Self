@@ -289,7 +289,7 @@ function temporalFactor(input: Pick<ScoreInput, 'period' | 'memory'> & { intent:
   if (intent.intent === 'belief_value') {
     // Timeless: an explicit old statement of a value must not lose to a recent
     // incidental mention. No recency preference either way.
-    return { recency: 0, note: 'timeless query — recency not applied' };
+    return { recency: 0, note: 'timeless query; recency not applied' };
   }
   const r = recencyFactor(memory.occurred_at);
   const note = intent.intent === 'current_state' ? 'current-state query favors recent records' : null;
@@ -350,7 +350,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     synonymHits.length > 0 ? `reached via related wording (${synonymHits.slice(0, 3).join(', ')})` : null,
     correctionMatch ? 'carries your saved correction on this topic' : null,
     timeNote,
-    incidentalOnly ? 'weak/incidental overlap — treat with caution' : null,
+    incidentalOnly ? 'weak/incidental overlap; treat with caution' : null,
   ].filter(Boolean);
 
   return {
@@ -360,7 +360,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     recency,
     score,
     signals: { titleHits: inTitle, tagHits: inTags, categoryHits: inCategory, bodyHits: inBody, synonymHits, phraseMatch, correctionMatch, incidentalOnly },
-    reason: `${reasonParts.join('; ')}. Relevance ${relevance} → ranking score ${score.toFixed(2)} (relevance only — record confidence ${memory.confidence}/100 is a separate reliability field).`,
+    reason: `${reasonParts.join('; ')}. Relevance ${relevance} → ranking score ${score.toFixed(2)} (relevance only; record confidence ${memory.confidence}/100 is a separate reliability field).`,
     isNearDuplicateOf: undefined,
   };
 }
@@ -637,7 +637,7 @@ export function findBeliefConflicts(beliefs: Belief[], memories: Memory[]): Conf
 
 export function formatMemoryForContext(m: Memory): string {
   return [
-    `[${m.id}] "${m.title}" — ${new Date(m.occurred_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, category: ${m.category}, source: ${m.source}, confidence: ${m.confidence}/100, tags: ${(m.tags ?? []).join(', ') || 'none'}`,
+    `[${m.id}] "${m.title}" (${new Date(m.occurred_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, category: ${m.category}, source: ${m.source}, confidence: ${m.confidence}/100, tags: ${(m.tags ?? []).join(', ') || 'none'})`,
     `USER TEXT: ${m.content}`,
     `TWIN INTERPRETATION (AI-generated, not user-authored): ${m.ai_interpretation ?? 'none'}`,
   ].join('\n');

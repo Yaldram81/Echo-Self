@@ -99,7 +99,7 @@ export function BeliefsPage() {
       <DemoModeBanner />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
-        Statements you write — or explicitly confirm — are kept as your own records. Patterns the
+        Statements you write, or explicitly confirm, are kept as your own records. Patterns the
         twin notices stay labeled as suggestions until you decide; nothing is confirmed or
         overwritten automatically.
       </p>
@@ -108,7 +108,7 @@ export function BeliefsPage() {
         <section aria-label="AI-suggested patterns" className="space-y-3">
           <h2 className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-amberclay-DEFAULT font-medium">
             <Sparkles className="w-4 h-4" aria-hidden />
-            Twin suggestions — not yet confirmed by you
+            Twin suggestions (not yet confirmed by you)
           </h2>
           {suggestions.map((s) => (
             <Card key={s.id} className="border-amberclay-DEFAULT/40 bg-amberclay-light/30">
@@ -129,7 +129,7 @@ export function BeliefsPage() {
                   onClick={() => handleConfirmSuggestion(s.id)}
                   className="inline-flex items-center gap-1.5 rounded-full bg-sage-light px-4 py-1.5 text-xs font-medium text-sage-dark hover:bg-sage hover:text-paper transition-colors"
                 >
-                  <Check className="w-3.5 h-3.5" aria-hidden /> Confirm — this is true of me
+                  <Check className="w-3.5 h-3.5" aria-hidden /> Confirm: this is true of me
                 </button>
                 <button
                   onClick={() => setPendingDismiss(s)}
@@ -153,7 +153,7 @@ export function BeliefsPage() {
             Tensions between your statements
           </h2>
           <p className="text-xs text-slateink-light">
-            These records pull in opposite directions. You decide which holds — neither is
+            These records pull in opposite directions. You decide which holds; neither is
             overwritten.
           </p>
           {contradictions.map((c, i) => (

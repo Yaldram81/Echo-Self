@@ -123,7 +123,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
             <div className="flex items-center gap-2 mb-4">
               <PenLine className="w-4 h-4 text-slateink" aria-hidden />
               <h2 className="text-xs uppercase tracking-[0.18em] text-slateink font-medium">
-                Original text — written by you
+                Original text (written by you)
               </h2>
             </div>
             <p className="text-[15px] leading-[1.8] text-charcoal whitespace-pre-line border-l-2 border-terracotta/40 pl-4">
@@ -135,7 +135,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-4 h-4 text-amberclay-DEFAULT" aria-hidden />
               <h2 className="text-xs uppercase tracking-[0.18em] text-amberclay-DEFAULT font-medium">
-                Twin's interpretation — AI-generated
+                Twin's interpretation (AI-generated)
               </h2>
             </div>
             {memory.ai_interpretation ? (
@@ -144,7 +144,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
                   {memory.ai_interpretation}
                 </p>
                 <p className="mt-3 text-[11px] text-slateink-light">
-                  Generated from your record by the twin. It may contain mistakes — your original
+                  Generated from your record by the twin. It may contain mistakes; your original
                   text above is always the source of truth.
                 </p>
               </div>

@@ -80,7 +80,7 @@ export function BeliefForm({
 
       <div>
         <label htmlFor="b-statement" className="block text-xs font-medium text-slateink-dark mb-1.5">
-          Statement {kind === 'belief' ? '— I believe…' : '— I value…'}
+          Statement {kind === 'belief' ? '(I believe…)' : '(I value…)'}
         </label>
         <textarea
           id="b-statement"

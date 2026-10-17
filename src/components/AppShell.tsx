@@ -205,7 +205,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       <footer className="border-t border-linen-dark/60 mt-8">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-slateink">
-            EchoSelf — a personal knowledge and decision-support tool. Claims about you trace
+            EchoSelf: a personal knowledge and decision-support tool. Claims about you trace
             back to recorded evidence.
           </p>
           <p className="text-xs text-slateink-light">

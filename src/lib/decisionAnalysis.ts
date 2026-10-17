@@ -220,16 +220,16 @@ function classifyOptionAgainstMemory(
     return { classification: 'unknown', rationale: `The record never mentions "${value}".` };
   }
   if (thisShares.length > 0 && FOR_SIGNALS.test(hay) && !AGAINST_SIGNALS.test(hay)) {
-    return { classification: 'for', rationale: `Inferred "for": the record mentions ${value} and this option ("${thisShares.slice(0, 2).join(', ')}") with favorable language ("${(hay.match(FOR_SIGNALS) ?? ['signal'])[0]}"). Keyword inference — correct it if wrong.` };
+    return { classification: 'for', rationale: `Inferred "for": the record mentions ${value} and this option ("${thisShares.slice(0, 2).join(', ')}") with favorable language ("${(hay.match(FOR_SIGNALS) ?? ['signal'])[0]}"). Keyword inference, correct it if wrong.` };
   }
   if (thisShares.length > 0 && AGAINST_SIGNALS.test(hay)) {
-    return { classification: 'against', rationale: `Inferred "against": the record mentions ${value} and this option ("${thisShares.slice(0, 2).join(', ')}") with negative language ("${(hay.match(AGAINST_SIGNALS) ?? ['signal'])[0]}"). Keyword inference — correct it if wrong.` };
+    return { classification: 'against', rationale: `Inferred "against": the record mentions ${value} and this option ("${thisShares.slice(0, 2).join(', ')}") with negative language ("${(hay.match(AGAINST_SIGNALS) ?? ['signal'])[0]}"). Keyword inference, correct it if wrong.` };
   }
   if (thisShares.length === 0 && otherShares.length > 0) {
-    return { classification: 'neutral', rationale: `The record mentions ${value} but is about a different option ("${otherShares.slice(0, 2).join(', ')}") — not counted for or against this one.` };
+    return { classification: 'neutral', rationale: `The record mentions ${value} but is about a different option ("${otherShares.slice(0, 2).join(', ')}"), so it is not counted for or against this one.` };
   }
   if (thisShares.length > 0) {
-    return { classification: 'neutral', rationale: `The record mentions ${value} and this option, but neither direction nor consequence — treated as neutral, not supportive.` };
+    return { classification: 'neutral', rationale: `The record mentions ${value} and this option, but neither direction nor consequence; treated as neutral, not supportive.` };
   }
   return { classification: 'unknown', rationale: `The record mentions ${value} but its relation to "${optionLabel}" is unclear from keywords alone.` };
 }
@@ -255,7 +255,7 @@ export function analyzeOptionValues(
           value,
           classification: 'for',
           text: pro,
-          rationale: 'You listed this as a pro of the option — an explicit assessment, not inferred.',
+          rationale: 'You listed this as a pro of the option, an explicit assessment rather than an inference.',
         });
       }
     }
@@ -267,7 +267,7 @@ export function analyzeOptionValues(
           value,
           classification: 'against',
           text: con,
-          rationale: 'You listed this as a con of the option — an explicit assessment, not inferred.',
+          rationale: 'You listed this as a con of the option, an explicit assessment rather than an inference.',
         });
       }
     }
@@ -324,9 +324,9 @@ export function analyzeOptionValues(
   const weight = typeof weights[value] === 'number' ? weights[value] : 0.5;
   const alignmentNote =
       touching.length === 0 && explicitItems.filter((e) => e.value === value).length === 0
-        ? `No recorded memories or explicit pros/cons mention "${value}" — alignment on this value is unknown, not favorable.`
+        ? `No recorded memories or explicit pros/cons mention "${value}", so alignment on this value is unknown, not favorable.`
         : supporting === 0 && contradicting === 0
-          ? `Records mentioning "${value}" carry no clear direction for this option (${unknownCount} unresolved) — counted as unknown, not as support.`
+          ? `Records mentioning "${value}" carry no clear direction for this option (${unknownCount} unresolved); it counts as unknown, not as support.`
           : `${supporting} item${supporting === 1 ? '' : 's'} point toward this option on ${value}${contradicting > 0 ? `, ${contradicting} point away` : ''}${unknownCount > 0 ? `, ${unknownCount} unresolved` : ''}.`;
 
     valueResults.push({ value, weight, supportingMemories: supporting, contradictingMemories: contradicting, unknownMemories: unknownCount, alignmentNote });
@@ -353,7 +353,7 @@ export function analyzeOptionValues(
       : totalWeight === 0
         ? 'All value weights are set to 0, so nothing can contribute to a score.'
         : classifiedMass === 0
-          ? 'No directional evidence classifies for this option — unknown, not neutral.'
+          ? 'No directional evidence classifies for this option; that is unknown, not neutral.'
           : null;
 
   // Arithmetic trace: every line shows inputs (counts by origin), the weighted
@@ -500,7 +500,7 @@ export function assessConstraints(decision: Decision, memories: Memory[]): Const
       return {
         constraint: clause,
         status: 'unknown' as const,
-        note: 'No stored record bears on this constraint — the mirror does not assume it holds or fails for any option.',
+        note: 'No stored record bears on this constraint, so the mirror does not assume it holds or fails for any option.',
       };
     }
     const blocking = matching.filter((m) => /\b(cannot|can't|impossible|refused|declined|no longer)\b/i.test(`${m.title} ${m.content}`));
@@ -508,7 +508,7 @@ export function assessConstraints(decision: Decision, memories: Memory[]): Const
       return {
         constraint: clause,
         status: 'evidence_against' as const,
-        note: `"${blocking[0].title}" records something that may conflict with this constraint. Review it — this is a flag, not a verdict.`,
+        note: `"${blocking[0].title}" records something that may conflict with this constraint. Review it; this is a flag, not a verdict.`,
       };
     }
     return {
@@ -528,12 +528,12 @@ const CONTRADICTION_PATTERNS: { pattern: RegExp; message: (b: Belief, m: Memory)
   {
     pattern: /\bfreedom|\bautonomy|\bown time\b/i,
     message: (b, m) =>
-      `You say "${b.statement}", yet "${m.title}" shows you giving that freedom away — worth naming before you decide.`,
+      `You say "${b.statement}", yet "${m.title}" shows you giving that freedom away. Worth naming before you decide.`,
   },
   {
     pattern: /\bmoney|\bscoreboard|\bstatus\b/i,
     message: (b, m) =>
-      `Your stance — "${b.statement}" — is in tension with "${m.title}", where money or status clearly weighed on you.`,
+      `Your stance "${b.statement}" is in tension with "${m.title}", where money or status clearly weighed on you.`,
   },
 ];
 
@@ -566,7 +566,7 @@ export function findContradictions(
       `${r.memory.title} ${r.memory.content}`.toLowerCase().includes(v)
     );
     if (touching.length === 0) {
-      out.push(`"${value}" is listed as a value in this decision, but no recorded memory mentions it — the analysis cannot weigh it.`);
+      out.push(`"${value}" is listed as a value in this decision, but no recorded memory mentions it, so the analysis cannot weigh it.`);
     }
   }
 
@@ -577,7 +577,7 @@ export function findMissingInformation(decision: Decision, memories: Memory[]): 
   const gaps: string[] = [];
 
   if (!decision.constraints || decision.constraints.trim() === '') {
-    gaps.push('You have not recorded any constraints — hard limits often change which options are real.');
+    gaps.push('You have not recorded any constraints; hard limits often change which options are real.');
   }
   if (!decision.uncertainties || decision.uncertainties.trim() === '') {
     gaps.push('No uncertainties recorded. Naming what you do not know is where experiments come from.');
@@ -586,10 +586,10 @@ export function findMissingInformation(decision: Decision, memories: Memory[]): 
     gaps.push('No personal values linked to this decision, so value alignment cannot be assessed.');
   }
   if (!decision.success_definition || decision.success_definition.trim() === '') {
-    gaps.push('No definition of success — without one, any outcome can be rationalized.');
+    gaps.push('No definition of success; without one, any outcome can be rationalized.');
   }
   if (decision.options.every((o) => (o.pros ?? []).length === 0 && (o.cons ?? []).length === 0)) {
-    gaps.push('None of the options carry your own pros and cons — the analysis would rely entirely on keyword inference over memories.');
+    gaps.push('None of the options carry your own pros and cons, so the analysis would rely entirely on keyword inference over memories.');
   }
 
   const otherPartyMention = /\b(family|dad|mom|nadia|parents|partner|team|boss)\b/i.exec(
@@ -601,7 +601,7 @@ export function findMissingInformation(decision: Decision, memories: Memory[]): 
       new RegExp(otherPartyMention[1], 'i').test(`${m.title} ${m.content}`)
     );
     if (!asked) {
-      gaps.push(`Your records don't show that you've asked ${otherPartyMention[1]} directly what they want — the decision currently runs on your assumption.`);
+      gaps.push(`Your records don't show that you've asked ${otherPartyMention[1]} directly what they want; the decision currently runs on your assumption.`);
     }
   }
 
@@ -613,7 +613,7 @@ export function suggestExperiments(decision: Decision): string[] {
 
   for (const gap of findMissingInformation(decision, [])) {
     if (gap.includes('constraints')) {
-      out.push('Write down your three hardest constraints in one sentence each — the real option set often shrinks or grows.');
+      out.push('Write down your three hardest constraints in one sentence each; the real option set often shrinks or grows.');
     }
     if (gap.includes('uncertainties')) {
       out.push('List what you cannot control about each option; anything controllable becomes an experiment candidate.');
@@ -624,7 +624,7 @@ export function suggestExperiments(decision: Decision): string[] {
   }
 
   if (decision.options.length === 2) {
-    out.push(`Run a time-boxed trial of "${decision.options[0].label}" for one week — a journal entry comparing it to your usual routine gives real evidence instead of imagined pros and cons.`);
+    out.push(`Run a time-boxed trial of "${decision.options[0].label}" for one week; a journal entry comparing it to your usual routine gives real evidence instead of imagined pros and cons.`);
   }
   out.push('Write the "front page" test: imagine this choice is announced in the news in six months. Which option would you still defend? Record the answer as a memory.');
   out.push('Ask one person who appears in your records for their view, and log the conversation as evidence for the twin.');
@@ -717,7 +717,7 @@ export function isSnapshotStale(
 
 const METHOD_EXPLANATION = [
   'Method: each option is scored by preference alignment only. Every memory related to the decision is classified per value as for / against / neutral / unknown; explicit pros and cons you wrote count as explicit assessments, keyword-matched memories as inferred (each with its rationale, correctable by you).',
-  'Score: (weighted for − weighted against) ÷ (weighted for + weighted against), clamped to [-1, 1]. An option with no directional evidence scores 0 and is flagged "insufficient evidence" — that is unknown, not neutral. Weights come from your sliders and nothing else.',
+  'Score: (weighted for − weighted against) ÷ (weighted for + weighted against), clamped to [-1, 1]. An option with no directional evidence scores 0 and is flagged "insufficient evidence"; that is unknown, not neutral. Weights come from your sliders and nothing else.',
   'This engine is deterministic and reproducible: same records, same weights, same overrides → same report. It is not statistically validated and makes no outcome predictions.',
 ].join(' ');
 
@@ -732,7 +732,7 @@ export function buildSummary(
   const evidenceLine =
     relevant.length > 0
       ? `${relevant.length} of your recorded memories bear on this decision.`
-      : 'No recorded memories bear on this decision yet — the analysis below is built almost entirely from what is missing.';
+      : 'No recorded memories bear on this decision yet; the analysis below is built almost entirely from what is missing.';
   const contradictionLine =
     contradictions.length > 0
       ? ` It also surfaces ${contradictions.length} tension${contradictions.length === 1 ? '' : 's'} between your stated priorities and your records.`
@@ -740,12 +740,12 @@ export function buildSummary(
   const preferred = preferredOption(alignments);
   const preferredLine = preferred
     ? ` At the current weights, "${preferred}" leads on alignment.`
-    : ' At the current weights, no option leads clearly — either the evidence is missing, the options tie, or every assessed option nets negative.';
+    : ' At the current weights, no option leads clearly: either the evidence is missing, the options tie, or every assessed option nets negative.';
   const sensitivityLine =
     sensitivities.length > 0
       ? ` The lead is weight-sensitive: nudging ${sensitivities.map((s) => `"${s.value}"`).join(' or ')} by 0.1 changes the preferred option, so treat the ranking as unsettled.`
       : '';
-  return `${decision.title}: ${evidenceLine} The stated values in play are ${valueList}.${contradictionLine}${preferredLine}${sensitivityLine} Alignment reflects preference weighting you control — it is not a prediction of how either option will turn out.`;
+  return `${decision.title}: ${evidenceLine} The stated values in play are ${valueList}.${contradictionLine}${preferredLine}${sensitivityLine} Alignment reflects preference weighting you control; it is not a prediction of how either option will turn out.`;
 }
 
 /**
@@ -862,9 +862,9 @@ export function analyzeDecision(
     missingInformation: missing,
     experiments,
     evidenceLimitations: [
-      'This analysis is generated from keyword matching over your records — it cannot read implication, irony, or context you did not write down.',
+      'This analysis is generated from keyword matching over your records; it cannot read implication, irony, or context you did not write down.',
       'Value alignment scores reflect how you weighted your own values, not how likely any outcome is. The engine is not scientifically validated.',
-      'Memories you have not recorded are invisible here; absence of evidence is not evidence of absence — missing evidence is reported as unknown.',
+      'Memories you have not recorded are invisible here; absence of evidence is not evidence of absence, and missing evidence is reported as unknown.',
       'Constraint checks flag possible conflicts in your records; they never certify that an option satisfies a constraint.',
       'Unknown and neutral classifications never count as evidence for or against an option; only records you wrote or classifications you confirmed move a score.',
     ],
@@ -891,7 +891,7 @@ export function buildBeliefProposal(
     beliefId: belief.id,
     beliefStatement: belief.statement,
     change: `Adjust strength of "${belief.statement}" from ${currentStrength} to ${suggested} and add a review note citing "${decision.title}".`,
-    reason: `Your reflection on "${decision.title}" ${direction}. The mirror proposes this belief revisit; approve to apply it, or dismiss — nothing changes until you decide.`,
+    reason: `Your reflection on "${decision.title}" ${direction}. The mirror proposes this belief revisit; approve to apply it, or dismiss. Nothing changes until you decide.`,
     status: 'pending',
     createdAt: new Date().toISOString(),
     resolvedAt: null,
@@ -933,7 +933,7 @@ export function analysisToEditableText(report: DecisionReport): string {
     : '- Not sensitive to +/-0.1 weight changes on any single value';
   lines.push(`PREFERRED OPTION & SENSITIVITY\n${preferred}\n${sens}`);
   lines.push(
-    `CONSTRAINTS\n${report.constraintStatuses.map((c) => `- [${c.status}] ${c.constraint} — ${c.note}`).join('\n') || '- none recorded'}`
+    `CONSTRAINTS\n${report.constraintStatuses.map((c) => `- [${c.status}] ${c.constraint}: ${c.note}`).join('\n') || '- none recorded'}`
   );
   lines.push(
     `CONTRADICTIONS\n${report.contradictions.map((c) => `- ${c}`).join('\n') || '- none found'}`

@@ -548,7 +548,7 @@ function GeneratedReport({
         <div className="mt-4 rounded-xl bg-amberclay-light/40 border border-amberclay-DEFAULT/30 px-4 py-3">
           <p className="text-[11px] leading-relaxed text-charcoal-soft">
             <Sparkles className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
-            These comparisons show <strong>preference alignment</strong> — how each option sits
+            These comparisons show <strong>preference alignment</strong>: how each option sits
             with the values as you weighted them. They are not predictions of success, and they
             are not recommendations. The choice is yours.
           </p>
@@ -570,7 +570,7 @@ function GeneratedReport({
         <p className="rounded-xl bg-terracotta/10 px-4 py-3 text-xs text-terracotta-deep" role="status">
           With the slider change, the lead moves
           {savedReport.preferredOption ? <> from “{savedReport.preferredOption}”</> : ' from (no leader)'}
-          {report.preferredOption ? <> to “{report.preferredOption}”</> : ' to (no leader)'}. Release the slider to save —
+          {report.preferredOption ? <> to “{report.preferredOption}”</> : ' to (no leader)'}. Release the slider to save;
           the comparison is always recalculated from the actual inputs.
         </p>
       )}
@@ -585,7 +585,7 @@ function GeneratedReport({
           </h3>
           <p className="text-xs text-slateink-light mb-3">
             Every record or statement that points against an option, with its source. Unknown and
-            unresolved items are never counted here — only directional evidence appears.
+            unresolved items are never counted here; only directional evidence appears.
           </p>
           <ul className="space-y-2.5">
             {report.counterevidence.map((ce, i) => (
@@ -636,7 +636,7 @@ function GeneratedReport({
             How far the lead stretches
           </h3>
           <p className="text-xs text-slateink-light mb-3">
-            Sweeping one value's weight across its full range (everything else fixed) — the span
+            Sweeping one value's weight across its full range (everything else fixed): the span
             where “{report.preferredOption}” stays ahead. A narrow span means the option wins
             only under a narrow weighting. These are scenarios, not predictions.
           </p>
@@ -647,7 +647,7 @@ function GeneratedReport({
                 <li key={r.value} className="text-xs leading-relaxed text-charcoal-soft">
                   · <span className="font-medium capitalize text-charcoal">{r.value}</span>:
                   {' '}“{r.leader}” leads for weights {r.low.toFixed(2)}–{r.high.toFixed(2)}
-                  {' '}(span {r.span.toFixed(2)}{narrow ? ' — narrow; the lead is fragile here' : ' — robust to this value'}).
+                  {' '}(span {r.span.toFixed(2)}{narrow ? ': narrow; the lead is fragile here' : ': robust to this value'}).
                 </li>
               );
             })}
@@ -659,7 +659,7 @@ function GeneratedReport({
         <div className="card-surface p-6 md:p-8">
           <h3 className="font-serif text-lg text-charcoal mb-1">Constraints</h3>
           <p className="text-xs text-slateink-light mb-3">
-            The mirror never marks a constraint satisfied unless your records support it — an
+            The mirror never marks a constraint satisfied unless your records support it; an
             unchecked constraint stays unknown.
           </p>
           <ul className="space-y-2">
@@ -736,7 +736,7 @@ function RankingExplainer({ alignments }: { alignments: Report['optionAlignments
         Why the comparison looks this way
       </h3>
       <p className="text-xs text-slateink-light mb-3">
-        The decisive value contributions at the current weights — the same numbers the sliders
+        The decisive value contributions at the current weights, the same numbers the sliders
         change. Move a weight below and this explanation updates with it.
       </p>
       <ul className="space-y-2">
@@ -790,7 +790,7 @@ function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['
           </table>
           <p className="mt-2 text-[10px] leading-relaxed text-slateink-light">
             Counts include your explicit pros/cons ({trace.lines.reduce((a, l) => a + l.explicitCount, 0)}),
-            keyword-inferred classifications ({trace.lines.reduce((a, l) => a + l.inferredCount, 0)} — correctable),
+            keyword-inferred classifications ({trace.lines.reduce((a, l) => a + l.inferredCount, 0)} correctable),
             and your corrections ({trace.lines.reduce((a, l) => a + l.overrideCount, 0)}).
             Unknown and neutral records are never in these counts.
           </p>
@@ -895,7 +895,7 @@ function OptionComparison({
           })}
         </div>
         <p className="mt-3 text-[11px] text-slateink-light italic">
-          Scores shift live as you move the sliders and are saved when you release — they express
+          Scores shift live as you move the sliders and are saved when you release; they express
           how you value things, not how likely outcomes are.
           {weightsDirty && savingWeights ? ' Saving…' : weightsDirty ? ' Unsaved.' : ''}
         </p>
@@ -980,7 +980,7 @@ function ClassificationReview({
 function AlignmentBadge({ score, insufficient }: { score: number; insufficient?: boolean }) {
   if (insufficient) {
     return (
-      <span className="rounded-full bg-amberclay-light px-3 py-1 text-[11px] font-medium text-amberclay-DEFAULT" title="No directional evidence — unknown, not neutral">
+      <span className="rounded-full bg-amberclay-light px-3 py-1 text-[11px] font-medium text-amberclay-DEFAULT" title="No directional evidence: unknown, not neutral">
         unknown
       </span>
     );
@@ -1029,7 +1029,7 @@ function EvidencePanel({
                 {r.memory.title}
               </a>
               <p className="text-[11px] text-slateink-light mt-0.5">
-                {new Date(r.memory.occurred_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — {r.reason}
+                {new Date(r.memory.occurred_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: {r.reason}
               </p>
               <p className="text-xs text-slateink-dark leading-relaxed mt-1.5 line-clamp-2">{r.memory.content}</p>
             </li>
@@ -1310,7 +1310,7 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
       ) : (
         <div className="space-y-4">
           <p className="text-xs text-slateink-light leading-relaxed">
-            Time has passed. Compare what you expected with what actually happened — this is how
+            Time has passed. Compare what you expected with what actually happened; this is how
             the mirror turns decisions into self-knowledge.
           </p>
           <div>

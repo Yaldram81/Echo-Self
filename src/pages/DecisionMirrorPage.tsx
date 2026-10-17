@@ -50,8 +50,8 @@ export function DecisionMirrorPage() {
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
         Lay out a decision with its constraints, uncertainties, and the values it touches. The
-        mirror weighs each option against your recorded evidence — preference alignment, never
-        predictions — and keeps the reasoning so you can compare it with what actually happened.
+        mirror weighs each option against your recorded evidence (preference alignment, never
+        predictions) and keeps the reasoning so you can compare it with what actually happened.
       </p>
 
       <div className="flex justify-end">
@@ -121,7 +121,7 @@ export function DecisionMirrorPage() {
           {decided.length > 0 && (
             <section aria-labelledby="past-decisions">
               <h2 id="past-decisions" className="text-xs uppercase tracking-[0.18em] text-slateink font-medium mb-4">
-                Decided — reasoning preserved
+                Decided: reasoning preserved
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {decided.map((d) => (

@@ -196,7 +196,7 @@ export function SettingsPage() {
         {wipeDone && (
           <p className="mb-3 rounded-lg bg-sage-light px-4 py-2.5 text-sm text-sage-dark" role="status">
             All records were deleted from the database. Export a backup first if you might want
-            them back — this action is not reversible.
+            them back; this action is not reversible.
           </p>
         )}
 
@@ -222,7 +222,7 @@ export function SettingsPage() {
               <StatusRow
                 ok
                 label="Personal workspace active"
-                detail={`Signed in as ${user.email}. Exports and deletion act only on records created by this account — the public sample persona is excluded and cannot be changed from here.`}
+                detail={`Signed in as ${user.email}. Exports and deletion act only on records created by this account; the public sample persona is excluded and cannot be changed from here.`}
               />
               <StatusRow
                 ok
@@ -264,7 +264,7 @@ export function SettingsPage() {
         title={user ? 'Delete your records?' : 'Sign in first'}
         description={
           user
-            ? 'This permanently removes all records created by your account — memories, beliefs, decisions, timeline events, and flags. The shared sample persona is not affected. Download an export first — this cannot be undone.'
+            ? 'This permanently removes all records created by your account (memories, beliefs, decisions, timeline events, and flags). The shared sample persona is not affected. Download an export first; this cannot be undone.'
             : 'Nothing to delete: you are browsing the shared sample, which cannot be deleted from here. Sign in to manage your own workspace.'
         }
         confirmLabel={user ? 'Delete everything' : 'Got it'}

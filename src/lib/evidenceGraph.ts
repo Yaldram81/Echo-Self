@@ -240,7 +240,7 @@ export function buildEvidenceGraph(
       const histNode: GraphNode = {
         id: `history:${h.id}`,
         type: 'reflection',
-        title: `Strength ${h.strength} — ${h.note || 'no note'}`,
+        title: `Strength ${h.strength}: ${h.note || 'no note'}`,
         date: h.recorded_at,
         meta: 'belief history entry',
       };

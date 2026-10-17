@@ -165,7 +165,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
     if (conflicts.length === 0) {
       return {
         answer:
-          'I don\'t find a clear conflict between your recorded beliefs in the sample records. Some beliefs are marked "evolving" or "revisited," which signals movement rather than contradiction — ask what has changed in your thinking for that view.',
+          'I don\'t find a clear conflict between your recorded beliefs in the sample records. Some beliefs are marked "evolving" or "revisited," which signals movement rather than contradiction. Ask what has changed in your thinking for that view.',
         sources: [],
         inferences: [],
         gaps: ['Conflict detection here is keyword-based over the sample records only.'],
@@ -177,7 +177,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
     const sources: SourceRef[] = [];
     for (const c of conflicts.slice(0, 2)) {
       lines.push(
-        `Your ${c.belief.kind} — "${c.belief.statement}" (${c.belief.status}, strength ${c.belief.strength}/100) — sits in tension with records like:`
+        `Your ${c.belief.kind}, "${c.belief.statement}" (${c.belief.status}, strength ${c.belief.strength}/100), sits in tension with records like:`
       );
       for (const m of c.memories) {
         lines.push(`• "${m.title}": ${m.content.split('. ')[0]}.`);
@@ -188,7 +188,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
       answer: lines.join('\n\n'),
       sources,
       inferences: [
-        'Interpretation: the tension is usually between an older stated rule and newer recorded behavior — the records move faster than the belief statement.',
+        'Interpretation: the tension is usually between an older stated rule and newer recorded behavior; the records move faster than the belief statement.',
       ],
       gaps: ['Sample records may not include the belief reflections that would settle this.'],
       followUps: ['Which memories support your interpretation?'],
@@ -213,12 +213,12 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
     }
     const lines = withHistory.map((b) => {
       const h = b.history!;
-      return `• "${b.statement}" — ${b.status}: strength went from ${h[0].strength} to ${h[h.length - 1].strength} across ${h.length} reflections. Latest note: "${h[h.length - 1].note}"`;
+      return `• "${b.statement}" (${b.status}): strength went from ${h[0].strength} to ${h[h.length - 1].strength} across ${h.length} reflections. Latest note: "${h[h.length - 1].note}"`;
     });
     return {
       answer: lines.join('\n\n'),
       sources: [],
-      inferences: ['Interpretation: declining strengths suggest beliefs being questioned, not abandoned — they are being renegotiated.'],
+      inferences: ['Interpretation: declining strengths suggest beliefs being questioned, not abandoned; they are being renegotiated.'],
       gaps: ['Reflection notes are short; the reasons for each shift are only partly recorded.'],
       followUps: ['Where do my recorded beliefs conflict?'],
       mode: 'demo',
@@ -238,7 +238,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
       };
     }
     const lines = valueBeliefs.map(
-      (b) => `• "${b.statement}" — a ${b.kind} you hold at ${b.strength}/100 (${b.status}).`
+      (b) => `• "${b.statement}": a ${b.kind} you hold at ${b.strength}/100 (${b.status}).`
     );
     const tagCounts = new Map<string, number>();
     for (const m of memories) for (const t of m.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
@@ -249,7 +249,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
     return {
       answer: lines.join('\n\n'),
       sources: [],
-      inferences: ['Interpretation: tags with the most memories are treated as recurring priorities — this is frequency, not proof of importance.'],
+      inferences: ['Interpretation: tags with the most memories are treated as recurring priorities; this is frequency, not proof of importance.'],
       gaps: ['Strength scores are self-reported; they may not reflect current weight.'],
       followUps: ['What has changed in my thinking over time?'],
       mode: 'demo',
@@ -264,7 +264,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
       inferences: [],
       gaps: hits.length === 0
         ? ['No sample record shares keywords with this question.']
-        : ['The closest records share only incidental keywords with this question — that is not the same as answering it.'],
+        : ['The closest records share only incidental keywords with this question; that is not the same as answering it.'],
       followUps: [],
       mode: 'demo',
     };
@@ -277,7 +277,7 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
     answer,
     sources: top.map((m) => ({ memoryId: m.id, title: m.title })),
     inferences: [
-      'Interpretation: these records were selected because their titles, tags, and text overlap with your question — the connection between them is mine, not something you wrote.',
+      'Interpretation: these records were selected because their titles, tags, and text overlap with your question; the connection between them is mine, not something you wrote.',
     ],
     gaps: ['Relevance here is keyword-based; the sample reply cannot read between the lines.'],
     followUps: ['Which memories support your interpretation?'],

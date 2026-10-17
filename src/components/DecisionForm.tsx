@@ -86,7 +86,7 @@ export function DecisionForm({
 
       <div>
         <label htmlFor="d-context" className="block text-xs font-medium text-slateink-dark mb-1.5">
-          Context — what makes this hard?
+          Context: what makes this hard?
         </label>
         <textarea
           id="d-context"
