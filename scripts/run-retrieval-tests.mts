@@ -34,7 +34,7 @@ const iso = (daysAgo: number) => new Date(NOW - daysAgo * 86_400_000).toISOStrin
 
 function mem(
   id: string, title: string, content: string,
-  opts: { category?: Memory['category']; tags?: string[]; confidence?: number; daysAgo?: number; occurredAt?: string | null; source?: Memory['source'] } = {}
+  opts: { category?: Memory['category']; tags?: string[]; confidence?: number; daysAgo?: number; occurredAt?: string | null; source?: Memory['source']; importance?: number | null } = {}
 ): Memory {
   return {
     id, title, content,
@@ -46,6 +46,7 @@ function mem(
     ai_interpretation: null,
     occurred_at: opts.occurredAt !== undefined ? opts.occurredAt : iso(opts.daysAgo ?? 30),
     created_at: iso(opts.daysAgo ?? 30),
+    user_importance: opts.importance === undefined ? null : opts.importance,
   };
 }
 
@@ -360,6 +361,91 @@ console.log('\n— Unit helpers —');
   check('detectIntent falls back safely on ambiguous queries', detectIntent('hello there friends').intent === 'general');
   check('parseQueryPeriod returns null without a period', parseQueryPeriod('What do I value?', NOW) === null);
   check('parseQueryPeriod handles "last month"', parseQueryPeriod('What happened last month?', NOW)?.label === 'the last month');
+}
+
+/* ----------------------- 16. user importance signal ----------------------- */
+console.log('\n— User-controlled importance (separate from confidence and relevance) —');
+{
+  // Baseline without importance: identical corpora, unrated records.
+  const baseline = [
+    mem('imp-rel', 'Running habit notes', 'Morning running felt strong today.', { tags: ['running'], daysAgo: 30 }),
+    mem('imp-other', 'Shoe cushioning review', 'Compared shoe cushioning charts, bought online.', { tags: ['shopping'], daysAgo: 30, confidence: 92 }),
+  ];
+  const b = retrieve('How is my running going?', baseline, { now: NOW });
+  check('baseline: relevant record retrieved', b.candidates[0]?.memory.id === 'imp-rel', b.candidates.map((c) => c.memory.id).join(','));
+
+  // Same corpus, one record rated highly important.
+  const rated = baseline.map((m) => ({ ...m, user_importance: m.id === 'imp-rel' ? 5 : null }));
+  const r5 = retrieve('How is my running going?', rated, { now: NOW });
+  check('importance boosts a relevant record to a higher score',
+    (r5.candidates.find((c) => c.memory.id === 'imp-rel')?.score ?? 0) > (b.candidates.find((c) => c.memory.id === 'imp-rel')?.score ?? 0),
+    `baseline ${b.candidates.find((c) => c.memory.id === 'imp-rel')?.score.toFixed(2)} vs rated ${r5.candidates.find((c) => c.memory.id === 'imp-rel')?.score.toFixed(2)}`);
+
+  // Importance on an irrelevant record must NOT put it on the list at all.
+  const rescued = [
+    mem('imp-irrel', 'Gardening notes', 'Repotted the ferns on the balcony.', { tags: ['garden'], daysAgo: 1, importance: 5 }),
+    ...baseline,
+  ];
+  const rIrrel = retrieve('How is my running going?', rescued, { now: NOW });
+  check('max importance does not rescue an irrelevant record into results',
+    !rIrrel.candidates.some((c) => c.memory.id === 'imp-irrel'), rIrrel.candidates.map((c) => c.memory.id).join(','));
+
+  // Unrated records: identical multiplier to a neutral rating; never treated as low.
+  const unrated = retrieve('How is my running going?', baseline, { now: NOW });
+  const neutralRated = baseline.map((m) => ({ ...m, user_importance: 3 }));
+  const rNeutral = retrieve('How is my running going?', neutralRated, { now: NOW });
+  check('missing importance equals neutral rating (same ranking order and scores)',
+    unrated.candidates.map((c) => c.memory.id).join(',') === rNeutral.candidates.map((c) => c.memory.id).join(',') &&
+    unrated.candidates[0].score === rNeutral.candidates[0].score,
+    `${unrated.candidates[0].score.toFixed(4)} vs ${rNeutral.candidates[0].score.toFixed(4)}`);
+
+  // Identical importance, different relevance: relevance must decide.
+  const sameImp = [
+    mem('imp-a', 'Meditation retreat reflection', 'Deep retreat weekend about stillness.', { tags: ['meditation'], daysAgo: 10, importance: 4 }),
+    mem('imp-b', 'Meditation app trial', 'Started a ten-minute meditation app trial.', { tags: ['meditation'], daysAgo: 10, importance: 4 }),
+  ];
+  const rSame = retrieve('What happened with the meditation app?', sameImp, { now: NOW });
+  check('identical importance: higher relevance wins',
+    rSame.candidates[0]?.memory.id === 'imp-b', rSame.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(2)}`).join(','));
+
+  // Historical period query: importance must not override the requested period.
+  const historical = [
+    mem('imp-old', 'Marathon finish 2023', 'Crossed the marathon finish line in October 2023.', { occurredAt: '2023-10-01T08:00:00.000Z', tags: ['running', 'marathon'], importance: 5 }),
+    mem('imp-new', 'Morning jog', 'Easy morning jog around the block.', { daysAgo: 2, tags: ['running'], importance: null }),
+  ];
+  const rHist = retrieve('What happened with my running in 2023?', historical, { now: NOW });
+  check('explicit period query: in-period record outranks a newer unrated one',
+    rHist.candidates[0]?.memory.id === 'imp-old', rHist.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(2)}`).join(','));
+
+  // Confidence vs importance separation.
+  const sep = [
+    mem('imp-lowconf-important', 'Career pivot decision', 'Decided to change careers after years of doubt.', { tags: ['career'], daysAgo: 20, confidence: 40, importance: 5 }),
+    mem('imp-highconf-unimportant', 'Coffee brand switch', 'Switched coffee brands to save a little.', { tags: ['career'], daysAgo: 20, confidence: 99, importance: 1 }),
+  ];
+  const rSep = retrieve('What did I decide about my career?', sep, { now: NOW });
+  check('importance can outrank confidence when relevance is otherwise equal',
+    rSep.candidates[0]?.memory.id === 'imp-lowconf-important', rSep.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(2)}`).join(','));
+  check('reason names both fields separately',
+    (rSep.candidates[0]?.reason ?? '').includes('significance') && (rSep.candidates[0]?.reason ?? '').includes('reliability'), rSep.candidates[0]?.reason ?? '');
+
+  // Determinism: same input, same output.
+  const d1 = retrieve('How is my running going?', rated, { now: NOW });
+  const d2 = retrieve('How is my running going?', rated, { now: NOW });
+  check('ranking is deterministic with importance present',
+    d1.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(6)}`).join(',') === d2.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(6)}`).join(','));
+
+  // Cross-user isolation with importance: only caller-supplied records are ranked.
+  const theirs = [mem('imp-theirs', 'Their marathon memory', 'Ran a marathon, personal record.', { tags: ['running'], importance: 5 })];
+  const rCross = retrieve('How is my running going?', theirs, { now: NOW });
+  check('importance never leaks records across callers',
+    rCross.candidates.every((c) => theirs.some((m) => m.id === c.memory.id)) &&
+    !rCross.candidates.some((c) => c.memory.id === 'imp-rel'));
+
+  // Signal is exposed for debugging/evaluation.
+  check('importance exposed on candidate signals',
+    r5.candidates.find((c) => c.memory.id === 'imp-rel')?.signals.importance === 5);
+  check('unrated candidate exposes null importance',
+    b.candidates[0]?.signals.importance === null);
 }
 
 console.log(`\nRetrieval engine tests: ${passed} passed, ${failed} failed`);

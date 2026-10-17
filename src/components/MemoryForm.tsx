@@ -5,6 +5,7 @@ import {
   MEMORY_CATEGORIES,
   MEMORY_SOURCES,
   MEMORY_MOODS,
+  MEMORY_IMPORTANCE_LABELS,
   type Memory,
   type MemoryInput,
 } from '@/lib/types';
@@ -24,6 +25,7 @@ export function MemoryForm({
   const [source, setSource] = useState(existing?.source ?? 'journal');
   const [mood, setMood] = useState(existing?.mood ?? 'neutral');
   const [confidence, setConfidence] = useState(existing?.confidence ?? 80);
+  const [importance, setImportance] = useState<number | null>(existing?.user_importance ?? null);
   const [date, setDate] = useState(
     existing ? existing.occurred_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
   );
@@ -56,6 +58,7 @@ export function MemoryForm({
       confidence,
       tags: parseTags(tagsInput),
       occurred_at: new Date(`${date}T12:00:00`).toISOString(),
+      user_importance: importance,
     };
     try {
       const saved =
@@ -205,6 +208,33 @@ export function MemoryForm({
           onChange={(e) => setConfidence(Number(e.target.value))}
           className="w-full accent-terracotta"
         />
+        <p className="mt-1 text-[11px] text-slateink-light">
+          Reliability of the record — how clearly you remember it. Not the same as how much
+          it matters to you; that's the next field.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="memory-importance" className="block text-xs font-medium text-slateink-dark mb-1.5">
+          How significant is this to you? (optional)
+        </label>
+        <select
+          id="memory-importance"
+          value={importance ?? ''}
+          onChange={(e) => setImportance(e.target.value === '' ? null : Number(e.target.value))}
+          className="w-full rounded-xl border border-linen-dark bg-white/80 px-3 py-2.5 text-sm focus:border-terracotta"
+        >
+          <option value="">Not rated</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>
+              {n} — {MEMORY_IMPORTANCE_LABELS[n]}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-[11px] text-slateink-light">
+          Your own sense of how much this memory matters. It may surface sooner in relevant
+          answers; it never changes how strongly the record counts as evidence.
+        </p>
       </div>
 
       {formError && (

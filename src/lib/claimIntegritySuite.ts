@@ -29,6 +29,7 @@ export function integrityMemory(
     ai_interpretation: null,
     occurred_at: iso(opts.daysAgo ?? 10),
     created_at: iso(opts.daysAgo ?? 10),
+    user_importance: null,
   };
 }
 

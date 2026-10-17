@@ -22,6 +22,12 @@ export interface Memory {
   ai_interpretation: string | null;
   occurred_at: string;
   created_at: string;
+  /**
+   * User-assigned significance, 1–5 (5 = most significant). NULL = not rated.
+   * Independent of confidence (reliability) and of retrieval relevance. Never
+   * inferred or defaulted by the app.
+   */
+  user_importance: number | null;
 }
 
 export interface MemoryInput {
@@ -33,7 +39,18 @@ export interface MemoryInput {
   confidence: number;
   tags: string[];
   occurred_at: string;
+  /** Optional; omit or pass null to leave the record unrated. */
+  user_importance?: number | null;
 }
+
+/** Documented 1–5 importance scale shown in the UI. */
+export const MEMORY_IMPORTANCE_LABELS: Record<number, string> = {
+  1: 'Minor',
+  2: 'Low',
+  3: 'Notable',
+  4: 'Very significant',
+  5: 'Among the most important',
+};
 
 export type BeliefKind = 'belief' | 'value';
 export type BeliefStatus = 'active' | 'evolving' | 'revisited';

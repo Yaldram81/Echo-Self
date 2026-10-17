@@ -107,6 +107,11 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
                 })}
               </span>
               <ConfidenceBar value={memory.confidence} />
+              {memory.user_importance != null && (
+                <span title="Your significance rating (1–5)">
+                  Significance: {memory.user_importance}/5
+                </span>
+              )}
             </div>
             {tags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">

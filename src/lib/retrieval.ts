@@ -183,6 +183,12 @@ export interface RetrievalWeights {
   confidenceSpan: number;
   /** Additive boost when a saved user correction on the record matches. */
   correction: number;
+  /**
+   * Importance multiplier range from user_importance (1–5): unrated records
+   * keep 1.0; rated records get 1.0 + (rating − 3) × span, i.e. 0.9–1.2.
+   * A post-relevance, never a substitute for matching the question.
+   */
+  importanceSpan: number;
 }
 
 /**
@@ -201,6 +207,7 @@ export const DEFAULT_WEIGHTS: RetrievalWeights = {
   confidenceFloor: 0.7,
   confidenceSpan: 0.3,
   correction: 2,
+  importanceSpan: 0.1,
 };
 
 /* ====================== per-candidate explanation ====================== */
@@ -218,6 +225,8 @@ export interface CandidateSignals {
   correctionMatch: boolean;
   /** Match came only through weak or incidental overlap. */
   incidentalOnly: boolean;
+  /** User-assigned significance (1–5) or null when unrated. */
+  importance: number | null;
 }
 
 export interface ScoredCandidate {
@@ -233,6 +242,9 @@ export interface ScoredCandidate {
    * (memory.confidence) and not a probability that the record is true.
    */
   score: number;
+  /** User-assigned significance (1–5), when the user rated this record.
+   * Influences ordering among relevant records only; never an evidence label. */
+  importance?: number | null;
   signals: CandidateSignals;
   /** Concise plain-language reason this record was selected. */
   reason: string;
@@ -332,7 +344,20 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
 
   const { recency, note: timeNote } = temporalFactor(input);
   const trust = (memory.confidence ?? 50) / 100;
-  const score = relevance * (1 + recency * weights.recency) * (weights.confidenceFloor + trust * weights.confidenceSpan);
+  // Importance: user-assigned significance (1–5). NULL is no signal — exactly
+  // the same multiplier as a neutral rating of 3, never treated as low. The
+  // spread (±2×span at the extremes) is deliberately smaller than one title
+  // hit, so importance reorders near-equals only; an irrelevant record cannot
+  // be rescued onto the list (relevance > 0 is still required upstream).
+  const importance = memory.user_importance ?? null;
+  const importanceFactor =
+    importance == null ? 1 : 1 + (importance - 3) * weights.importanceSpan;
+  const importanceNote =
+    importance == null
+      ? 'not rated; no importance adjustment'
+      : `significance ${importance}/5 (×${importanceFactor.toFixed(2)})`;
+  const score =
+    relevance * (1 + recency * weights.recency) * (weights.confidenceFloor + trust * weights.confidenceSpan) * importanceFactor;
 
   // Incidental: matched only generic body words, no title/tag/category anchor.
   const incidentalOnly = inTitle.length === 0 && inTags.length === 0 && inCategory.length === 0 && inBody.length <= 1;
@@ -350,6 +375,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     synonymHits.length > 0 ? `reached via related wording (${synonymHits.slice(0, 3).join(', ')})` : null,
     correctionMatch ? 'carries your saved correction on this topic' : null,
     timeNote,
+    importanceNote,
     incidentalOnly ? 'weak/incidental overlap; treat with caution' : null,
   ].filter(Boolean);
 
@@ -359,8 +385,8 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     relevance,
     recency,
     score,
-    signals: { titleHits: inTitle, tagHits: inTags, categoryHits: inCategory, bodyHits: inBody, synonymHits, phraseMatch, correctionMatch, incidentalOnly },
-    reason: `${reasonParts.join('; ')}. Relevance ${relevance} → ranking score ${score.toFixed(2)} (relevance only; record confidence ${memory.confidence}/100 is a separate reliability field).`,
+    signals: { titleHits: inTitle, tagHits: inTags, categoryHits: inCategory, bodyHits: inBody, synonymHits, phraseMatch, correctionMatch, incidentalOnly, importance },
+    reason: `${reasonParts.join('; ')}. Relevance ${relevance} → ranking score ${score.toFixed(2)} (relevance only; record confidence ${memory.confidence}/100 is a separate reliability field${importance != null ? `, user significance ${importance}/5 a separate preference field` : ''}).`,
     isNearDuplicateOf: undefined,
   };
 }
@@ -496,7 +522,7 @@ export function retrieveCounterevidence(
         relevance: 0,
         recency: recencyFactor(m.occurred_at),
         score: 0,
-        signals: { titleHits: [], tagHits: [], categoryHits: [], bodyHits: [], synonymHits: [], phraseMatch: false, correctionMatch: false, incidentalOnly: false },
+        signals: { titleHits: [], tagHits: [], categoryHits: [], bodyHits: [], synonymHits: [], phraseMatch: false, correctionMatch: false, incidentalOnly: false, importance: m.user_importance ?? null },
         reason: 'found by a counterevidence scan of records in the same category that keyword ranking alone would not have surfaced',
       },
       'same-category record whose language pulls against the question’s frame'
