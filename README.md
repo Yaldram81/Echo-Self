@@ -85,7 +85,29 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 - **timeline_events** — typed chronological entries.
 - **interpretation_flags** — user corrections attached to flagged AI interpretations.
 
-**Security posture:** row-level security is enabled on all six tables with explicit per-operation policies. This build is an intentional single-tenant, no-sign-in demo, so policies allow the anon role to read and write — the sample data is meant to be shared and is labeled as such. The Settings page states plainly that per-user data isolation is **not** implemented and requires authentication (a documented next step, not a claim). The Supabase security advisor currently reports zero findings.
+**Security posture:** row-level security is enabled on all six tables with **ownership-aware policies applied via migration** (see below). This app now has real accounts: sign-up/sign-in (Supabase email/password, email confirmation off by default), persistent sessions, and protected personal routes.
+
+**How isolation works (applied migrations):**
+- `20261017110000_add_personal_workspaces_rls` — added `user_id` (references `auth.users`, on-delete cascade) to all six tables, then replaced the former open `USING (true)` policies with:
+  - `select_public_or_own_*` on memories/beliefs/decisions/timeline_events (anon + authenticated): rows are visible if `user_id IS NULL` (public sample) or `auth.uid() = user_id`.
+  - `insert_own_*` / `update_own_*` / `delete_own_*` on the same four tables (authenticated only): `auth.uid() = user_id` on both sides of UPDATE, so a row cannot be reassigned.
+  - `select_visible_beliefs_history`, `insert_history_for_own_belief`, `update_history_for_own_belief`, `delete_history_for_own_belief` on beliefs_history — access is validated through the parent belief's owner.
+  - `select_own_flags`, `insert_own_flags` on interpretation_flags — flag rows are private to their creator; creating one requires the target memory to be public or one's own.
+- `20261017110500_default_user_id_to_auth_uid` — `user_id` defaults to `auth.uid()` at insert time, so the browser never supplies the owner; a forged owner id fails the WITH CHECK.
+
+The **demo is now read-only for signed-out visitors**: sample rows (owner NULL) are visible to everyone but cannot be created, changed, or deleted without an account. The Settings page export and "delete everything" act only on the signed-in account's records; sample data is excluded. Backfill was intentionally a no-op: no existing (fictional) row was assigned to any user, and no data was deleted or rewritten.
+
+**Verified by test (two live accounts A and B, script `scripts/run-workspace-tests.mts`, 30/30 passing):**
+- A cannot read, update, delete, or insert-on-behalf-of B's records (memories, beliefs, decisions); forged `user_id` inserts are rejected; rows remain intact after every denied attempt.
+- Unauthenticated clients can read public sample rows but cannot insert, update, or delete anything.
+- Linked-record rules: A cannot attach history or flags to B's records; B can manage history on its own belief; A can flag a public sample memory; flag rows are private to their creator.
+- Normal owner flows work end to end (insert, update, delete own records).
+
+**Residual limitations (not claims of security):**
+- RLS policies were applied and verified via the Supabase security advisor and a two-account test, but "secure" is never a one-time claim: policy coverage was checked against these six tables only; new tables would need the same treatment.
+- The twin-chat edge function now queries the database with the caller's JWT (not the service-role key), so live-mode context is scoped by the same RLS. The service-role key remains available server-side for other future needs and is never exposed to the browser.
+- Rate limiting and abuse prevention on auth endpoints are Supabase platform defaults, not app-enforced.
+- Email-confirmation behavior depends on project settings; the sign-up flow states this in the UI when confirmation is required.
 
 The demo seed (first migration) is idempotent — it only inserts when tables are empty — and creates the fictional persona: eight memories, three open decisions plus one decided, six beliefs with history, and six timeline events.
 
@@ -123,9 +145,7 @@ npm run lint       # eslint (currently 0 errors)
 
 ## Known limitations (stated honestly)
 
-- **No authentication.** Single shared dataset; any visitor can read, edit, or delete everything. Isolation requires adding sign-in and scoping policies to `auth.uid()`.
-- **Live AI requires the provider key** (see above). Nothing in the app pretends otherwise.
-- **The AI endpoint requires a verified session.** The `twin-chat` edge function is deployed with `verify_jwt = true`: unauthenticated callers are rejected at the gateway, so the provider key cannot be spent by anonymous traffic. The client attaches the signed-in session token to every request; without one, live mode shows a session notice rather than an answer. Demo mode never calls the endpoint.
+- **Real accounts.** Email/password sign-up, sign-in, and sign-out with persistent sessions. Each account gets a private workspace; the fictional sample persona stays public and read-only.
 - **Retrieval is keyword-based.** Both the demo composer and the server-side ranking use keyword scoring with recency/confidence weighting — not embeddings. It's honest about this in its own "gaps" output.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
 - **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.

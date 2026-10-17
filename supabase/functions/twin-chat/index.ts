@@ -268,10 +268,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    // Query the database AS THE CALLER by forwarding their JWT, so RLS scopes
+    // every read to the public sample rows plus that user's own records. The
+    // service-role key is never used for data reads.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: memoriesData, error: memErr } = await supabase
       .from('memories')

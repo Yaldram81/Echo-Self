@@ -178,7 +178,12 @@ export const dataManagementService = {
     const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags'] as const;
     const out: Record<string, unknown[]> = {};
     for (const table of tables) {
-      const { data, error } = await supabase.from(table).select('*');
+      // Personal workspaces only: the public sample rows (user_id IS NULL)
+      // are demo data, not the signed-in user's records.
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .not('user_id', 'is', null);
       if (error) throw new Error(error.message);
       out[table] = data ?? [];
     }
@@ -187,7 +192,13 @@ export const dataManagementService = {
   /** Delete every record in the given tables from the persistence layer. */
   async deleteAll(tables: readonly string[]): Promise<void> {
     for (const table of tables) {
-      const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Scope to the caller's own rows; RLS would block sample rows anyway,
+      // and the explicit filter keeps intent visible in the query itself.
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .not('user_id', 'is', null)
+        .neq('id', '00000000-0000-0000-0000-000000000000');
       if (error) throw new Error(error.message);
     }
   },

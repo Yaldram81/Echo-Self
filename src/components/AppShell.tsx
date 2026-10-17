@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Menu, X, Feather } from 'lucide-react';
+import { Menu, X, Feather, LogOut, UserCircle2 } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabaseClient';
 
 export type PageId =
   | 'home'
@@ -23,6 +25,9 @@ export const NAV_ITEMS: { id: PageId; label: string }[] = [
   { id: 'settings', label: 'Settings & Privacy' },
 ];
 
+/** Pages that show a user's own records; visitors are sent to sign-in instead. */
+export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings'];
+
 export function AppShell({
   page,
   onNavigate,
@@ -33,22 +38,48 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const signedIn = !loading && !!user;
 
   const navigate = useCallback(
     (p: PageId) => {
       onNavigate(p);
       setMenuOpen(false);
+      setAccountOpen(false);
     },
     [onNavigate]
   );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        setAccountOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  async function handleSignOut() {
+    setAccountOpen(false);
+    setMenuOpen(false);
+    await supabase.auth.signOut();
+    onNavigate('home');
+  }
+
+  const navButtonClass = (active: boolean) =>
+    `px-3 py-2 rounded-full text-sm transition-colors duration-150 ${
+      active
+        ? 'bg-charcoal text-paper font-medium'
+        : 'text-slateink-dark hover:text-charcoal hover:bg-linen/70'
+    }`;
+
+  const navMobileClass = (active: boolean) =>
+    `text-left px-3 py-2.5 rounded-lg text-sm ${
+      active ? 'bg-charcoal text-paper font-medium' : 'text-slateink-dark hover:bg-linen'
+    }`;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -80,25 +111,66 @@ export function AppShell({
                 key={item.id}
                 onClick={() => navigate(item.id)}
                 aria-current={page === item.id ? 'page' : undefined}
-                className={`px-3 py-2 rounded-full text-sm transition-colors duration-150 ${
-                  page === item.id
-                    ? 'bg-charcoal text-paper font-medium'
-                    : 'text-slateink-dark hover:text-charcoal hover:bg-linen/70'
-                }`}
+                className={navButtonClass(page === item.id)}
               >
                 {item.label}
               </button>
             ))}
           </nav>
 
-          <button
-            className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-full text-charcoal hover:bg-linen"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-expanded={menuOpen}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          >
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setAccountOpen((o) => !o)}
+                aria-expanded={accountOpen}
+                aria-label={signedIn ? 'Account menu' : 'Sign in or create an account'}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-charcoal hover:bg-linen text-sm"
+              >
+                <UserCircle2 className="w-5 h-5" aria-hidden />
+                <span className="hidden md:inline max-w-32 truncate">
+                  {signedIn ? user!.email : 'Sign in'}
+                </span>
+              </button>
+
+              {accountOpen && (
+                <div
+                  className="absolute right-0 top-12 w-64 rounded-xl border border-linen-dark bg-white shadow-card py-2 z-50"
+                  role="menu"
+                >
+                  {signedIn ? (
+                    <>
+                      <p className="px-4 py-2 text-xs text-slateink-light border-b border-linen-dark/60 truncate">
+                        Signed in as {user!.email}
+                      </p>
+                      <button
+                        role="menuitem"
+                        onClick={handleSignOut}
+                        className="w-full text-left px-4 py-2.5 text-sm text-charcoal hover:bg-linen inline-flex items-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" aria-hidden />
+                        Sign out
+                      </button>
+                    </>
+                  ) : (
+                    <p className="px-4 py-2.5 text-xs text-slateink leading-relaxed">
+                      {loading
+                        ? 'Checking your session…'
+                        : 'You are browsing the shared sample. Sign in for a private workspace.'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-full text-charcoal hover:bg-linen"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
         {menuOpen && (
@@ -111,15 +183,16 @@ export function AppShell({
                 key={item.id}
                 onClick={() => navigate(item.id)}
                 aria-current={page === item.id ? 'page' : undefined}
-                className={`text-left px-3 py-2.5 rounded-lg text-sm ${
-                  page === item.id
-                    ? 'bg-charcoal text-paper font-medium'
-                    : 'text-slateink-dark hover:bg-linen'
-                }`}
+                className={navMobileClass(page === item.id)}
               >
                 {item.label}
               </button>
             ))}
+            {signedIn && (
+              <button onClick={handleSignOut} className="text-left px-3 py-2.5 rounded-lg text-sm text-clayred-DEFAULT">
+                Sign out
+              </button>
+            )}
           </nav>
         )}
       </header>
@@ -135,7 +208,7 @@ export function AppShell({
             back to recorded evidence.
           </p>
           <p className="text-xs text-slateink-light">
-            Demo persona · Sample data
+            {signedIn ? 'Your private workspace' : 'Demo persona · Sample data (read-only)'}
           </p>
         </div>
       </footer>

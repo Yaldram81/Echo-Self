@@ -10,7 +10,8 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { dataManagementService } from '@/lib/services';
-import { SectionHeading, Card, DemoModeBanner } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
+import { SectionHeading, Card } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
@@ -52,6 +53,7 @@ function toCsv(rows: Record<string, unknown>[]): string {
 const DATA_TABLES = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags'] as const;
 
 export function SettingsPage() {
+  const { user } = useAuth();
   const [dataSharing, setDataSharing] = useState(false);
   const [evidenceOnly, setEvidenceOnly] = useState(true);
   const [exporting, setExporting] = useState<'json' | 'csv' | null>(null);
@@ -99,6 +101,10 @@ export function SettingsPage() {
 
   async function handleWipe() {
     setWipeDone(false);
+    if (!user) {
+      setConfirmWipe(false);
+      return;
+    }
     try {
       await dataManagementService.deleteAll(DATA_TABLES);
       setWipeDone(true);
@@ -113,7 +119,6 @@ export function SettingsPage() {
   return (
     <div className="space-y-8">
       <SectionHeading eyebrow="Trust" title="Settings & Privacy" />
-      <DemoModeBanner />
 
       <Card>
         <div className="flex items-center gap-3 mb-2">
@@ -212,16 +217,26 @@ export function SettingsPage() {
             label="Persistent database connected"
             detail="Records are stored in a real database and survive reloads. Exports and deletions below act on that database directly."
           />
-          <StatusRow
-            ok
-            label="Demo persona loaded"
-            detail="All current records belong to a fictional sample persona and are labeled as such. Deleting everything below removes the sample data from the database too."
-          />
-          <StatusRow
-            ok={false}
-            label="Personal accounts not enabled"
-            detail="This build is a single-tenant demo without sign-in, so we make no claim that your data is isolated from other visitors — that guarantee requires authentication, which is a documented next step, not an implemented feature."
-          />
+          {user ? (
+            <>
+              <StatusRow
+                ok
+                label="Personal workspace active"
+                detail={`Signed in as ${user.email}. Exports and deletion act only on records created by this account — the public sample persona is excluded and cannot be changed from here.`}
+              />
+              <StatusRow
+                ok
+                label="Row-level ownership enforced"
+                detail="Every record is owned by the account that created it, enforced by database rules from the verified session. Other accounts cannot read, edit, or delete your records, even by crafting requests."
+              />
+            </>
+          ) : (
+            <StatusRow
+              ok={false}
+              label="Browsing shared sample only"
+              detail="You are not signed in, so this page shows the fictional sample persona read-only. Sign in to get a private workspace; the sample is never copied into it."
+            />
+          )}
         </ul>
       </Card>
 
@@ -246,9 +261,13 @@ export function SettingsPage() {
 
       <ConfirmDialog
         open={confirmWipe}
-        title="Delete every record?"
-        description="This permanently removes all memories, beliefs, decisions, timeline events, and flags from the database. Download an export first — this cannot be undone."
-        confirmLabel="Delete everything"
+        title={user ? 'Delete your records?' : 'Sign in first'}
+        description={
+          user
+            ? 'This permanently removes all records created by your account — memories, beliefs, decisions, timeline events, and flags. The shared sample persona is not affected. Download an export first — this cannot be undone.'
+            : 'Nothing to delete: you are browsing the shared sample, which cannot be deleted from here. Sign in to manage your own workspace.'
+        }
+        confirmLabel={user ? 'Delete everything' : 'Got it'}
         onConfirm={handleWipe}
         onCancel={() => setConfirmWipe(false)}
       />
