@@ -37,12 +37,60 @@ export class TwinUnavailableError extends Error {
   }
 }
 
-function extractTerms(question: string): string[] {
-  return question
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((t) => t.length > 3);
+/**
+ * Strict shape check on the whole reply arriving from the edge function.
+ * Anything malformed is dropped or coerced rather than repaired into something
+ * misleading: only plain-string text, arrays, and string evidence IDs survive.
+ * Excerpts are NOT trusted from the wire — the client audit re-derives them.
+ */
+export function coerceIncomingReply(payload: unknown): TwinReply | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as Record<string, unknown>;
+  if (typeof obj.answer !== 'string') return null;
+  const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === 'string');
+  const claims = sanitizeIncomingClaims(obj.claims);
+  return {
+    answer: obj.answer,
+    sources: Array.isArray(obj.sources)
+      ? obj.sources.filter(
+          (s): s is SourceRef =>
+            !!s && typeof s === 'object' && typeof (s as { memoryId?: unknown }).memoryId === 'string'
+        )
+      : [],
+    inferences: isStrArr(obj.inferences) ? obj.inferences : [],
+    gaps: isStrArr(obj.gaps) ? obj.gaps : [],
+    followUps: isStrArr(obj.followUps) ? obj.followUps : [],
+    mode: 'live',
+    claims,
+  };
+}
+
+/**
+ * Strict shape check on model-derived claims arriving from the edge function.
+ * Anything malformed is dropped rather than repaired into something misleading:
+ * only plain-string claim text and string evidence IDs survive. Excerpts are
+ * NOT trusted from the wire — the client audit re-derives them from records.
+ */
+function sanitizeIncomingClaims(raw: unknown): TwinReply['claims'] {
+  if (!Array.isArray(raw)) return undefined;
+  const claims: NonNullable<TwinReply['claims']> = [];
+  for (const rc of raw) {
+    if (!rc || typeof rc !== 'object') continue;
+    const obj = rc as Record<string, unknown>;
+    if (typeof obj.claim !== 'string' || !obj.claim.trim()) continue;
+    const VALID_TYPES = ['directly_supported', 'interpretation', 'conflicting_evidence', 'unknown'];
+    const type = typeof obj.type === 'string' && VALID_TYPES.includes(obj.type)
+      ? (obj.type as ClaimType)
+      : 'interpretation';
+    const evidence = Array.isArray(obj.evidence)
+      ? obj.evidence
+          .filter((e): e is { memoryId: string } =>
+            !!e && typeof e === 'object' && typeof (e as { memoryId?: unknown }).memoryId === 'string')
+          .map((e) => ({ memoryId: e.memoryId, title: '', excerpt: '' }))
+      : [];
+    claims.push({ claimId: `c${claims.length + 1}`, claim: obj.claim.trim(), type, evidenceStatus: 'insufficient', evidence });
+  }
+  return claims.length > 0 ? claims : undefined;
 }
 
 async function askLive(question: string): Promise<TwinReply> {
@@ -86,48 +134,12 @@ async function askLive(question: string): Promise<TwinReply> {
     throw new TwinUnavailableError('service-error', 'The twin service responded with an error. Please try again.');
   }
 
-  const payload = (await response.json()) as Partial<TwinReply> & { error?: string };
-  if (payload.error || typeof payload.answer !== 'string') {
+  const payload: unknown = await response.json();
+  const reply = coerceIncomingReply(payload);
+  if (!reply) {
     throw new TwinUnavailableError('service-error', 'The twin returned an unexpected response. Please try again.');
   }
-
-  return {
-    answer: payload.answer,
-    sources: Array.isArray(payload.sources) ? payload.sources : [],
-    inferences: Array.isArray(payload.inferences) ? payload.inferences : [],
-    gaps: Array.isArray(payload.gaps) ? payload.gaps : [],
-    followUps: Array.isArray(payload.followUps) ? payload.followUps : [],
-    mode: 'live',
-    claims: sanitizeIncomingClaims(payload.claims),
-  };
-}
-
-/**
- * Strict shape check on model-derived claims arriving from the edge function.
- * Anything malformed is dropped rather than repaired into something misleading:
- * only plain-string claim text and string evidence IDs survive. Excerpts are
- * NOT trusted from the wire — the client audit re-derives them from records.
- */
-function sanitizeIncomingClaims(raw: unknown): TwinReply['claims'] {
-  if (!Array.isArray(raw)) return undefined;
-  const claims: NonNullable<TwinReply['claims']> = [];
-  for (const rc of raw) {
-    if (!rc || typeof rc !== 'object') continue;
-    const obj = rc as Record<string, unknown>;
-    if (typeof obj.claim !== 'string' || !obj.claim.trim()) continue;
-    const VALID_TYPES = ['directly_supported', 'interpretation', 'conflicting_evidence', 'unknown'];
-    const type = typeof obj.type === 'string' && VALID_TYPES.includes(obj.type)
-      ? (obj.type as ClaimType)
-      : 'interpretation';
-    const evidence = Array.isArray(obj.evidence)
-      ? obj.evidence
-          .filter((e): e is { memoryId: string } =>
-            !!e && typeof e === 'object' && typeof (e as { memoryId?: unknown }).memoryId === 'string')
-          .map((e) => ({ memoryId: e.memoryId, title: '', excerpt: '' }))
-      : [];
-    claims.push({ claimId: `c${claims.length + 1}`, claim: obj.claim.trim(), type, evidenceStatus: 'insufficient', evidence });
-  }
-  return claims.length > 0 ? claims : undefined;
+  return reply;
 }
 
 function validateSources(reply: TwinReply, contextMemories: Memory[]): TwinReply {
@@ -317,4 +329,4 @@ export async function askTwin(
   };
 }
 
-export { formatMemoryForContext, extractTerms, composeDemoReply };
+export { formatMemoryForContext, composeDemoReply };

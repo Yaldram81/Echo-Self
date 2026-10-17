@@ -298,8 +298,8 @@ function temporalFactor(input: Pick<ScoreInput, 'period' | 'memory'> & { intent:
 
 function scoreCandidate(input: ScoreInput): ScoredCandidate {
   const { memory, terms, originalTerms, phrases, weights, corrections } = input;
-  const title = memory.title.toLowerCase();
-  const body = memory.content.toLowerCase();
+  const title = (memory.title ?? '').toLowerCase();
+  const body = (memory.content ?? '').toLowerCase();
   const tagText = (memory.tags ?? []).join(' ').toLowerCase();
   const category = memory.category.toLowerCase();
 
@@ -331,7 +331,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
   if (correctionMatch) relevance += weights.correction;
 
   const { recency, note: timeNote } = temporalFactor(input);
-  const trust = memory.confidence / 100;
+  const trust = (memory.confidence ?? 50) / 100;
   const score = relevance * (1 + recency * weights.recency) * (weights.confidenceFloor + trust * weights.confidenceSpan);
 
   // Incidental: matched only generic body words, no title/tag/category anchor.

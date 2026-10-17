@@ -11,7 +11,14 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "retrieval-tests": "tsx scripts/run-retrieval-tests.mts",
     "correction-tests": "tsx scripts/run-correction-tests.mts",
-    "claim-integrity-tests": "tsx scripts/run-claim-integrity-tests.mts"
+    "claim-integrity-tests": "tsx scripts/run-claim-integrity-tests.mts",
+    "decision-tests": "tsx scripts/run-decision-tests.mts",
+    "graph-tests": "tsx --env-file=.env scripts/run-graph-tests.mts",
+    "workspace-tests": "tsx --env-file=.env scripts/run-workspace-tests.mts",
+    "journey-tests": "tsx --env-file=.env scripts/run-e2e-journey.mts",
+    "twin-eval": "tsx scripts/run-eval.mjs",
+    "robustness-tests": "tsx scripts/run-robustness-tests.mts",
+    "eval:all": "tsx --env-file=.env scripts/run-all-eval.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

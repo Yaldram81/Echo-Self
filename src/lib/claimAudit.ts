@@ -255,7 +255,8 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
 
   const auditedSources: SourceRef[] = [];
   const seenSources = new Set<string>();
-  for (const s of reply.sources) {
+  for (const s of reply.sources ?? []) {
+    if (!s || typeof s.memoryId !== 'string') continue;
     if (seenSources.has(s.memoryId)) continue;
     seenSources.add(s.memoryId);
     auditedSources.push(s);
@@ -342,7 +343,10 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
       evidenceStatus = 'conflicting';
       uncertainty = 'Records retrieved for this question pull in opposite directions — both are shown without a winner.';
       basis = conflictingPair.explanation;
-    } else if (claimOverreaches(text, evidence.length)) {
+    } else if (!(fallbackTitle !== undefined && text === fallbackTitle) && claimOverreaches(text, evidence.length)) {
+      // Overreach applies to model-authored claim language. A claim keyed on a
+      // record's own title (demo path) is user-authored provenance, not an
+      // assertion — absolute words inside a title are not a generalization.
       type = 'interpretation';
       evidenceStatus = 'partial';
       uncertainty = 'The evidence records related events, but they do not by themselves establish this as fact — treated as interpretation.';
@@ -357,8 +361,13 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
 
   if (hasModelClaims) {
     for (const mc of reply.claims!) {
-      if (!mc.claim.trim()) continue;
-      claims.push(auditOne(mc.claim, mc.evidence ?? []));
+      if (!mc || typeof mc.claim !== 'string' || !mc.claim.trim()) continue;
+      const modelEvidence: Array<{ memoryId: string; excerpt?: string; relation?: string }> = (
+        Array.isArray(mc.evidence) ? mc.evidence : []
+      )
+        .filter((e) => !!e && typeof e === 'object' && typeof (e as { memoryId?: unknown }).memoryId === 'string')
+        .map((e) => ({ memoryId: (e as { memoryId: string }).memoryId }));
+      claims.push(auditOne(mc.claim, modelEvidence));
     }
   } else {
     for (const s of auditedSources) {
@@ -557,7 +566,7 @@ export function rejectInventedContent(
   extraUserText: string[] = []
 ): TwinReply {
   const corpus = [...contextMemories.map((m) => `${m.title} ${m.content}`), ...extraUserText];
-  let answer = reply.answer;
+  let answer = reply.answer ?? '';
   const removed: string[] = [];
 
   const badQuotes = findUnverifiedQuotes(answer, corpus);
@@ -577,11 +586,11 @@ export function rejectInventedContent(
     removed.push(`${badDates.length} date${badDates.length === 1 ? '' : 's'} the records do not support`);
   }
 
-  if (removed.length === 0) return reply;
+  if (removed.length === 0) return { ...reply, answer };
   return {
     ...reply,
     answer,
-    gaps: Array.from(new Set([...reply.gaps, `Removed ${removed.join(' and ')} — they were not found in your records, so they are not shown as evidence.`])),
+    gaps: Array.from(new Set([...(reply.gaps ?? []), `Removed ${removed.join(' and ')} — they were not found in your records, so they are not shown as evidence.`])),
   };
 }
 
@@ -593,7 +602,7 @@ export function rejectInventedContent(
  * with the question.
  */
 export function withUncertainty(reply: TwinReply, question: string, contextMemories: Memory[]): TwinReply {
-  const gaps = new Set(reply.gaps);
+  const gaps = new Set(reply.gaps ?? []);
   if (contextMemories.length === 0) {
     gaps.add('No records matched this question at all — the topic may simply not be recorded.');
   } else {
