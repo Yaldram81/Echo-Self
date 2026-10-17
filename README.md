@@ -197,8 +197,21 @@ npx tsx scripts/run-static-checks.mts   # routes, links, SEO, a11y invariants (7
 | `VITE_TWIN_DEMO_MODE` | Browser (`.env`) | Optional | `true` (default) runs the labeled sample mode; `false` routes Twin Chat to the live edge function. |
 | `GEMINI_API_KEY` | Server (Edge Function secrets) | For live mode | Google Gemini key. Set via Supabase secrets, never in `.env` or client code. |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Server (Edge Function runtime) | Auto-set | Injected by the Supabase platform into the function runtime. |
+| `TWIN_USER_PER_MINUTE` | Server (Edge Function env) | Optional | Per-user twin questions per 60s window. Default 5. |
+| `TWIN_USER_DAILY` | Server (Edge Function env) | Optional | Per-user twin questions per UTC day. Default 100. |
+| `TWIN_MAX_BODY_BYTES` | Server (Edge Function env) | Optional | Request body cap before parsing. Default 65536 (64 KB); oversized requests get `413`. |
+| `TWIN_MAX_QUESTION_CHARS` | Server (Edge Function env) | Optional | Question length cap. Default 2000. |
+| `TWIN_MAX_CONTEXT_CHARS` | Server (Edge Function env) | Optional | Evidence-context cap in the provider prompt. Default 60000. |
+| `TWIN_MAX_OUTPUT_TOKENS` | Server (Edge Function env) | Optional | Provider output token cap. Default 2048. |
+| `TWIN_PROVIDER_TIMEOUT_MS` | Server (Edge Function env) | Optional | Provider call timeout. Default 30000, with 1 bounded retry on timeout/5xx/429. |
 
 Anything prefixed `VITE_` is compiled into the client bundle — treat every `VITE_` variable as public and never put a secret there. When the provider is unavailable, the edge function returns a distinct `503 AI_NOT_CONFIGURED`, and the UI renders a setup notice rather than a fabricated answer.
+
+### AI quotas and rate limiting (server-enforced)
+
+Every live twin request is charged to an atomic, Postgres-backed quota bucket **before** any provider call, keyed by the user id from the verified JWT — never a client-supplied id. Defaults: **5 requests per 60-second window and 100 per UTC day per user**, overridable with the `TWIN_*` variables above. When a limit is hit, the function returns `429` with a `Retry-After` header and a plain-language message (`RATE_LIMITED`, or `DAILY_LIMIT_REACHED` for the daily budget), which the UI displays as a notice. The enforcement runs in a single `INSERT … ON CONFLICT … UPDATE` statement, so parallel requests cannot race past the limit; if the quota store is unavailable the function **fails closed** (503, no provider spend). Request bodies are capped at 64 KB and rejected (`413`) before parsing; the provider prompt is capped at 60k characters; output is capped at 2048 tokens; provider calls time out at 30s with one bounded retry. Usage outcomes (success, rate-limited, provider error, timeout) are logged per bucket with token counts — never question text or record content.
+
+The enforcement RPC (`enforce_ai_quota`) is a security-definer function executable by `service_role` only — anon and authenticated roles cannot call it or read the quota tables (`ai_quota_config`, `ai_usage_log` have RLS enabled with zero policies). Verified by the executed quota suite (below). These are **app-enforced** controls, distinct from Supabase's platform-level auth-endpoint rate limits, which the app does not configure. No monetary cap is promised: the token and request caps bound cost, but provider pricing is not modeled.
 
 ## Understanding the intelligence
 
@@ -234,7 +247,8 @@ EchoSelf processes personal reflections, so the security posture is stated preci
 - **Ownership-aware RLS.** All seven tables. Sample rows (`user_id IS NULL`) are readable by everyone — including signed-out visitors — and **writable by no one**; personal rows are visible and writable only by their owner. `interpretation_flags` and `graph_edge_confirmations` have no anon policies at all.
 - **Privilege hardening.** `TRUNCATE` and `REFERENCES` revoked from client roles on all seven tables; UPDATE narrowed from table-wide to user-content columns (identity, ownership, and timestamp columns are not updatable through the data API; a correction stays attached to its record and excerpt).
 - **Server-side secrets.** The client bundle contains only the publishable anon key and project URL. The Gemini key lives in Edge Function secrets only. Errors returned to clients are generic; details go to server logs.
-- **JWT-gated AI path.** The `twin-chat` function runs with `verify_jwt = true`, and reads the caller's data with the caller's own JWT — its context is RLS-scoped exactly like the browser's. The service-role key is never used for data reads.
+- **JWT-gated AI path.** The `twin-chat` function runs with `verify_jwt = true`, and reads the caller's data with the caller's own JWT — its context is RLS-scoped exactly like the browser's. The service-role key is used only for the quota RPC and usage-log writes, never for personal-data reads.
+- **App-enforced AI quotas.** Per-user per-minute and daily budgets enforced atomically server-side before any provider call, with 429 + Retry-After responses, body/context/output caps, provider timeouts, and a fail-closed policy if the quota store is unavailable (see "AI quotas" above for details and verified behavior).
 - **Demo isolation.** The public demo uses fictional sample data, labeled on every page. Export and delete-everything act only on the signed-in account's rows; sample data is excluded by both query filter and RLS.
 - **AI input/output validation.** Questions are length-validated server-side; correction text is framed as data, not instructions, in the model prompt (prompt-injection content in a record is quoted as data — tested). Replies are coerced and audited before display.
 
@@ -242,7 +256,7 @@ EchoSelf processes personal reflections, so the security posture is stated preci
 
 ## Testing and evaluation
 
-Twelve runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 358 deterministic + 86 live-service checks, 0 failures (2026-10-17, against the real database).**
+Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 358 deterministic + 86 live-service checks, 0 failures (2026-10-17, against the real database); quota suite 12/12 including a live 429 against the deployed function.**
 
 | Suite | Checks | Covers |
 |---|---|---|
@@ -256,6 +270,7 @@ Twelve runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **
 | `robustness-tests` | — | Malformed input behavior, safe degradation |
 | `twin-eval` | 26 | Evidence inspector cases: supported, paraphrase, unsupported, conflicting, stale, invented content |
 | `journey-tests` | 23 | Live end-to-end visitor journey: explore → sign-up → save → ask → cite → correct → decide → export → delete → sign-out/in |
+| `quota-tests` | 12 | AI quotas: 429 + Retry-After after the per-minute limit (live), unauthenticated denial, spoofed user ids, oversized bodies, quota-RPC and quota-table privilege denial |
 
 These are executed checks, not coverage percentages: the deterministic suites run in-process; the live-service suites run against the real database (and, for the journey, the deployed edge function). The evidence inspector eval additionally reports citation validity and abstention accuracy on its 26 cases (100% and 100% on the last run — a property of the case set, not a general benchmark).
 
@@ -272,7 +287,8 @@ Findings are labeled by how they were established — code inspection (a known p
 - **Decision scoring assumes classified evidence.** *Inspection.* Scores rest on the for/against classification of retrieved records; unclassified or sparse evidence produces explicit incompleteness statements, and the score is preference alignment — never a prediction.
 - **No importance field, no embeddings.** *Deliberately deferred.* Both stay deferred unless testing demonstrates memories the current fields cannot rank correctly.
 - **Demo-mode honesty boundary.** *By design.* Sample mode composes answers locally from the sample records with keyword retrieval — it is labeled as sample output and is not a language model. Live mode was not exercised against a real model in this environment.
-- **Platform-dependent protections.** Auth rate limiting and abuse prevention are Supabase platform defaults, not app-enforced.
+- **Demo-mode anonymity.** *Inspection + deployed config.* The demo runs locally in the browser and makes no AI calls, so no per-IP demo enforcement exists; live-mode quotas key on the verified JWT, and anonymous callers reach no AI path at all. If an unauthenticated AI endpoint is ever added, it would need platform-supplied network signals plus global quotas — not yet built.
+- **Platform-dependent protections.** Auth rate limiting and abuse prevention are Supabase platform defaults, not app-enforced. The app-enforced AI quotas (above) cover only the twin-chat endpoint.
 
 ## Roadmap
 
@@ -291,6 +307,8 @@ Findings are labeled by how they were established — code inspection (a known p
 |---|---|---|
 | Twin Chat shows "no model connected" | Demo mode active or provider key missing | Set the `GEMINI_API_KEY` secret on the `twin-chat` function and `VITE_TWIN_DEMO_MODE=false`. |
 | Twin Chat returns "took too long to respond" | Provider latency or network | Retry; the client aborts at 45 s by design rather than hang. |
+| Twin Chat says you're asking too fast (`429`) | Per-minute quota (5/60s) hit | Wait for the seconds in the message; the window resets automatically. |
+| Twin Chat reports the daily limit reached | 100 questions/UTC day used | The budget resets at midnight UTC. |
 | `503 AI_NOT_CONFIGURED` in live mode | Secret not set on the deployed function | Add the secret and redeploy the function. |
 | Suites fail with connection errors | `.env` missing or wrong | Check `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`; live suites need `--env-file=.env`. |
 | Sample data missing after deleting everything | Wipe removed your rows; sample rows are excluded from wipe by design | Re-run the seed migration (idempotent) or restore from Version History. |

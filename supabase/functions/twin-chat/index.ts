@@ -3,12 +3,38 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 // Deployed with verify_jwt = true: Supabase's gateway rejects requests without
 // a valid project JWT before this function runs, so the Gemini key cannot be
 // spent by anonymous callers. The client sends the user's session token.
+//
+// Quotas (Upgrade 8): every request is charged to an atomically enforced,
+// Postgres-backed quota bucket BEFORE any provider call. Authenticated callers
+// are keyed by the user id inside their verified JWT (never a client-supplied
+// id). If the quota store is unavailable the function fails closed (503) rather
+// than spending the provider key unchecked. Limits are configurable via env
+// vars with the documented defaults below; they are server-side only.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
+
+// --- configurable limits (sensible defaults, overridable per deployment) ---
+const LIMITS = {
+  maxBodyBytes: numEnv('TWIN_MAX_BODY_BYTES', 64 * 1024), // request body cap
+  maxQuestionChars: numEnv('TWIN_MAX_QUESTION_CHARS', 2000),
+  maxContextChars: numEnv('TWIN_MAX_CONTEXT_CHARS', 60_000), // evidence context cap
+  maxOutputTokens: numEnv('TWIN_MAX_OUTPUT_TOKENS', 2048),
+  userPerMinute: numEnv('TWIN_USER_PER_MINUTE', 5),
+  userDaily: numEnv('TWIN_USER_DAILY', 100),
+  providerTimeoutMs: numEnv('TWIN_PROVIDER_TIMEOUT_MS', 30_000),
+  providerRetries: numEnv('TWIN_PROVIDER_RETRIES', 1),
+};
+
+function numEnv(name: string, dflt: number): number {
+  const raw = Deno.env.get(name);
+  if (!raw) return dflt;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : dflt;
+}
 
 type MemoryRow = {
   id: string;
@@ -184,28 +210,61 @@ function buildContextBlock(
   ].join('\n');
 }
 
-function providerRequest(prompt: string, question: string, apiKey: string): Promise<Response> {
-  return fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: prompt }] },
-        contents: [{ role: 'user', parts: [{ text: question }] }],
-        generationConfig: {
-          maxOutputTokens: 2048,
-          temperature: 0.2,
-          // The prompt requires a bare JSON object; the JSON mode keeps the
-          // model from wrapping it in prose or markdown fences.
-          responseMimeType: 'application/json',
+// Provider call with a hard timeout and bounded retries. Timeouts and 5xx/429s
+// are retried up to LIMITS.providerRetries times with a short backoff; other
+// statuses surface immediately.
+async function callProvider(
+  prompt: string,
+  question: string,
+  apiKey: string
+): Promise<{ ok: true; data: Record<string, unknown>; usage: { input?: number; output?: number } } | { ok: false; kind: 'timeout' | 'error' }> {
+  let lastKind: 'timeout' | 'error' = 'error';
+  for (let attempt = 0; attempt <= LIMITS.providerRetries; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LIMITS.providerTimeoutMs);
+    try {
+      const res = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: prompt }] },
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+            generationConfig: {
+              maxOutputTokens: LIMITS.maxOutputTokens,
+              temperature: 0.2,
+              // The prompt requires a bare JSON object; the JSON mode keeps the
+              // model from wrapping it in prose or markdown fences.
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+      if (!res.ok) {
+        lastKind = 'error';
+        if (res.status === 429 || res.status >= 500) continue;
+        return { ok: false, kind: 'error' };
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      const usageMeta = (data as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
+      return {
+        ok: true,
+        data,
+        usage: {
+          input: typeof usageMeta?.promptTokenCount === 'number' ? usageMeta.promptTokenCount : undefined,
+          output: typeof usageMeta?.candidatesTokenCount === 'number' ? usageMeta.candidatesTokenCount : undefined,
         },
-      }),
+      };
+    } catch (err) {
+      lastKind = err instanceof DOMException && err.name === 'AbortError' ? 'timeout' : 'error';
+    } finally {
+      clearTimeout(timer);
     }
-  );
+  }
+  return { ok: false, kind: lastKind };
 }
 
 function parseProviderContent(data: { candidates?: { content?: { parts?: { text?: string }[] } }[] }): string {
@@ -301,42 +360,147 @@ function coerceResponse(raw: Record<string, unknown> | null, memories: MemoryRow
   };
 }
 
+// --- quota enforcement ------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Privileged client used ONLY for the quota RPC and usage-log writes — never
+// for personal-data reads, which go through the caller's own JWT client.
+let quotaClient: ReturnType<typeof createClient> | null = null;
+function getQuotaClient() {
+  if (!quotaClient) {
+    quotaClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+  }
+  return quotaClient;
+}
+
+type QuotaResult = { allowed: true } | { allowed: false; retryAfter: number; daily: boolean } | { allowed: false; storeUnavailable: true };
+
+async function checkQuota(quotaKey: string): Promise<QuotaResult> {
+  try {
+    const { data, error } = await getQuotaClient().rpc('enforce_ai_quota', {
+      p_quota_key: quotaKey,
+      p_per_minute_limit: LIMITS.userPerMinute,
+      p_daily_limit: LIMITS.userDaily,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row.allowed !== 'boolean') throw new Error('malformed quota response');
+    if (row.allowed) return { allowed: true };
+    return {
+      allowed: false,
+      retryAfter: Math.max(1, Number(row.retry_after) || 60),
+      daily: Number(row.retry_after) >= 3600,
+    };
+  } catch (err) {
+    console.error('quota store unavailable', err);
+    // Fail closed: never spend the provider key when enforcement cannot run.
+    return { allowed: false, storeUnavailable: true };
+  }
+}
+
+async function logUsage(quotaKey: string, outcome: string, usage?: { input?: number; output?: number }): Promise<void> {
+  try {
+    await getQuotaClient().from('ai_usage_log').insert({
+      quota_key: quotaKey,
+      outcome,
+      provider: 'google/gemini-2.5-flash',
+      input_tokens: usage?.input ?? null,
+      output_tokens: usage?.output ?? null,
+    });
+  } catch (err) {
+    // Logging must never break the request path.
+    console.error('usage log write failed', err);
+  }
+}
+
+function json(body: unknown, status = 200, extra: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...extra },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  // Identity FIRST: the quota key comes from the verified JWT subject, never
+  // from anything the client sent in the body. verify_jwt = true guarantees a
+  // valid project JWT reached us; extract its subject for the user bucket.
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  let userId: string | null = null;
+  try {
+    const [, payloadB64] = token.split('.');
+    if (payloadB64) {
+      const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))) as { sub?: string };
+      if (typeof payload.sub === 'string' && UUID_RE.test(payload.sub)) userId = payload.sub;
+    }
+  } catch {
+    userId = null;
+  }
+  if (!userId) {
+    return json({ error: 'A verified session is required.' }, 401);
+  }
+  const quotaKey = `user:${userId}`;
+
   try {
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'AI_NOT_CONFIGURED' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'AI_NOT_CONFIGURED' }, 503);
+    }
+
+    // Body-size cap before parsing: reject oversize requests cheaply.
+    const contentLength = Number(req.headers.get('content-length') ?? '0');
+    if (contentLength > LIMITS.maxBodyBytes) {
+      await logUsage(quotaKey, 'rejected');
+      return json({ error: 'Request body too large.' }, 413);
+    }
+    const rawBody = await req.text();
+    if (rawBody.length > LIMITS.maxBodyBytes) {
+      await logUsage(quotaKey, 'rejected');
+      return json({ error: 'Request body too large.' }, 413);
     }
 
     let body: { question?: unknown };
     try {
-      body = await req.json();
+      body = JSON.parse(rawBody);
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid request body.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'Invalid request body.' }, 400);
     }
 
     const question = typeof body.question === 'string' ? body.question.trim() : '';
-    if (!question || question.length > 2000) {
-      return new Response(JSON.stringify({ error: 'A question of 1-2000 characters is required.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!question || question.length > LIMITS.maxQuestionChars) {
+      return json({ error: `A question of 1-${LIMITS.maxQuestionChars} characters is required.` }, 400);
+    }
+
+    // Quota check AFTER cheap validation, BEFORE any expensive work.
+    const quota = await checkQuota(quotaKey);
+    if (!quota.allowed) {
+      if ('storeUnavailable' in quota) {
+        return json({ error: GENERIC_ERROR }, 503);
+      }
+      await logUsage(quotaKey, 'rate_limited');
+      return json(
+        {
+          error: quota.daily ? 'DAILY_LIMIT_REACHED' : 'RATE_LIMITED',
+          message: quota.daily
+            ? 'You have reached your daily twin question limit. The limit resets at midnight UTC.'
+            : 'Too many twin questions in a short period. Please wait a moment and try again.',
+        },
+        429,
+        { 'Retry-After': String(quota.retryAfter) }
+      );
     }
 
     // Query the database AS THE CALLER by forwarding their JWT, so RLS scopes
     // every read to the public sample rows plus that user's own records. The
     // service-role key is never used for data reads.
-    const authHeader = req.headers.get('Authorization') ?? '';
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -370,36 +534,33 @@ Deno.serve(async (req: Request) => {
     const selected = rankMemories(memories, question);
     const contextBlock = buildContextBlock(selected, beliefs, corrections);
 
-    const providerRes = await providerRequest(SYSTEM_PROMPT, `${contextBlock}\n\n=== QUESTION ===\n${question}`, apiKey);
-    if (!providerRes.ok) {
-      console.error('provider error status', providerRes.status);
-      return new Response(JSON.stringify({ error: GENERIC_ERROR }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Evidence-context cap: the provider prompt is bounded regardless of how
+    // many large records the account holds.
+    const prompt = contextBlock.length > LIMITS.maxContextChars
+      ? contextBlock.slice(0, LIMITS.maxContextChars) + '\n(context truncated to size limit)'
+      : contextBlock;
+
+    const providerResult = await callProvider(SYSTEM_PROMPT, `${prompt}\n\n=== QUESTION ===\n${question}`, apiKey);
+    if (!providerResult.ok) {
+      await logUsage(quotaKey, providerResult.kind === 'timeout' ? 'timeout' : 'provider_error');
+      return json({ error: GENERIC_ERROR }, 502);
     }
 
-    const providerData = await providerRes.json();
-    const text = parseProviderContent(providerData);
+    const text = parseProviderContent(providerResult.data);
     const parsed = extractJson(text);
 
     const response = coerceResponse(parsed, selected);
 
     if (!response.answer.trim()) {
-      return new Response(JSON.stringify({ error: GENERIC_ERROR }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      await logUsage(quotaKey, 'provider_error', providerResult.usage);
+      return json({ error: GENERIC_ERROR }, 502);
     }
 
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    await logUsage(quotaKey, 'success', providerResult.usage);
+
+    return json(response);
   } catch (err) {
     console.error('twin-chat failure', err);
-    return new Response(JSON.stringify({ error: GENERIC_ERROR }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: GENERIC_ERROR }, 500);
   }
 });

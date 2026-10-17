@@ -30,10 +30,13 @@ export function twinMode(): TwinMode {
 }
 
 export class TwinUnavailableError extends Error {
-  readonly kind: 'not-configured' | 'service-error';
-  constructor(kind: 'not-configured' | 'service-error', message: string) {
+  readonly kind: 'not-configured' | 'service-error' | 'rate-limited';
+  /** Seconds the server asked the client to wait before retrying (429 only). */
+  readonly retryAfterSeconds?: number;
+  constructor(kind: 'not-configured' | 'service-error' | 'rate-limited', message: string, retryAfterSeconds?: number) {
     super(message);
     this.kind = kind;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -126,6 +129,19 @@ async function askLive(question: string): Promise<TwinReply> {
 
   if (response.status === 503) {
     throw new TwinUnavailableError('not-configured', 'The AI provider is not configured for this project yet.');
+  }
+  if (response.status === 429) {
+    // Server-enforced quota: honor the Retry-After header when present.
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 86400) : undefined;
+    let message = 'You are asking twin questions faster than allowed. Please wait a moment and try again.';
+    try {
+      const body = (await response.json()) as { error?: unknown; message?: unknown };
+      if (typeof body.message === 'string' && body.message.trim()) message = body.message;
+    } catch {
+      // keep default message
+    }
+    throw new TwinUnavailableError('rate-limited', message, wait);
   }
   if (response.status === 401) {
     throw new TwinUnavailableError('service-error', 'The twin service requires a verified session. Sign in and try again.');
