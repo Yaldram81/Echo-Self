@@ -78,7 +78,20 @@ Every candidate carries its matched signals, rank, and a plain-language reason t
 
 **Verified by test (scripts/run-retrieval-tests.mts, 65/65 passing):** exact wording, paraphrase, tag-only matches, recent vs. historical queries with parsed periods, old-but-explicit values beating recent incidental mentions, changed beliefs with preserved history, supporting vs. counterevidence (including the no-manufactured-contradiction and negative-framing cases), near-duplicates, empty records, missing dates/fields, misleading shared keywords, corrections in retrieval, generic-word noise, similar multi-category content, and cross-user isolation.
 
-**Unresolved weaknesses (honest):** the synonym table is hand-curated and will miss paraphrases it was never given; keyword matching cannot read between the lines of a question ("am I happier lately?" has no lexical anchor); counterevidence detection is pattern-based and tuned to common habit/obligation language. If testing later shows significant memories whose relevance the current fields cannot express, that would be the demonstrated evidence justifying a user-assigned importance field (or embeddings) as a future enhancement — deliberately not built now.
+**Unresolved weaknesses (documented honestly — none of these are claimed as resolved):**
+
+Identified through **code inspection** (known properties of the current implementation, not observed failures):
+
+- **Hand-curated synonyms — current implementation limitation.** The synonym table (`SYNONYMS` in the retrieval module) is a small, manually maintained mapping. It may not cover all paraphrases, domain-specific language, or vocabulary the user actually uses. New bridges must be added by hand; nothing learns them automatically. (Mitigation by design: a synonym miss degrades the query to plain keyword matching — the previous behavior — rather than failing outright.)
+- **Counterevidence detection — pattern-based.** The opposition signals are regular expressions tuned to common habit and obligation language ("stopped", "fell out", "kept up", "declined", "said no"). Subtler contradictions — changes of heart expressed in plain wording, trade-offs between values, or conflicts in tone — may be missed, and no contradiction is claimed where the patterns find none.
+- **Importance and embeddings — deliberately deferred.** No user-assigned importance field exists (and no schema migration was added), and retrieval uses no embeddings or external services. Both stay deferred unless demonstrated need emerges: if testing later shows significant memories whose relevance the current fields cannot express — a significant memory ranked below incidental matches that no weight tuning fixes — that evidence, not speculation, would justify the enhancement.
+
+Demonstrated by the **retrieval test suite** (scripts/run-retrieval-tests.mts — actual results: **65 passed, 0 failed** on 2026-10-17; no known failures):
+
+- The suite exercises keyword-boundary behavior directly: a question with no lexical anchor in any record retrieves nothing ("marathon" against records that never mention it), and misleading keyword overlap is detected and flagged as incidental rather than treated as an answer. What the suite can only sample — and so remains an inspection-level caveat — is the open-ended case: **keyword-based retrieval cannot reliably discover conceptually related memories when the query and the records share no recognizable lexical signals.** This does not mean every such question fails (exact wording, paraphrase via synonyms, and tag-only matches all pass in the suite), only that a conceptual connection invisible to keyword and synonym signals will not be found. That residual risk is inherent to the current approach and is not fixed by it.
+- Duplicate handling, missing dates, empty corpora, and cross-user isolation are covered by executed checks, so those behaviors are verified rather than assumed.
+
+These limitations are accepted for the current approach. The implementation is not weakened to narrow their description, and no documentation here claims they are resolved. The standalone retrieval test runner remains the executable record: rerun `npm run retrieval-tests` to confirm current behavior.
 
 ### Twin Chat, two modes
 
@@ -205,7 +218,7 @@ npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey
 ## Known limitations (stated honestly)
 
 - **Real accounts.** Email/password sign-up, sign-in, and sign-out with persistent sessions. Each account gets a private workspace; the fictional sample persona stays public and read-only.
-- **Retrieval is layered keyword-based.** Both the demo composer and the server-side ranking use intent-aware keyword scoring with query-dependent recency and reliability-weighted confidence — not embeddings. It's honest about this in its own "gaps" output, and its weaknesses are listed in the retrieval engine section above.
+- **Retrieval is layered keyword-based.** Both the demo composer and the server-side ranking use intent-aware keyword scoring with query-dependent recency and reliability-weighted confidence — not embeddings. It's honest about this in its own "gaps" output; its weaknesses, the evidence behind them (code inspection vs. executed tests), and the current test results are documented in the retrieval engine section above.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
 - **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.
 
