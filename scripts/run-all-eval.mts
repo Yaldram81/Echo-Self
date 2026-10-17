@@ -30,6 +30,7 @@ const SUITES: { name: string; script: string; kind: 'deterministic' | 'live-serv
   { name: 'Decision engine (fixed-input math)', script: 'scripts/run-decision-tests.mts', kind: 'deterministic' },
   { name: 'Twin Chat eval cases (audit pipeline)', script: 'scripts/run-eval.mjs', kind: 'deterministic' },
   { name: 'Robustness (malformed AI, garbage inputs, credentials)', script: 'scripts/run-robustness-tests.mts', kind: 'deterministic' },
+  { name: 'Static verification (routes, links, SEO, robots, a11y invariants)', script: 'scripts/run-static-checks.mts', kind: 'deterministic' },
   { name: 'Evidence graph', script: 'scripts/run-graph-tests.mts', kind: 'live-service' },
   { name: 'Workspace isolation (two-account RLS)', script: 'scripts/run-workspace-tests.mts', kind: 'live-service' },
   { name: 'E2E journey', script: 'scripts/run-e2e-journey.mts', kind: 'live-service' },
@@ -111,6 +112,7 @@ lines.push('- **Correction lifecycle**: corrections persist, are topical (do not
 lines.push('- **Decision engine**: exact expected outputs for weight normalization, missing ratings, zero weights, ties, contradictions, constraints, sensitivity, snapshots.');
 lines.push('- **Twin Chat eval cases**: 26 end-to-end cases through the full audit pipeline (retrieval → composition → citation validation → claim audit → uncertainty → corrections), with abstention accuracy and citation validity measured per case.');
 lines.push('- **Robustness**: malformed AI replies (non-array sources, junk claims, null fields, missing gaps) through the full pipeline must degrade safely, never throw or fabricate; cross-user source injection must be rejected; retrieval must survive null fields and invalid dates; demo mode must not require credentials.');
+lines.push('- **Static verification**: the routing table, internal link literals, per-route metadata, index.html tags, JSON-LD, sitemap URLs, robots directives, and static accessibility invariants are checked against the real source files. Browser-rendered behavior (visual layout, live contrast) is outside its scope.');
 lines.push('- **Evidence graph**: graph construction and edge suggestions against the live database, including confirmations and inaccessible-record handling.');
 lines.push('- **Workspace isolation**: two real throwaway accounts prove cross-account read/write/delete/insert denial, forged-owner rejection, and demo read-onlyness through real RLS.');
 lines.push('- **E2E journey**: full user path through the live app (records, decisions, corrections, export) preserving the public demo.');

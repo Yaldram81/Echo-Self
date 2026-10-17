@@ -177,6 +177,17 @@ async function main() {
   const { data: afterSignOut } = await anon.from('memories').select('id').limit(1);
   step('sample persona still public and intact after the journey', (afterSignOut ?? []).length > 0);
 
+  /* 12. Signs out and signs back in */
+  console.log('12. Signs out and back in');
+  await client.auth.signOut();
+  const { data: reauth, error: signInErr } = await client.auth.signInWithPassword({ email, password });
+  step('re-authentication with the same credentials succeeds', !signInErr && !!reauth?.session, signInErr?.message);
+  const { data: wrongPw } = await client.auth.signInWithPassword({ email, password: 'definitely-wrong' });
+  step('wrong password is rejected', !wrongPw || !wrongPw.session);
+  const { data: afterReauth } = await client.from('memories').select('id').not('user_id', 'is', null);
+  step('re-signed-in account still sees an empty private workspace', (afterReauth ?? []).length === 0);
+  await client.auth.signOut();
+
   console.log(`\nE2E journey: ${passed} passed, ${failed} failed`);
   for (const f of failures) console.log(`  FAIL ${f}`);
   process.exit(failed === 0 ? 0 : 1);

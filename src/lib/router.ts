@@ -57,17 +57,17 @@ export function hrefFor(target: PageId | { page: 'memory' | 'decision'; id: stri
 
 /** Per-route document titles and descriptions (also used for og/twitter). */
 export const ROUTE_META: Record<string, { title: string; description: string }> = {
-  home: { title: 'EchoSelf — Meet the self you can examine', description: 'EchoSelf organizes your recorded memories, beliefs, values, and decisions into an evidence-grounded personal model.' },
-  memories: { title: 'Memories — EchoSelf', description: 'Record, search, and inspect the moments your personal model is built from.' },
-  chat: { title: 'Twin Chat — EchoSelf', description: 'Ask your digital twin questions; every claim traces to recorded evidence.' },
-  decisions: { title: 'Decision Mirror — EchoSelf', description: 'Weight your values, compare options, and reflect on outcomes with transparent arithmetic.' },
-  beliefs: { title: 'Beliefs & Values — EchoSelf', description: 'Track how your beliefs and values evolve, with AI suggestions clearly labeled.' },
-  timeline: { title: 'Timeline — EchoSelf', description: 'Your recorded life in chronological order, cross-linked with beliefs and decisions.' },
-  graph: { title: 'Evidence Graph — EchoSelf', description: 'See how memories, beliefs, and decisions connect — every line traced to a record.' },
-  settings: { title: 'Settings & Privacy — EchoSelf', description: 'Export or delete your records; review what the app stores and what it never does.' },
-  signin: { title: 'Sign in — EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
-  signup: { title: 'Create account — EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
-  notFound: { title: 'Page not found — EchoSelf', description: 'This address does not match any page in EchoSelf.' },
+  home: { title: 'EchoSelf: Meet the self you can examine', description: 'EchoSelf organizes your recorded memories, beliefs, values, and decisions into an evidence-grounded personal model.' },
+  memories: { title: 'Memories: EchoSelf', description: 'Record, search, and inspect the moments your personal model is built from.' },
+  chat: { title: 'Twin Chat: EchoSelf', description: 'Ask your digital twin questions; every claim traces to recorded evidence.' },
+  decisions: { title: 'Decision Mirror: EchoSelf', description: 'Weight your values, compare options, and reflect on outcomes with transparent arithmetic.' },
+  beliefs: { title: 'Beliefs & Values: EchoSelf', description: 'Track how your beliefs and values evolve, with AI suggestions clearly labeled.' },
+  timeline: { title: 'Timeline: EchoSelf', description: 'Your recorded life in chronological order, cross-linked with beliefs and decisions.' },
+  graph: { title: 'Evidence Graph: EchoSelf', description: 'See how memories, beliefs, and decisions connect; every line traced to a record.' },
+  settings: { title: 'Settings & Privacy: EchoSelf', description: 'Export or delete your records; review what the app stores and what it never does.' },
+  signin: { title: 'Sign in: EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
+  signup: { title: 'Create account: EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
+  notFound: { title: 'Page not found: EchoSelf', description: 'This address does not match any page in EchoSelf.' },
 };
 
 export function metaFor(route: Route) {

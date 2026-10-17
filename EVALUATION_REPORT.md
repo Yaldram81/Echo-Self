@@ -1,6 +1,6 @@
 # EchoSelf Evaluation Report
 
-Generated: 2026-10-17T18:15:21.510Z
+Generated: 2026-10-17T18:25:29.317Z
 
 ## How to read this report
 
@@ -11,8 +11,8 @@ Generated: 2026-10-17T18:15:21.510Z
 
 ## Summary
 
-- Deterministic: **280 passed, 0 failed** across 6 suites.
-- Live-service: **83 passed, 0 failed** across 3 executed suites.
+- Deterministic: **358 passed, 0 failed** across 7 suites.
+- Live-service: **86 passed, 0 failed** across 3 executed suites.
 - Skipped: 0 suite(s).
 - Crashed: 0 suite(s).
 
@@ -26,9 +26,10 @@ Generated: 2026-10-17T18:15:21.510Z
 | Decision engine (fixed-input math) | deterministic | `npx tsx scripts/run-decision-tests.mts` | passed | 57 | 0 |
 | Twin Chat eval cases (audit pipeline) | deterministic | `npx tsx scripts/run-eval.mjs` | passed | 26 | 0 |
 | Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | passed | 18 | 0 |
+| Static verification (routes, links, SEO, robots, a11y invariants) | deterministic | `npx tsx scripts/run-static-checks.mts` | passed | 78 | 0 |
 | Evidence graph | live-service | `npx tsx --env-file=.env scripts/run-graph-tests.mts` | passed | 26 | 0 |
 | Workspace isolation (two-account RLS) | live-service | `npx tsx --env-file=.env scripts/run-workspace-tests.mts` | passed | 37 | 0 |
-| E2E journey | live-service | `npx tsx --env-file=.env scripts/run-e2e-journey.mts` | passed | 20 | 0 |
+| E2E journey | live-service | `npx tsx --env-file=.env scripts/run-e2e-journey.mts` | passed | 23 | 0 |
 
 ## What each suite measures
 
@@ -38,6 +39,7 @@ Generated: 2026-10-17T18:15:21.510Z
 - **Decision engine**: exact expected outputs for weight normalization, missing ratings, zero weights, ties, contradictions, constraints, sensitivity, snapshots.
 - **Twin Chat eval cases**: 26 end-to-end cases through the full audit pipeline (retrieval → composition → citation validation → claim audit → uncertainty → corrections), with abstention accuracy and citation validity measured per case.
 - **Robustness**: malformed AI replies (non-array sources, junk claims, null fields, missing gaps) through the full pipeline must degrade safely, never throw or fabricate; cross-user source injection must be rejected; retrieval must survive null fields and invalid dates; demo mode must not require credentials.
+- **Static verification**: the routing table, internal link literals, per-route metadata, index.html tags, JSON-LD, sitemap URLs, robots directives, and static accessibility invariants are checked against the real source files. Browser-rendered behavior (visual layout, live contrast) is outside its scope.
 - **Evidence graph**: graph construction and edge suggestions against the live database, including confirmations and inaccessible-record handling.
 - **Workspace isolation**: two real throwaway accounts prove cross-account read/write/delete/insert denial, forged-owner rejection, and demo read-onlyness through real RLS.
 - **E2E journey**: full user path through the live app (records, decisions, corrections, export) preserving the public demo.
