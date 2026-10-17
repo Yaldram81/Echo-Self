@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import { useAuth } from '@/lib/useAuth';
 import {
@@ -6,21 +6,39 @@ import {
   observeRoutes,
   navigateTo,
   metaFor,
+  type PageId,
   type Route,
 } from '@/lib/router';
 import { AppShell } from '@/components/AppShell';
 import { HomePage } from '@/pages/HomePage';
-import { MemoriesPage } from '@/pages/MemoriesPage';
-import { TwinChatPage } from '@/pages/TwinChatPage';
-import { MemoryDetailPage } from '@/pages/MemoryDetailPage';
-import { DecisionMirrorPage } from '@/pages/DecisionMirrorPage';
-import { DecisionDetailPage } from '@/pages/DecisionDetailPage';
-import { BeliefsPage } from '@/pages/BeliefsPage';
-import { TimelinePage } from '@/pages/TimelinePage';
-import { EvidenceGraphPage } from '@/pages/EvidenceGraphPage';
-import { SettingsPage } from '@/pages/SettingsPage';
 import { AuthPage } from '@/pages/AuthPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+
+// Private workspace pages load on demand: a first-time visitor downloads only
+// what the landing page needs, and each signed-in page is a small cached chunk.
+const MemoriesPage = lazy(() => import('@/pages/MemoriesPage').then((m) => ({ default: m.MemoriesPage })));
+const TwinChatPage = lazy(() => import('@/pages/TwinChatPage').then((m) => ({ default: m.TwinChatPage })));
+const MemoryDetailPage = lazy(() => import('@/pages/MemoryDetailPage').then((m) => ({ default: m.MemoryDetailPage })));
+const DecisionMirrorPage = lazy(() => import('@/pages/DecisionMirrorPage').then((m) => ({ default: m.DecisionMirrorPage })));
+const DecisionDetailPage = lazy(() => import('@/pages/DecisionDetailPage').then((m) => ({ default: m.DecisionDetailPage })));
+const BeliefsPage = lazy(() => import('@/pages/BeliefsPage').then((m) => ({ default: m.BeliefsPage })));
+const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ default: m.TimelinePage })));
+const EvidenceGraphPage = lazy(() => import('@/pages/EvidenceGraphPage').then((m) => ({ default: m.EvidenceGraphPage })));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+
+function PageSuspense({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-24 text-center text-sm text-slateink-light" role="status">
+          Loading…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 const PRODUCTION_ORIGIN = 'https://echoself.app';
 
@@ -69,13 +87,21 @@ function Shell({ route }: { route: Route }) {
   if (route.kind === 'auth') {
     return <AuthPage key={route.mode} mode={route.mode} />;
   }
-  if (route.detailId && route.detailKind === 'decision') {
-    return <DecisionDetailPage decisionId={route.detailId} />;
-  }
-  if (route.detailId && route.detailKind === 'memory') {
-    return <MemoryDetailPage memoryId={route.detailId} />;
-  }
-  switch (route.page) {
+  return (
+    <PageSuspense>
+      {route.detailId && route.detailKind === 'decision' ? (
+        <DecisionDetailPage decisionId={route.detailId} />
+      ) : route.detailId && route.detailKind === 'memory' ? (
+        <MemoryDetailPage memoryId={route.detailId} />
+      ) : (
+        <SwitchPage page={route.page} />
+      )}
+    </PageSuspense>
+  );
+}
+
+function SwitchPage({ page }: { page: PageId }) {
+  switch (page) {
     case 'memories': return <MemoriesPage />;
     case 'chat': return <TwinChatPage />;
     case 'decisions': return <DecisionMirrorPage />;
