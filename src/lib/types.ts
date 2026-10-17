@@ -174,6 +174,15 @@ export interface TimelineEvent {
 
 export type ChatRole = 'user' | 'twin';
 
+/** A user correction saved against an interpretation of a memory record. */
+export interface InterpretationFlag {
+  id: string;
+  memory_id: string;
+  answer_excerpt: string;
+  correction_note: string;
+  created_at: string;
+}
+
 /** A stable reference from AI output back to an exact evidence record. */
 export interface SourceRef {
   memoryId: string;
@@ -196,6 +205,8 @@ export interface AnswerClaim {
   type: ClaimType;
   /** Records retrieved for THIS request that relate to the claim. */
   evidence: ClaimEvidence[];
+  /** User corrections that override or annotate this claim, when present. */
+  corrections?: InterpretationFlag[];
 }
 
 /** Two retrieved records that pull in opposite directions; both are shown, no winner picked. */
@@ -203,6 +214,17 @@ export interface EvidenceConflict {
   a: { memoryId: string; title: string; occurred_at: string; excerpt: string };
   b: { memoryId: string; title: string; occurred_at: string; excerpt: string };
   explanation: string;
+}
+
+/**
+ * A user correction shown beside the record it amends. Both sides are displayed;
+ * no winner is picked — mirrors EvidenceConflict semantics.
+ */
+export interface EvidenceCorrection {
+  memoryId: string;
+  memoryTitle: string;
+  correction: string;
+  recordedAt: string;
 }
 
 /** Structured, evidence-grounded twin reply. */
@@ -217,6 +239,8 @@ export interface TwinReply {
   claims?: AnswerClaim[];
   /** Record pairs found in conflict for this question. */
   conflicts?: EvidenceConflict[];
+  /** User corrections relevant to this reply's evidence, shown beside their records. */
+  corrections?: EvidenceCorrection[];
 }
 
 export interface ChatMessage {

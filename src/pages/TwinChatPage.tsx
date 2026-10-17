@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, Quote, ChevronDown, Flag, Pencil, AlertTriangle, Settings2 } from 'lucide-react';
+import { Send, Sparkles, Quote, ChevronDown, Flag, Pencil, AlertTriangle, Settings2, ShieldAlert } from 'lucide-react';
 import { memoriesService, beliefsService, flagsService } from '@/lib/services';
 import { askTwin, twinMode, TwinUnavailableError } from '@/lib/twinService';
 import type { TwinMode } from '@/lib/twinService';
@@ -7,6 +7,8 @@ import type { ChatMessage, Memory, TwinReply } from '@/lib/types';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { SectionHeading, LoadingState, ErrorState, DemoModeBanner } from '@/components/ui';
 import { formatMemoryForContext } from '@/lib/retrieval';
+import { useAuth } from '@/lib/auth';
+import type { InterpretationFlag } from '@/lib/types';
 
 const SUGGESTED_QUESTIONS = [
   'What priorities have I repeatedly expressed?',
@@ -25,6 +27,11 @@ function nextMessageId() {
 export function TwinChatPage() {
   const memories = useAsyncData(() => memoriesService.list(), []);
   const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
+  const { user, loading: authLoading } = useAuth();
+  const flags = useAsyncData(
+    async (): Promise<InterpretationFlag[]> => (user ? await flagsService.list() : []),
+    [user?.id]
+  );
   const loading = memories.loading || beliefs.loading;
   const error = memories.error || beliefs.error;
 
@@ -58,7 +65,12 @@ export function TwinChatPage() {
     ]);
     setThinking(true);
     try {
-      const { reply } = await askTwin(question, memories.data ?? [], beliefs.data ?? []);
+      const { reply } = await askTwin(
+        question,
+        memories.data ?? [],
+        beliefs.data ?? [],
+        flags.data ?? []
+      );
       setMessages((prev) => [
         ...prev,
         {
@@ -89,7 +101,7 @@ export function TwinChatPage() {
   }
 
   async function submitFlag() {
-    if (!flagging || !flagNote.trim()) return;
+    if (!flagging || !flagNote.trim() || !user) return;
     const message = messages.find((m) => m.id === flagging.messageId);
     const memory = memoryById.get(flagging.memoryId);
     if (!message || !memory) return;
@@ -101,6 +113,7 @@ export function TwinChatPage() {
         correction_note: flagNote.trim(),
       });
       setFlagState('saved');
+      flags.reload();
       setMessages((prev) =>
         prev.map((m) => (m.id === flagging.messageId ? { ...m, flagged: true } : m))
       );
@@ -179,6 +192,7 @@ export function TwinChatPage() {
                   message={m}
                   memories={memories.data ?? []}
                   mode={mode}
+                  canFlag={!!user && !authLoading}
                   evidenceOpen={!!openEvidence[m.id]}
                   onToggleEvidence={() =>
                     setOpenEvidence((prev) => ({ ...prev, [m.id]: !prev[m.id] }))
@@ -267,7 +281,7 @@ export function TwinChatPage() {
                 <h2 className="font-serif text-lg text-charcoal mb-1">Flag this interpretation</h2>
                 <p className="text-xs text-slateink leading-relaxed">
                   About the memory "{memoryById.get(flagging.memoryId)?.title ?? 'Unknown record'}".
-                  Your correction is saved with the record so the twin's view can be fixed.
+                  Your correction is saved with the record and will appear beside it in future answers.
                 </p>
               </div>
             </div>
@@ -318,6 +332,7 @@ function TwinMessage({
   message,
   memories,
   mode,
+  canFlag,
   evidenceOpen,
   onToggleEvidence,
   onFlag,
@@ -326,6 +341,7 @@ function TwinMessage({
   message: ChatMessage;
   memories: Memory[];
   mode: TwinMode;
+  canFlag: boolean;
   evidenceOpen: boolean;
   onToggleEvidence: () => void;
   onFlag: (memoryId: string) => void;
@@ -374,6 +390,31 @@ function TwinMessage({
           </div>
         )}
 
+        {reply && reply.corrections && reply.corrections.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-sage-dark flex items-center gap-1">
+              <ShieldAlert className="w-3 h-3" aria-hidden /> Your corrections — shown beside the records, nothing overwritten
+            </p>
+            {reply.corrections.map((corr, i) => (
+              <div key={i} className="rounded-xl bg-sage-light/40 border border-sage-dark/25 px-3.5 py-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <a
+                    href={`#/memory/${corr.memoryId}`}
+                    className="block rounded-lg bg-white/80 border border-linen-dark px-3 py-2 hover:border-terracotta transition-colors"
+                  >
+                    <p className="text-[9px] uppercase tracking-[0.12em] text-slateink-light mb-1">Recorded</p>
+                    <p className="font-serif text-xs text-charcoal">{corr.memoryTitle}</p>
+                  </a>
+                  <div className="block rounded-lg bg-white/80 border border-sage-dark/25 px-3 py-2">
+                    <p className="text-[9px] uppercase tracking-[0.12em] text-sage-dark mb-1">Your correction</p>
+                    <p className="text-[11px] leading-relaxed text-charcoal">“{corr.correction}”</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {reply && reply.claims && reply.claims.length > 0 && (
           <div className="mt-3">
             <p className="text-[10px] uppercase tracking-[0.15em] text-slateink-light mb-1.5">
@@ -408,6 +449,15 @@ function TwinMessage({
                           {ev.excerpt && (
                             <p className="text-[11px] leading-relaxed text-slateink italic">“{ev.excerpt}”</p>
                           )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {c.corrections && c.corrections.length > 0 && (
+                    <ul className="mt-1.5 space-y-1 border-l-2 border-sage-dark/40 pl-2.5">
+                      {c.corrections.map((corr) => (
+                        <li key={corr.id} className="text-[11px] leading-relaxed text-sage-dark">
+                          <span className="font-medium">You corrected this:</span> “{corr.correction_note}”
                         </li>
                       ))}
                     </ul>
@@ -506,7 +556,7 @@ function TwinMessage({
                           {mem.title}
                         </a>
                         <div className="flex shrink-0 items-center gap-1">
-                          {!message.flagged && (
+                          {canFlag && !message.flagged && (
                             <button
                               onClick={() => onFlag(s.memoryId)}
                               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-slateink hover:text-amberclay-DEFAULT hover:bg-amberclay-light transition-colors"

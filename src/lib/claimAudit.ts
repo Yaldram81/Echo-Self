@@ -2,6 +2,8 @@ import type {
   AnswerClaim,
   ClaimEvidence,
   EvidenceConflict,
+  EvidenceCorrection,
+  InterpretationFlag,
   Memory,
   SourceRef,
   TwinReply,
@@ -241,4 +243,185 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
 export function withConflicts(reply: TwinReply, contextMemories: Memory[]): TwinReply {
   const conflicts = findConflictingPairs(contextMemories);
   return conflicts.length > 0 ? { ...reply, conflicts } : reply;
+}
+
+/* ---------------- user corrections (side-by-side, never overwriting) ---------------- */
+
+/**
+ * Attach saved user corrections to a reply: relevant corrections are shown
+ * beside the records they amend (both sides, no winner picked), and claims
+ * resting on a corrected record carry the correction as provenance.
+ */
+export function withCorrections(
+  reply: TwinReply,
+  contextMemories: Memory[],
+  flags: InterpretationFlag[]
+): TwinReply {
+  const ctxIds = new Set(contextMemories.map((m) => m.id));
+  const relevant = flags.filter((f) => ctxIds.has(f.memory_id) && f.correction_note?.trim());
+  if (relevant.length === 0) return reply;
+
+  const memById = new Map(contextMemories.map((m) => [m.id, m]));
+  const corrections: EvidenceCorrection[] = relevant.map((f) => ({
+    memoryId: f.memory_id,
+    memoryTitle: memById.get(f.memory_id)?.title ?? 'Record',
+    correction: f.correction_note.trim(),
+    recordedAt: f.created_at,
+  }));
+
+  const claims = reply.claims?.map((c) => {
+    const claimFlags = relevant.filter((f) => c.evidence.some((e) => e.memoryId === f.memory_id));
+    return claimFlags.length > 0 ? { ...c, corrections: claimFlags } : c;
+  });
+
+  return { ...reply, corrections, claims: claims ?? reply.claims };
+}
+
+/* ---------------- invented quote / date rejection ---------------- */
+
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const QUOTE_RE = /[“«]([^“«»]{8,400})[”»]|"([^"]{8,400})"/g;
+
+/** Quoted passages in `text` that appear verbatim in none of the corpus strings. */
+export function findUnverifiedQuotes(text: string, corpus: string[]): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(QUOTE_RE)) {
+    const quote = m[1] ?? m[2];
+    if (!quote) continue;
+    const n = normalizeForMatch(quote).replace(/[.,!?;:]$/, '');
+    if (n.length < 8) continue;
+    if (!corpus.some((c) => normalizeForMatch(c).includes(n))) out.push(quote);
+  }
+  return out;
+}
+
+const MONTH_NAMES: Record<string, number> = {
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
+  may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8, september: 9,
+  sept: 9, sep: 9, october: 10, oct: 10, november: 11, nov: 11, december: 12, dec: 12,
+};
+
+const DATE_RE =
+  /\b(\d{4})-(\d{2})-(\d{2})\b|\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/gi;
+
+interface FoundDate {
+  text: string;
+  iso?: string;
+  month?: number;
+  day?: number;
+}
+
+function findDates(text: string): FoundDate[] {
+  const out: FoundDate[] = [];
+  for (const m of text.matchAll(DATE_RE)) {
+    if (m[1]) {
+      out.push({ text: m[0], iso: m[1] });
+    } else if (m[4]) {
+      const month = MONTH_NAMES[m[4].toLowerCase()];
+      const day = parseInt(m[5], 10);
+      if (month && day >= 1 && day <= 31) out.push({ text: m[0], month, day });
+    }
+  }
+  return out;
+}
+
+/**
+ * Dates in `text` that no record supports: not the date of a retrieved record,
+ * and not written anywhere in the user-authored corpus.
+ */
+export function findUnverifiedDates(text: string, memories: Memory[], corpus: string[]): string[] {
+  const corpusNorm = corpus.map(normalizeForMatch).join('\n');
+  const isoDates = new Set(memories.map((m) => m.occurred_at.slice(0, 10)));
+  return findDates(text)
+    .filter((d) => {
+      if (d.iso) return !isoDates.has(d.iso) && !corpusNorm.includes(d.iso);
+      if (d.month === undefined || d.day === undefined) return true;
+      const dayMatch = memories.some((m) => {
+        const dt = new Date(m.occurred_at);
+        return dt.getMonth() + 1 === d.month && dt.getDate() === d.day;
+      });
+      if (dayMatch) return false;
+      const names = Object.keys(MONTH_NAMES).filter((k) => MONTH_NAMES[k] === d.month);
+      return !names.some((n) => corpusNorm.includes(`${n} ${d.day}`));
+    })
+    .map((d) => d.text);
+}
+
+/**
+ * Remove invented quotes and dates from a reply's answer text and declare the
+ * removal as a gap. Anything the records do not verbatim contain is rejected,
+ * not shown as evidence. Citation IDs were already validated upstream; this
+ * guards the words and dates themselves.
+ */
+export function rejectInventedContent(
+  reply: TwinReply,
+  contextMemories: Memory[],
+  extraUserText: string[] = []
+): TwinReply {
+  const corpus = [...contextMemories.map((m) => `${m.title} ${m.content}`), ...extraUserText];
+  let answer = reply.answer;
+  const removed: string[] = [];
+
+  const badQuotes = findUnverifiedQuotes(answer, corpus);
+  for (const q of badQuotes) {
+    answer = answer.split(`“${q}”`).join('[unverified quote removed]');
+    answer = answer.split(`"${q}"`).join('[unverified quote removed]');
+  }
+  if (badQuotes.length > 0) {
+    removed.push(
+      `${badQuotes.length} quoted passage${badQuotes.length === 1 ? '' : 's'} that appear${badQuotes.length === 1 ? 's' : ''} in no record`
+    );
+  }
+
+  const badDates = findUnverifiedDates(answer, contextMemories, corpus);
+  for (const d of badDates) answer = answer.split(d).join('[unverified date removed]');
+  if (badDates.length > 0) {
+    removed.push(`${badDates.length} date${badDates.length === 1 ? '' : 's'} the records do not support`);
+  }
+
+  if (removed.length === 0) return reply;
+  return {
+    ...reply,
+    answer,
+    gaps: Array.from(new Set([...reply.gaps, `Removed ${removed.join(' and ')} — they were not found in your records, so they are not shown as evidence.`])),
+  };
+}
+
+/* ---------------- explicit uncertainty for sparse / stale / irrelevant retrieval ---------------- */
+
+/**
+ * Declare uncertainty when the evidence base is thin: no matches, very few
+ * matches, only old records, or matches that share mere incidental keywords
+ * with the question.
+ */
+export function withUncertainty(reply: TwinReply, question: string, contextMemories: Memory[]): TwinReply {
+  const gaps = new Set(reply.gaps);
+  if (contextMemories.length === 0) {
+    gaps.add('No records matched this question at all — the topic may simply not be recorded.');
+  } else {
+    if (contextMemories.length === 1) {
+      gaps.add('Only one record matched — the evidence base for this answer is thin.');
+    }
+    const newest = contextMemories
+      .map((m) => new Date(m.occurred_at).getTime())
+      .reduce((a, b) => Math.max(a, b), 0);
+    const ageDays = (Date.now() - newest) / 86_400_000;
+    if (ageDays > 180) {
+      gaps.add(
+        `The most recent matching record is about ${Math.round(ageDays / 30)} months old — your thinking may have moved on since.`
+      );
+    }
+    if (isWeakMatch(question, contextMemories)) {
+      gaps.add('The matching records share only incidental keywords with the question — they may not actually answer it.');
+    }
+  }
+  return { ...reply, gaps: Array.from(gaps) };
 }

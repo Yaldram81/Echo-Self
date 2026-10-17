@@ -1,30 +1,44 @@
 /**
  * Evaluation runner for the Twin Chat audit pipeline.
- * Runs with: node scripts/run-eval.mjs (after tsc, or via tsx)
+ * Runs with: npx tsx scripts/run-eval.mjs
  * Uses the same retrieval + audit modules the app ships with.
  */
 import { retrieveMemories } from '../src/lib/retrieval.ts';
-import { auditReply, withConflicts } from '../src/lib/claimAudit.ts';
+import {
+  auditReply, withConflicts, withCorrections, withUncertainty, rejectInventedContent,
+} from '../src/lib/claimAudit.ts';
 import { composeDemoReply } from '../src/lib/twinService.ts';
 import {
   EVAL_CASES, EVAL_MEMORIES, EVAL_BELIEFS, runEvalCase, summarize,
 } from '../src/lib/evalSuite.ts';
 
 function runCase(c) {
-  const candidates = retrieveMemories(c.question, EVAL_MEMORIES, 8);
+  const corpus = c.emptyCorpus ? [] : EVAL_MEMORIES;
+  const candidates = retrieveMemories(c.question, corpus, 8);
   const contextMemories = candidates.map((cand) => cand.memory);
 
   // Demo-mode composition, mirroring askTwin's demo path.
-  let reply = composeDemoReply(c.question, EVAL_MEMORIES, EVAL_BELIEFS);
+  let reply = composeDemoReply(c.question, corpus, EVAL_BELIEFS);
 
   // Simulate the invalid-citation scenarios: inject a source the model "hallucinated".
   if (c.invalidSourceInjection) {
     reply = { ...reply, sources: [...reply.sources, c.invalidSourceInjection] };
   }
 
-  const validIds = new Set(EVAL_MEMORIES.map((m) => m.id));
+  // Simulate a model inventing a quote or date inside its answer text.
+  if (c.inventedContentInjection) {
+    reply = { ...reply, answer: `${reply.answer}\n\n${c.inventedContentInjection}` };
+  }
+
+  const validIds = new Set(corpus.map((m) => m.id));
   const grounded = { ...reply, sources: reply.sources.filter((s) => validIds.has(s.memoryId)) };
-  const audited = withConflicts(auditReply(grounded, contextMemories), contextMemories);
+  const cleaned = rejectInventedContent(grounded, contextMemories);
+  const uncertain = withUncertainty(
+    withConflicts(auditReply(cleaned, contextMemories), contextMemories),
+    c.question,
+    contextMemories
+  );
+  const audited = withCorrections(uncertain, contextMemories, c.flags ?? []);
   return runEvalCase(c, audited, contextMemories);
 }
 

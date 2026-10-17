@@ -64,7 +64,9 @@ src/
 `VITE_TWIN_DEMO_MODE=true` in `.env` selects the mode:
 
 - **Demo mode (default in this repo):** answers are composed locally from the sample persona's real records using keyword retrieval, routed by question type (priorities, conflicts, changes over time, general lookup). Replies are explicitly labeled as sample output and grounded in the records shown in the evidence panels. Missing evidence yields an honest "I don't find recorded evidence touching that" — the same behavior the live mode is required to have.
-- **Live mode:** calls the `twin-chat` edge function. The function ranks relevant memories server-side (keyword score × recency × your confidence rating), builds a strict evidence-only system prompt, calls Anthropic (Claude), then **coerces and validates the response**: citations that don't resolve to supplied memory IDs are dropped, inline `[id]` citations in the answer text are honored, and malformed responses surface a generic error instead of partial fabrications. A missing provider key returns a distinct `503 AI_NOT_CONFIGURED`, which the UI renders as a setup notice — not a fake answer.
+- **Live mode:** calls the `twin-chat` edge function. The function ranks relevant memories server-side (keyword score × recency × your confidence rating), injects your saved corrections into the context as authoritative user statements, builds a strict evidence-only system prompt, calls Anthropic (Claude), then **coerces and validates the response**: citations that don't resolve to supplied memory IDs are dropped, inline `[id]` citations in the answer text are honored, invented quotes and dates are stripped client-side, and malformed responses surface a generic error instead of partial fabrications. A missing provider key returns a distinct `503 AI_NOT_CONFIGURED`, which the UI renders as a setup notice — not a fake answer.
+
+**Claim-level Evidence Inspector (both modes):** every reply is decomposed into claims, each typed as directly supported (backed by verbatim user-authored text), interpretation (the twin's reading, AI-generated), conflicting evidence, or unknown. Source previews link each claim — not just the answer — to the exact memory record. Saved user corrections are loaded with the records, rank as user-authored evidence in retrieval, and are shown **side by side** with the original record (like conflicts: both sides, no winner picked). Explicit uncertainty is declared when records are sparse (one match), stale (newest match > 6 months), or only incidentally relevant. Quoted passages that appear verbatim in no record, and dates no record supports, are removed from answers and their removal declared in the gaps list — a valid citation ID alone is never treated as proof.
 
 The API key lives only in the edge function's server-side secrets. Nothing sensitive ships to the browser.
 
@@ -149,6 +151,12 @@ npm run lint       # eslint (currently 0 errors)
 - **Retrieval is keyword-based.** Both the demo composer and the server-side ranking use keyword scoring with recency/confidence weighting — not embeddings. It's honest about this in its own "gaps" output.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
 - **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.
+
+### Evidence Inspector evaluation (scripts/run-eval.mjs, 26 cases — observed 2026-10-17)
+
+Categories: directly answerable (3), paraphrase (2), unsupported (4), conflicting records (3), misleading keyword overlap (3), stale memory (2), invalid citation (2), user correction (2), empty records (1), irrelevant retrieval (2), invented quote or date (2). Observed results: **26/26 passed**; citation validity 100%; abstention accuracy 100%; retrieval failures 0%; evidence-support 79% on answerable cases (paraphrase cases compose lists rather than single supported claims — the answers are still grounded and citation-valid, the metric counts a reply "supported" only when every answerable case yields at least one supported claim with evidence).
+
+Failures found and fixed while building: the original 19-case suite had no way to detect invented quotes or dates inside an answer (now `rejectInventedContent` strips them and declares the removal); corrections were stored but never read back (now loaded per-request, ranked with the records, and surfaced side by side); sparse/stale/irrelevant retrievals produced confident-looking answers (now declared in gaps).
 
 ---
 

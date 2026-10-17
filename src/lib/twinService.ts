@@ -1,6 +1,13 @@
-import type { Belief, Memory, SourceRef, TwinReply } from './types';
+import type { Belief, InterpretationFlag, Memory, SourceRef, TwinReply } from './types';
 import { findBeliefConflicts, formatMemoryForContext, retrieveMemories } from './retrieval';
-import { auditReply, withConflicts, isWeakMatch } from './claimAudit';
+import {
+  auditReply,
+  withConflicts,
+  withCorrections,
+  withUncertainty,
+  rejectInventedContent,
+  isWeakMatch,
+} from './claimAudit';
 
 /**
  * Twin service abstraction.
@@ -227,7 +234,8 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
 export async function askTwin(
   question: string,
   memories: Memory[],
-  beliefs: Belief[]
+  beliefs: Belief[],
+  corrections: InterpretationFlag[] = []
 ): Promise<{ reply: TwinReply; contextMemories: Memory[] }> {
   if (twinMode() === 'live') {
     // Retrieval is mirrored client-side so evidence panels can show the exact
@@ -236,9 +244,14 @@ export async function askTwin(
     const contextMemories = candidates.map((c) => c.memory);
     const reply = await askLive(question);
     // Audit against the records retrieved for THIS request: claim-level support,
-    // excerpts, and conflicts. Failure here surfaces, never fabricates.
-    const audited = withConflicts(auditReply(validateSources(reply, memories), contextMemories), contextMemories);
-    return { reply: audited, contextMemories };
+    // invented quote/date rejection, and conflicts. Failure surfaces, never fabricates.
+    const cleaned = rejectInventedContent(reply, contextMemories);
+    const audited = withConflicts(
+      auditReply(validateSources(cleaned, memories), contextMemories),
+      contextMemories
+    );
+    const uncertain = withUncertainty(audited, question, contextMemories);
+    return { reply: withCorrections(uncertain, contextMemories, corrections), contextMemories };
   }
 
   // demo mode: local composition from real records
@@ -250,8 +263,14 @@ export async function askTwin(
     ...reply,
     sources: reply.sources.filter((s) => validIds.has(s.memoryId)),
   };
+  const cleaned = rejectInventedContent(grounded, contextMemories);
+  const uncertain = withUncertainty(
+    withConflicts(auditReply(cleaned, contextMemories), contextMemories),
+    question,
+    contextMemories
+  );
   return {
-    reply: withConflicts(auditReply(grounded, contextMemories), contextMemories),
+    reply: withCorrections(uncertain, contextMemories, corrections),
     contextMemories,
   };
 }

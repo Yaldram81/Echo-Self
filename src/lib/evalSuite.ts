@@ -1,4 +1,4 @@
-import type { Belief, Memory, TwinReply } from './types';
+import type { Belief, InterpretationFlag, Memory, TwinReply } from './types';
 
 /**
  * Evaluation suite for the evidence-grounded Twin Chat.
@@ -16,7 +16,11 @@ export type EvalCategory =
   | 'contradictory'
   | 'misleading_keywords'
   | 'stale_memory'
-  | 'invalid_citation';
+  | 'invalid_citation'
+  | 'correction'
+  | 'empty_records'
+  | 'irrelevant_retrieval'
+  | 'invented_quote_or_date';
 
 export interface EvalCase {
   id: string;
@@ -32,6 +36,16 @@ export interface EvalCase {
   requiredExcerptTerm?: string;
   /** When true, the runner injects this fake source into the reply before audit. */
   invalidSourceInjection?: { memoryId: string; title: string };
+  /** Saved corrections available to the twin for this case. */
+  flags?: InterpretationFlag[];
+  /** When true, the corpus is emptied: the twin must abstain cleanly, not error. */
+  emptyCorpus?: boolean;
+  /** A quote or date that must be rejected because no record contains it. */
+  inventedContentInjection?: string;
+  /** When true, the reply must carry an explicit uncertainty gap about thin/stale/irrelevant evidence. */
+  expectUncertaintyGap?: boolean;
+  /** When true, the reply must surface the user's saved correction. */
+  expectCorrection?: boolean;
   note: string;
 }
 
@@ -127,6 +141,16 @@ export const EVAL_BELIEFS: Belief[] = [
     id: 'b-money-01', statement: 'Money is a tool for freedom, not a scoreboard.',
     kind: 'value', category: 'finance', strength: 88, status: 'active', formed_at: iso(1800),
     last_reflected_at: iso(30), last_reviewed: null, description: null, origin: 'user', created_at: iso(1800),
+  },
+];
+
+export const EVAL_FLAGS: InterpretationFlag[] = [
+  {
+    id: 'f-run-01',
+    memory_id: 'm-run-02',
+    answer_excerpt: 'The running habit appears to have lapsed.',
+    correction_note: 'The lapse was planned rest for an injury, not a failed habit — I resumed the next week.',
+    created_at: iso(1),
   },
 ];
 
@@ -254,6 +278,56 @@ export const EVAL_CASES: EvalCase[] = [
     invalidSourceInjection: { memoryId: 'm-run-01', title: 'Morning runs replaced scrolling' },
     note: 'A real-but-wrong ID (not retrieved for this question) must be caught as out-of-context.',
   },
+  // --- user corrections (2) ---
+  {
+    id: 'cr-01', category: 'correction',
+    question: 'How is my running routine going?',
+    flags: EVAL_FLAGS,
+    expectCorrection: true,
+    note: 'A saved correction about the lapse record must be surfaced beside the original record, not silently replace it.',
+  },
+  {
+    id: 'cr-02', category: 'correction',
+    question: 'Did my exercise habit fail recently?',
+    flags: EVAL_FLAGS,
+    expectCorrection: true, expectUncertaintyGap: false,
+    note: 'The correction reframes the lapse; the reply must carry it as user-authored provenance.',
+  },
+  // --- empty records (1) ---
+  {
+    id: 'em-01', category: 'empty_records',
+    question: 'What priorities have I repeatedly expressed?',
+    emptyCorpus: true, expectAbstention: true,
+    note: 'With zero records the twin must abstain cleanly and declare the gap — never throw or invent.',
+  },
+  // --- irrelevant retrieval (2) ---
+  {
+    id: 'ir-01', category: 'irrelevant_retrieval',
+    question: 'What is my stance on remote work culture?',
+    expectUncertaintyGap: true,
+    note: 'Records share soft keywords (work, money, mornings) but none address remote-work culture; the twin must label the match as incidental.',
+  },
+  {
+    id: 'ir-02', category: 'irrelevant_retrieval',
+    question: 'How is my apartment renovation project coming along?',
+    expectUncertaintyGap: true,
+    note: 'The apartment word appears only in the dog-adoption record; the match is incidental and must be labeled.',
+  },
+  // --- invented quotes and dates (2) ---
+  {
+    id: 'iq-01', category: 'invented_quote_or_date',
+    question: 'What happened when I negotiated my salary?',
+    expectedEvidenceIds: ['m-salary-01'],
+    inventedContentInjection: 'I told them "I know my market value and will not accept less" before accepting.',
+    note: 'A fabricated verbatim quote inside the answer must be stripped and declared as removed.',
+  },
+  {
+    id: 'iq-02', category: 'invented_quote_or_date',
+    question: 'What did I record about reading before bed?',
+    expectedEvidenceIds: ['m-reading-01'],
+    inventedContentInjection: 'This habit peaked on March 3rd according to your journal.',
+    note: 'An invented date must be stripped; the records carry no such date.',
+  },
 ] ;
 
 export function runEvalCase(
@@ -303,6 +377,42 @@ export function runEvalCase(
       detail: (reply.gaps ?? []).length > 0
         ? 'Missing-evidence gap declared.'
         : 'No gap declared despite abstaining.',
+    });
+  }
+
+  if (c.emptyCorpus) {
+    checks.push({
+      name: 'clean_empty_handling',
+      passed: (reply.answer ?? '').trim().length > 0,
+      detail: (reply.answer ?? '').trim().length > 0
+        ? 'Empty corpus produced a structured abstention, not a crash.'
+        : 'Empty corpus produced an empty or missing answer.',
+    });
+  }
+
+  if (c.expectUncertaintyGap) {
+    const gapText = (reply.gaps ?? []).join(' ').toLowerCase();
+    const hasUncertainty =
+      gapText.includes('incidental') || gapText.includes('thin') || gapText.includes('not actually answer');
+    checks.push({
+      name: 'uncertainty_declared',
+      passed: hasUncertainty,
+      detail: hasUncertainty
+        ? 'Sparse/irrelevant-evidence uncertainty declared in gaps.'
+        : `No uncertainty gap despite weak retrieval. Gaps: ${(reply.gaps ?? []).join(' | ')}`,
+    });
+  }
+
+  if (c.expectCorrection) {
+    const correctionSurfaced =
+      (reply.corrections ?? []).length > 0 ||
+      claims.some((cl) => (cl.corrections ?? []).length > 0);
+    checks.push({
+      name: 'correction_surfaced',
+      passed: correctionSurfaced,
+      detail: correctionSurfaced
+        ? 'Saved user correction shown beside the record.'
+        : 'A saved correction existed for the retrieved records but was not surfaced.',
     });
   }
 
@@ -359,6 +469,21 @@ export function runEvalCase(
         : injected
           ? 'Invalid reference passed through without audit.'
           : 'Invalid reference was filtered before reply.',
+    });
+  }
+
+  if (c.inventedContentInjection) {
+    const answer = reply.answer ?? '';
+    const quoteRejected = !answer.includes(c.inventedContentInjection);
+    const declaredRemoved = (reply.gaps ?? []).some((g) => g.toLowerCase().includes('removed'));
+    checks.push({
+      name: 'invented_content_rejected',
+      passed: quoteRejected && declaredRemoved,
+      detail: quoteRejected && declaredRemoved
+        ? 'Invented quote/date stripped from the answer and its removal declared.'
+        : quoteRejected
+          ? 'Invented content removed but no removal was declared in gaps.'
+          : 'Invented quote/date passed through into the answer.',
     });
   }
 

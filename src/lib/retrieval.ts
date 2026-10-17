@@ -1,4 +1,4 @@
-import type { Belief, Memory } from './types';
+import type { Belief, InterpretationFlag, Memory } from './types';
 
 export interface EvidenceCandidate {
   memory: Memory;
@@ -144,4 +144,16 @@ export function formatMemoryForContext(m: Memory): string {
     `USER TEXT: ${m.content}`,
     `TWIN INTERPRETATION (AI-generated, not user-authored): ${m.ai_interpretation ?? 'none'}`,
   ].join('\n');
+}
+
+/**
+ * A record's user-authored text plus any correction notes the user saved
+ * against it. Corrections are the user's own words and rank alongside the
+ * original content; the original record is never modified.
+ */
+export function userTextWithCorrections(m: Memory, flags: InterpretationFlag[]): string {
+  const notes = flags
+    .filter((f) => f.memory_id === m.id && f.correction_note?.trim())
+    .map((f) => f.correction_note.trim());
+  return notes.length > 0 ? `${m.content} ${notes.join(' ')}` : m.content;
 }

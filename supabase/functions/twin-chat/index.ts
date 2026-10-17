@@ -34,6 +34,12 @@ type BeliefRow = {
   last_reflected_at: string;
 };
 
+type FlagRow = {
+  memory_id: string;
+  correction_note: string;
+  created_at: string;
+};
+
 type TwinSource = { memoryId: string; title: string };
 
 type TwinClaim = { claim: string; type: string; evidence: { memoryId: string; excerpt?: string }[] };
@@ -62,6 +68,8 @@ Rules:
   4. unknown: the records do not cover it — say plainly what is missing. NEVER invent a personal fact to complete the answer.
 - Each claim carries "evidence": the memory ids whose USER TEXT (not the TWIN INTERPRETATION field) supports it, plus a short verbatim excerpt from that text. An empty evidence list is required for interpretation and unknown claims.
 - Do not cite the TWIN INTERPRETATION field as evidence for a directly_supported claim — it is AI-generated, not user-authored.
+- USER CORRECTIONS are the user's own later statements about a record. Treat them as authoritative USER TEXT; when a correction conflicts with the record's original text, present BOTH side by side with their dates and do not pick a winner.
+- Quotes and dates: only quote text that appears verbatim in the records, and only state dates that a record itself carries. If the records support the claim without an exact quote, paraphrase instead of quoting. Never reconstruct a date from context.
 - Do not infer sensitive personal attributes (health conditions, finances, relationships status) beyond what the records explicitly say.
 - Do not roleplay a therapist, fortune teller, or fictional persona.
 
@@ -125,11 +133,26 @@ function rankMemories(memories: MemoryRow[], question: string, limit = 8): Memor
     .map((s) => s.m);
 }
 
-function buildContextBlock(memories: MemoryRow[], beliefs: BeliefRow[]): string {
-  const memoryLines = memories.map(
-    (m) =>
-      `[${m.id}] "${m.title}" — recorded ${m.occurred_at.slice(0, 10)}, category: ${m.category}, source: ${m.source}, mood: ${m.mood}, confidence: ${m.confidence}/100, tags: ${(m.tags ?? []).join(', ') || 'none'}.\nTEXT (written by the user): ${m.content}\nTWIN INTERPRETATION (AI-generated, not user-authored): ${m.ai_interpretation ?? 'none'}`
-  );
+function buildContextBlock(
+  memories: MemoryRow[],
+  beliefs: BeliefRow[],
+  corrections: FlagRow[]
+): string {
+  const corrByMemory = new Map<string, string[]>();
+  for (const f of corrections) {
+    const list = corrByMemory.get(f.memory_id) ?? [];
+    list.push(f.correction_note);
+    corrByMemory.set(f.memory_id, list);
+  }
+  const memoryLines = memories.map((m) => {
+    const corr = corrByMemory.get(m.id);
+    return [
+      `[${m.id}] "${m.title}" — recorded ${m.occurred_at.slice(0, 10)}, category: ${m.category}, source: ${m.source}, mood: ${m.mood}, confidence: ${m.confidence}/100, tags: ${(m.tags ?? []).join(', ') || 'none'}.`,
+      `TEXT (written by the user): ${m.content}`,
+      corr && corr.length > 0 ? `USER CORRECTION (later statement by the user, authoritative; show alongside the original text): ${corr.join(' | ')}` : null,
+      `TWIN INTERPRETATION (AI-generated, not user-authored): ${m.ai_interpretation ?? 'none'}`,
+    ].filter(Boolean).join('\n');
+  });
   const beliefLines = beliefs.map(
     (b) =>
       `belief/${b.id} "${b.statement}" — kind: ${b.kind}, category: ${b.category}, strength: ${b.strength}/100, status: ${b.status}, formed ${b.formed_at.slice(0, 10)}`
@@ -289,11 +312,21 @@ Deno.serve(async (req: Request) => {
       .limit(100);
     if (belErr) throw belErr;
 
+    // The caller's saved corrections: RLS scopes these to the authenticated
+    // user, so signed-out callers see none and users see only their own.
+    const { data: flagsData, error: flagErr } = await supabase
+      .from('interpretation_flags')
+      .select('memory_id,correction_note,created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (flagErr) throw flagErr;
+
     const memories = (memoriesData ?? []) as MemoryRow[];
     const beliefs = (beliefsData ?? []) as BeliefRow[];
+    const corrections = (flagsData ?? []) as FlagRow[];
 
     const selected = rankMemories(memories, question);
-    const contextBlock = buildContextBlock(selected, beliefs);
+    const contextBlock = buildContextBlock(selected, beliefs, corrections);
 
     const providerRes = await providerRequest(SYSTEM_PROMPT, `${contextBlock}\n\n=== QUESTION ===\n${question}`, apiKey);
     if (!providerRes.ok) {

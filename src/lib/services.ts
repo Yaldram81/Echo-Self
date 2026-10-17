@@ -5,6 +5,7 @@ import type {
   BeliefInput,
   Decision,
   DecisionInput,
+  InterpretationFlag,
   Memory,
   MemoryInput,
   TimelineEvent,
@@ -22,6 +23,12 @@ export const flagsService = {
   async create(input: { memory_id: string; answer_excerpt: string; correction_note: string }): Promise<void> {
     const { error } = await supabase.from('interpretation_flags').insert(input);
     if (error) throw new Error(error.message);
+  },
+  /** Saved corrections, newest first. RLS scopes these to the signed-in user. */
+  async list(): Promise<InterpretationFlag[]> {
+    return unwrap(
+      supabase.from('interpretation_flags').select('*').order('created_at', { ascending: false })
+    );
   },
 };
 
