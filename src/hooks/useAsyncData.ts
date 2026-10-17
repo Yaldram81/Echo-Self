@@ -26,11 +26,13 @@ export function useAsyncData<T>(
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setState({
-            data: null,
+          setState((s) => ({
+            // A failed refresh keeps the previously loaded records visible;
+            // blanking them would punish a transient network blip.
+            data: s.data,
             loading: false,
             error: err instanceof Error ? err.message : 'Something went wrong.',
-          });
+          }));
         }
       });
     return () => {
