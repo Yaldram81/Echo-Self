@@ -109,20 +109,21 @@ check('not-found has route metadata', !!ROUTE_META.notFound && !emDash.test(ROUT
 console.log('— Sitemap and robots');
 
 const sitemap = read('public/sitemap.xml');
+const robotsText = read('public/robots.txt');
 const sitemapLocs = [...sitemap.matchAll(/<loc>(https?:\/\/[^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
 check('sitemap has at least the home route', sitemapLocs.includes('/'));
 check('sitemap only lists public, real routes', sitemapLocs.every((p) => {
   const r = routeFromPath(p);
   return r.kind === 'auth' || (r.kind === 'app' && (r.page === 'home' || r.page === 'chat'));
 }));
-check('sitemap excludes private pages', !sitemapLocs.some((p) => ['/memories', '/settings', '/timeline', '/graph', '/beliefs', '/decisions'].includes(p)));
+check('sitemap never lists a robots-disallowed path', sitemapLocs.every((p) => p === '/' || !new RegExp(`Disallow: ${p}`).test(robotsText)));
 check('sitemap is valid XML with urlset namespace', /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/.test(sitemap));
 check('sitemap has lastmod dates', (sitemap.match(/<lastmod>/g) ?? []).length === sitemapLocs.length);
 
-const robots = read('public/robots.txt');
-check('robots allows the home page', /Allow: \/ /.test(`${robots}\n`) || /Allow: \/$/m.test(robots));
-check('robots disallows private pages', ['/memories', '/chat', '/decisions', '/beliefs', '/timeline', '/graph', '/settings'].every((p) => new RegExp(`Disallow: ${p}`).test(robots)));
-check('robots declares the sitemap', /Sitemap: .*sitemap\.xml/.test(robots));
+const robots = robotsText;
+check('robots allows the home page', /Allow: \/ /.test(`${robotsText}\n`) || /Allow: \/$/m.test(robotsText));
+check('robots disallows private pages', ['/memories', '/chat', '/decisions', '/beliefs', '/timeline', '/graph', '/settings'].every((p) => new RegExp(`Disallow: ${p}`).test(robotsText)));
+check('robots declares the sitemap', /Sitemap: .*sitemap\.xml/.test(robotsText));
 
 /* ------------------- static accessibility invariants ------------------- */
 console.log('— Accessibility (static)');

@@ -123,8 +123,9 @@ function AppRoutes() {
     setDocMeta(route);
     if (route.kind === 'app') window.scrollTo({ top: 0 });
   }, [route]);
-  // Auth redirect: signed-out visitors to personal pages go to sign-in (and
-  // are sent back after signing in); signed-in users skip the sign-in page.
+  // Signed-in users skip the sign-in page. Signed-out visitors may still browse
+  // the pages above: RLS scopes every read to the public sample persona, and the
+  // pages label that state with the demo banner.
   useEffect(() => {
     if (loading) return;
     if (route.kind === 'auth' && user) {
