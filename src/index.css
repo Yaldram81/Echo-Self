@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-paper text-charcoal font-sans;
+  }
+  ::selection {
+    @apply bg-terracotta/20;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-terracotta/60 ring-offset-2 ring-offset-paper rounded-md;
+  }
+}
+
+@layer components {
+  .editorial-rule {
+    @apply border-t border-linen-dark;
+  }
+  .card-surface {
+    @apply bg-white/70 border border-linen-dark/70 rounded-2xl shadow-card;
+  }
+}

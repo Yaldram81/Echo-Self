@@ -1,0 +1,194 @@
+import { supabase } from './supabaseClient';
+import type {
+  Belief,
+  BeliefHistoryPoint,
+  BeliefInput,
+  Decision,
+  DecisionInput,
+  Memory,
+  MemoryInput,
+  TimelineEvent,
+} from './types';
+
+type DbResult<T> = { data: T | null; error: { message: string } | null };
+
+async function unwrap<T>(query: PromiseLike<DbResult<T>>): Promise<T> {
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+export const flagsService = {
+  async create(input: { memory_id: string; answer_excerpt: string; correction_note: string }): Promise<void> {
+    const { error } = await supabase.from('interpretation_flags').insert(input);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const memoriesService = {
+  async list(orderBy: 'occurred_at' | 'created_at' = 'occurred_at'): Promise<Memory[]> {
+    return unwrap(
+      supabase.from('memories').select('*').order(orderBy, { ascending: false })
+    );
+  },
+  async get(id: string): Promise<Memory | null> {
+    return unwrap(
+      supabase.from('memories').select('*').eq('id', id).maybeSingle()
+    ) as Promise<Memory | null>;
+  },
+  async create(input: MemoryInput): Promise<Memory> {
+    return unwrap(
+      supabase.from('memories').insert(input).select().maybeSingle()
+    ) as Promise<Memory>;
+  },
+  async update(id: string, input: MemoryInput): Promise<Memory> {
+    return unwrap(
+      supabase.from('memories').update(input).eq('id', id).select().maybeSingle()
+    ) as Promise<Memory>;
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('memories').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const beliefsService = {
+  async listWithHistory(): Promise<Belief[]> {
+    const beliefs = await unwrap(
+      supabase.from('beliefs').select('*').order('last_reflected_at', { ascending: false })
+    );
+    const history = await unwrap(
+      supabase
+        .from('beliefs_history')
+        .select('*')
+        .order('recorded_at', { ascending: true })
+    );
+    return (beliefs as Belief[]).map((b) => ({
+      ...b,
+      history: (history as BeliefHistoryPoint[]).filter((h) => h.belief_id === b.id),
+    }));
+  },
+  async create(input: BeliefInput): Promise<Belief> {
+    const { data, error } = await supabase
+      .from('beliefs')
+      .insert({ ...input, origin: 'user' })
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as Belief;
+  },
+  async update(id: string, input: BeliefInput): Promise<void> {
+    const { error } = await supabase.from('beliefs').update(input).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  /** Confirm an AI suggestion: it becomes a user-owned statement. */
+  async confirmSuggestion(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('beliefs')
+      .update({ origin: 'confirmed_suggestion', last_reviewed: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  /** Dismiss an AI suggestion: removed entirely, never silently merged. */
+  async dismissSuggestion(id: string): Promise<void> {
+    const { error } = await supabase.from('beliefs').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('beliefs').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const decisionsService = {
+  async list(): Promise<Decision[]> {
+    return unwrap(
+      supabase.from('decisions').select('*').order('created_at', { ascending: false })
+    );
+  },
+  async get(id: string): Promise<Decision | null> {
+    return unwrap(
+      supabase.from('decisions').select('*').eq('id', id).maybeSingle()
+    ) as Promise<Decision | null>;
+  },
+  async create(input: DecisionInput): Promise<Decision> {
+    return unwrap(
+      supabase.from('decisions').insert(input).select().maybeSingle()
+    ) as Promise<Decision>;
+  },
+  async update(id: string, patch: Partial<Decision>): Promise<void> {
+    const { error } = await supabase.from('decisions').update(patch).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async recordChoice(id: string, option: string, rationale: string): Promise<void> {
+    const { error } = await supabase
+      .from('decisions')
+      .update({
+        status: 'decided',
+        chosen_option: option,
+        rationale: rationale || null,
+        decided_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async reopen(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('decisions')
+      .update({ status: 'unresolved', chosen_option: null, rationale: null, decided_at: null })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async saveReflection(
+    id: string,
+    reflection: { whatHappened: string; matchesOriginalReasoning: boolean; surprises: string; lesson: string }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('decisions')
+      .update({ reflection, reflected_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('decisions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const timelineService = {
+  async list(): Promise<TimelineEvent[]> {
+    return unwrap(
+      supabase.from('timeline_events').select('*').order('occurred_at', { ascending: false })
+    );
+  },
+  async create(input: Omit<TimelineEvent, 'id' | 'created_at'>): Promise<TimelineEvent> {
+    return unwrap(
+      supabase.from('timeline_events').insert(input).select().maybeSingle()
+    ) as Promise<TimelineEvent>;
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('timeline_events').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const dataManagementService = {
+  /** Export every record the persistence layer holds for this user. */
+  async exportAll(): Promise<Record<string, unknown[]>> {
+    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags'] as const;
+    const out: Record<string, unknown[]> = {};
+    for (const table of tables) {
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) throw new Error(error.message);
+      out[table] = data ?? [];
+    }
+    return out;
+  },
+  /** Delete every record in the given tables from the persistence layer. */
+  async deleteAll(tables: readonly string[]): Promise<void> {
+    for (const table of tables) {
+      const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw new Error(error.message);
+    }
+  },
+};
