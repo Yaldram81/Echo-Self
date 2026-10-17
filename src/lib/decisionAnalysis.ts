@@ -1,4 +1,4 @@
-import type { Belief, BeliefProposal, Decision, Memory, ScoreTrace, ValueTraceLine } from './types';
+import type { AnalysisSnapshot, Belief, BeliefProposal, Decision, Memory, ScoreTrace, ValueTraceLine } from './types';
 
 /**
  * Deterministic decision analysis engine.
@@ -10,7 +10,7 @@ import type { Belief, BeliefProposal, Decision, Memory, ScoreTrace, ValueTraceLi
  * Scores are preference alignment, not probability of success.
  */
 
-export const ANALYSIS_VERSION = 'dm-3';
+export const ANALYSIS_VERSION = 'dm-4';
 
 export type Classification = 'for' | 'against' | 'neutral' | 'unknown';
 export type ClassificationOrigin = 'explicit' | 'inferred' | 'override';
@@ -50,6 +50,8 @@ export interface OptionAlignment {
   score: number;
   /** True when no evidence classified for/against this option. */
   insufficientEvidence: boolean;
+  /** Why a score of 0 is not a real comparison (no values, all weights 0, no evidence). */
+  incompleteness: string | null;
   values: ValueAlignmentResult[];
   classifications: MemoryClassification[];
   /** Full arithmetic trace behind the score. */
@@ -64,6 +66,22 @@ export interface WeightSensitivity {
   baseline: string | null;
   /** Preferred option after the small change. */
   shifted: string | null;
+}
+
+/**
+ * Weight-range stability: the span over which the current leader stays ahead
+ * when ONE value's weight is swept across [0, 1] with the others held fixed.
+ * A narrow range means the option wins only under a narrow weighting
+ * configuration. Illustrative scenarios, not predictions.
+ */
+export interface StabilityRange {
+  value: string;
+  leader: string;
+  /** Lowest and highest weights (within [0,1]) at which `leader` still leads. */
+  low: number;
+  high: number;
+  /** The full [0,1] span — a wide range means the result is robust to this value. */
+  span: number;
 }
 
 export interface ConstraintStatus {
@@ -90,6 +108,10 @@ export interface DecisionReport {
   optionAlignments: OptionAlignment[];
   preferredOption: string | null;
   weightSensitivities: WeightSensitivity[];
+  /** Per-value weight span over which the current leader stays ahead. */
+  stabilityRanges: StabilityRange[];
+  /** Hash of the exact inputs behind this report; matches a stored snapshot. */
+  inputHash: string;
   /** Records classified AGAINST each option, with dates and links. */
   counterevidence: CounterevidenceItem[];
   constraintStatuses: ConstraintStatus[];
@@ -299,8 +321,8 @@ export function analyzeOptionValues(
       if (cls.classification === 'unknown' || cls.classification === 'neutral') unknownCount += 1;
     }
 
-    const weight = typeof weights[value] === 'number' ? weights[value] : 0.5;
-    const alignmentNote =
+  const weight = typeof weights[value] === 'number' ? weights[value] : 0.5;
+  const alignmentNote =
       touching.length === 0 && explicitItems.filter((e) => e.value === value).length === 0
         ? `No recorded memories or explicit pros/cons mention "${value}" — alignment on this value is unknown, not favorable.`
         : supporting === 0 && contradicting === 0
@@ -320,6 +342,19 @@ export function analyzeOptionValues(
     (acc, v) => acc + (v.supportingMemories + v.contradictingMemories) * v.weight, 0
   );
   const score = classifiedMass > 0 ? Math.max(-1, Math.min(1, net / classifiedMass)) : 0;
+
+  // An all-zero comparison must never read as a real "neutral" result.
+  const totalWeight = decision.values.reduce(
+    (acc, v) => acc + (typeof weights[v] === 'number' ? weights[v] : 0.5), 0
+  );
+  const incompleteness =
+    decision.values.length === 0
+      ? 'No values are linked to this decision, so no value-weighted score exists.'
+      : totalWeight === 0
+        ? 'All value weights are set to 0, so nothing can contribute to a score.'
+        : classifiedMass === 0
+          ? 'No directional evidence classifies for this option — unknown, not neutral.'
+          : null;
 
   // Arithmetic trace: every line shows inputs (counts by origin), the weighted
   // contribution, and the record links, so the score is reproducible by hand.
@@ -346,6 +381,7 @@ export function analyzeOptionValues(
     label: optionLabel,
     score,
     insufficientEvidence: classifiedMass === 0,
+    incompleteness,
     values: valueResults,
     classifications,
     trace,
@@ -353,7 +389,7 @@ export function analyzeOptionValues(
 }
 
 export function preferredOption(alignments: OptionAlignment[]): string | null {
-  const assessable = alignments.filter((a) => !a.insufficientEvidence);
+  const assessable = alignments.filter((a) => !a.insufficientEvidence && !a.incompleteness);
   if (assessable.length === 0) return null;
   const best = assessable.reduce((a, b) => (b.score > a.score ? b : a));
   if (best.score <= 0) return null;
@@ -395,6 +431,49 @@ export function findWeightSensitivities(
         out.push({ value, testedAt: next, baseline, shifted });
         break;
       }
+    }
+  }
+  return out;
+}
+
+/**
+ * Sweep each value's weight across [0, 1] (step 0.05, others fixed) and record
+ * the range where the current leader stays ahead. Deterministic and cheap;
+ * used for the "wins only under a narrow weighting" scenario label.
+ */
+export function findStabilityRanges(
+  decision: Decision,
+  memories: Memory[],
+  relevant: RelevantMemory[],
+  overrides: Record<string, Classification> = {}
+): StabilityRange[] {
+  const baseline = preferredOption(
+    decision.options.map((o) => analyzeOptionValues(o.label, decision, memories, relevant, overrides))
+  );
+  if (!baseline) return [];
+
+  const leaderAt = (weights: Record<string, number>): string | null =>
+    preferredOption(
+      decision.options.map((o) =>
+        analyzeOptionValues(o.label, { ...decision, value_weights: weights }, memories, relevant, overrides)
+      )
+    );
+
+  const out: StabilityRange[] = [];
+  for (const value of decision.values) {
+    const baseWeights = decision.value_weights ?? {};
+    const steps = 21;
+    let low: number | null = null;
+    let high: number | null = null;
+    for (let i = 0; i < steps; i += 1) {
+      const w = i / (steps - 1);
+      if (leaderAt({ ...baseWeights, [value]: w }) === baseline) {
+        if (low === null) low = w;
+        high = w;
+      }
+    }
+    if (low !== null && high !== null) {
+      out.push({ value, leader: baseline, low, high, span: high - low });
     }
   }
   return out;
@@ -553,6 +632,89 @@ export function suggestExperiments(decision: Decision): string[] {
   return out.slice(0, 5);
 }
 
+/**
+ * FNV-1a over a canonical JSON bundle of every analysis input. Deterministic,
+ * dependency-free, and stable across sessions — same inputs always yield the
+ * same hash, so a stored snapshot can prove which inputs produced a score.
+ */
+export function analysisInputHash(
+  decision: Decision,
+  memories: Memory[],
+  overrides: Record<string, Classification>
+): string {
+  const relevant = findRelevantMemories(decision, memories);
+  const bundle = {
+    version: ANALYSIS_VERSION,
+    title: decision.title,
+    context: decision.context,
+    constraints: decision.constraints,
+    uncertainties: decision.uncertainties,
+    values: decision.values,
+    valueWeights: decision.value_weights ?? {},
+    options: decision.options,
+    successDefinition: decision.success_definition,
+    overrides,
+    evidence: relevant.map((r) => ({ id: r.memory.id, title: r.memory.title, content: r.memory.content, tags: r.memory.tags, occurredAt: r.memory.occurred_at })),
+  };
+  // Canonical form: object keys sorted recursively, so a property reorder
+  // never changes the hash — only a real input change does.
+  const canonical = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(canonical);
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([k, val]) => [k, canonical(val)])
+      );
+    }
+    return v;
+  };
+  const json = JSON.stringify(canonical(bundle));
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < json.length; i += 1) {
+    hash ^= json.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/** Snapshot recorded whenever a generated analysis is shown. */
+export function buildAnalysisSnapshot(
+  decision: Decision,
+  memories: Memory[],
+  beliefs: Belief[],
+  overrides: Record<string, Classification>,
+  report: DecisionReport
+): AnalysisSnapshot {
+  return {
+    engineVersion: ANALYSIS_VERSION,
+    inputHash: analysisInputHash(decision, memories, overrides),
+    computedAt: new Date().toISOString(),
+    inputs: {
+      valueWeights: decision.value_weights ?? {},
+      evidenceMemoryIds: report.method.inputs.evidenceMemoryIds,
+      explicitItems: report.method.inputs.explicitItems,
+      overrideCount: Object.keys(overrides).length,
+    },
+  };
+}
+
+/**
+ * A stored snapshot is stale when the engine version changed or ANY input
+ * changed (weights, evidence, options, overrides). Stale snapshots are labeled
+ * in the UI, never silently presented as current.
+ */
+export function isSnapshotStale(
+  snapshot: AnalysisSnapshot | null,
+  decision: Decision,
+  memories: Memory[],
+  overrides: Record<string, Classification>
+): boolean {
+  if (!snapshot) return true;
+  if (snapshot.engineVersion !== ANALYSIS_VERSION) return true;
+  return snapshot.inputHash !== analysisInputHash(decision, memories, overrides);
+}
+
 const METHOD_EXPLANATION = [
   'Method: each option is scored by preference alignment only. Every memory related to the decision is classified per value as for / against / neutral / unknown; explicit pros and cons you wrote count as explicit assessments, keyword-matched memories as inferred (each with its rationale, correctable by you).',
   'Score: (weighted for − weighted against) ÷ (weighted for + weighted against), clamped to [-1, 1]. An option with no directional evidence scores 0 and is flagged "insufficient evidence" — that is unknown, not neutral. Weights come from your sliders and nothing else.',
@@ -616,7 +778,7 @@ export function extractCounterevidence(alignments: OptionAlignment[]): Counterev
  * change a weight and understand exactly why the comparison changes.
  */
 export function explainRanking(alignments: OptionAlignment[]): string[] {
-  const assessable = alignments.filter((a) => !a.insufficientEvidence);
+  const assessable = alignments.filter((a) => !a.insufficientEvidence && !a.incompleteness);
   if (assessable.length === 0) {
     return ['No option has directional evidence, so no value contribution affects a ranking yet.'];
   }
@@ -666,6 +828,7 @@ export function analyzeDecision(
     analyzeOptionValues(o.label, decision, memories, relevant, overrides)
   );
   const sensitivities = findWeightSensitivities(decision, memories, relevant, overrides);
+  const stability = findStabilityRanges(decision, memories, relevant, overrides);
   const contradictions = findContradictions(decision, beliefs, memories);
   const missing = findMissingInformation(decision, memories);
   const experiments = suggestExperiments(decision);
@@ -691,6 +854,8 @@ export function analyzeDecision(
     optionAlignments,
     preferredOption: preferredOption(optionAlignments),
     weightSensitivities: sensitivities,
+    stabilityRanges: stability,
+    inputHash: analysisInputHash(decision, memories, overrides),
     counterevidence: extractCounterevidence(optionAlignments),
     constraintStatuses,
     contradictions,

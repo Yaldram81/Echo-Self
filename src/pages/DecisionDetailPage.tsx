@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Scale,
@@ -21,9 +21,11 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
   analysisToEditableText,
   analyzeDecision,
+  buildAnalysisSnapshot,
   buildBeliefProposal,
   explainRanking,
   findAffectedBeliefs,
+  isSnapshotStale,
 } from '@/lib/decisionAnalysis';
 import { LoadingState, ErrorState, Badge } from '@/components/ui';
 import { navigateTo } from '@/lib/router';
@@ -358,22 +360,47 @@ function DecisionAnalysisSection({
   const [saving, setSaving] = useState(false);
   const [showEvidence, setShowEvidence] = useState(true);
 
+  // The report is always computed from the CURRENT sliders, so scores update
+  // live while a slider moves. Persistence happens on commit (release/keyup).
+  const liveDecision: Decision = useMemo(
+    () => ({ ...decision, value_weights: weights }),
+    [decision, weights]
+  );
   const report: Report = useMemo(
+    () => analyzeDecision(liveDecision, memories, beliefs, decision.classification_overrides ?? {}),
+    // exhaustive-deps: classification_overrides is read from `decision` above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liveDecision, memories, beliefs]
+  );
+  // The report at the SAVED weights, for "the ranking changed" comparisons.
+  const savedReport: Report = useMemo(
     () => analyzeDecision(decision, memories, beliefs, decision.classification_overrides ?? {}),
     [decision, memories, beliefs]
   );
+  const weightsDirty = useMemo(() => {
+    const saved = decision.value_weights ?? {};
+    const keys = new Set([...Object.keys(saved), ...Object.keys(weights)]);
+    return Array.from(keys).some((k) => (saved[k] ?? 0.5) !== (weights[k] ?? 0.5));
+  }, [decision.value_weights, weights]);
 
-  async function saveWeights(next: Record<string, number>) {
+  // Persist which inputs produced the stored analysis — only when the sliders
+  // match the saved decision, so a mid-drag state is never recorded.
+  useEffect(() => {
+    if (decision.analysis_edited || weightsDirty) return;
+    const snapshot = buildAnalysisSnapshot(
+      decision, memories, beliefs, decision.classification_overrides ?? {}, savedReport
+    );
+    decisionsService.update(decision.id, { analysis_snapshot: snapshot }).catch(() => {});
+  }, [decision, memories, beliefs, savedReport, weightsDirty]);
+
+  function commitWeights(next: Record<string, number>) {
     setWeights(next);
+    if (!weightsDirty) return;
     setSaving(true);
-    try {
-      await decisionsService.update(decision.id, { value_weights: next });
-      onChanged();
-    } catch (err) {
-      setAnalysisText(err instanceof Error ? err.message : 'Could not save weights.');
-    } finally {
-      setSaving(false);
-    }
+    decisionsService.update(decision.id, { value_weights: next })
+      .then(onChanged)
+      .catch((err) => setAnalysisText(err instanceof Error ? err.message : 'Could not save weights.'))
+      .finally(() => setSaving(false));
   }
 
   function startEditingAnalysis() {
@@ -460,11 +487,16 @@ function DecisionAnalysisSection({
       ) : (
         <GeneratedReport
           report={report}
+          savedReport={savedReport}
           weights={weights}
-          onWeightChange={saveWeights}
+          weightsDirty={weightsDirty}
+          savingWeights={saving}
+          onWeightChange={setWeights}
+          onWeightsCommit={commitWeights}
           showEvidence={showEvidence}
           onToggleEvidence={() => setShowEvidence((s) => !s)}
           decision={decision}
+          memories={memories}
           onOverride={saveOverride}
         />
       )}
@@ -474,25 +506,46 @@ function DecisionAnalysisSection({
 
 function GeneratedReport({
   report,
+  savedReport,
   weights,
+  weightsDirty,
+  savingWeights,
   onWeightChange,
+  onWeightsCommit,
   showEvidence,
   onToggleEvidence,
   decision,
+  memories,
   onOverride,
 }: {
   report: Report;
+  savedReport: Report;
   weights: Record<string, number>;
+  weightsDirty: boolean;
+  savingWeights: boolean;
   onWeightChange: (w: Record<string, number>) => void;
+  onWeightsCommit: (w: Record<string, number>) => void;
   showEvidence: boolean;
   onToggleEvidence: () => void;
   decision: Decision;
+  memories: Memory[];
   onOverride: (key: string, value: 'for' | 'against' | 'neutral' | 'unknown') => void;
 }) {
+  const snapshotStale = isSnapshotStale(
+    decision.analysis_snapshot, decision, memories, decision.classification_overrides ?? {}
+  );
   return (
     <div className="space-y-6">
       <div className="card-surface p-6 md:p-8">
         <p className="text-sm md:text-[15px] leading-relaxed text-charcoal">{report.summary}</p>
+        {snapshotStale && (
+          <p className="mt-3 rounded-lg bg-amberclay-light/50 px-3 py-2 text-[11px] text-charcoal-soft">
+            <AlertTriangle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
+            Inputs changed since this analysis was last recorded (weights, records, or your
+            corrections). The numbers below reflect the current inputs; the stored snapshot
+            documents what was recorded before.
+          </p>
+        )}
         <div className="mt-4 rounded-xl bg-amberclay-light/40 border border-amberclay-DEFAULT/30 px-4 py-3">
           <p className="text-[11px] leading-relaxed text-charcoal-soft">
             <Sparkles className="w-3.5 h-3.5 inline mr-1 -mt-0.5" aria-hidden />
@@ -506,10 +559,22 @@ function GeneratedReport({
       <OptionComparison
         alignments={report.optionAlignments}
         weights={weights}
+        weightsDirty={weightsDirty}
+        savingWeights={savingWeights}
         onWeightChange={onWeightChange}
+        onWeightsCommit={onWeightsCommit}
         decision={decision}
         onOverride={onOverride}
       />
+
+      {weightsDirty && savedReport.preferredOption !== report.preferredOption && (
+        <p className="rounded-xl bg-terracotta/10 px-4 py-3 text-xs text-terracotta-deep" role="status">
+          With the slider change, the lead moves
+          {savedReport.preferredOption ? <> from “{savedReport.preferredOption}”</> : ' from (no leader)'}
+          {report.preferredOption ? <> to “{report.preferredOption}”</> : ' to (no leader)'}. Release the slider to save —
+          the comparison is always recalculated from the actual inputs.
+        </p>
+      )}
 
       <RankingExplainer alignments={report.optionAlignments} />
 
@@ -561,6 +626,32 @@ function GeneratedReport({
                 {s.shifted ? <>to "{s.shifted}"</> : 'to (no leader)'}.
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {report.stabilityRanges.length > 0 && (
+        <div className="card-surface p-6 md:p-8">
+          <h3 className="flex items-center gap-2 font-serif text-lg text-charcoal mb-1">
+            <Calculator className="w-4 h-4 text-terracotta-deep" aria-hidden />
+            How far the lead stretches
+          </h3>
+          <p className="text-xs text-slateink-light mb-3">
+            Sweeping one value's weight across its full range (everything else fixed) — the span
+            where “{report.preferredOption}” stays ahead. A narrow span means the option wins
+            only under a narrow weighting. These are scenarios, not predictions.
+          </p>
+          <ul className="space-y-2">
+            {report.stabilityRanges.map((r) => {
+              const narrow = r.span < 0.5;
+              return (
+                <li key={r.value} className="text-xs leading-relaxed text-charcoal-soft">
+                  · <span className="font-medium capitalize text-charcoal">{r.value}</span>:
+                  {' '}“{r.leader}” leads for weights {r.low.toFixed(2)}–{r.high.toFixed(2)}
+                  {' '}(span {r.span.toFixed(2)}{narrow ? ' — narrow; the lead is fragile here' : ' — robust to this value'}).
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -713,13 +804,19 @@ function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['
 function OptionComparison({
   alignments,
   weights,
+  weightsDirty,
+  savingWeights,
   onWeightChange,
+  onWeightsCommit,
   decision,
   onOverride,
 }: {
   alignments: Report['optionAlignments'];
   weights: Record<string, number>;
+  weightsDirty: boolean;
+  savingWeights: boolean;
   onWeightChange: (w: Record<string, number>) => void;
+  onWeightsCommit: (w: Record<string, number>) => void;
   decision: Decision;
   onOverride: (key: string, value: 'for' | 'against' | 'neutral' | 'unknown') => void;
 }) {
@@ -743,10 +840,9 @@ function OptionComparison({
               <AlignmentBadge score={a.score} insufficient={a.insufficientEvidence} />
             </div>
             <ScoreTraceView trace={a.trace} />
-            {a.insufficientEvidence && (
+            {a.incompleteness && (
               <p className="mb-3 rounded-lg bg-amberclay-light/50 px-3 py-2 text-[11px] text-charcoal-soft">
-                No directional evidence classifies for this option — the score is unknown, not a
-                neutral middle.
+                {a.incompleteness}
               </p>
             )}
             <ul className="space-y-2.5">
@@ -788,6 +884,9 @@ function OptionComparison({
                   step={0.1}
                   value={w}
                   onChange={(e) => onWeightChange({ ...weights, [v]: Number(e.target.value) })}
+                  onMouseUp={() => onWeightsCommit(weights)}
+                  onTouchEnd={() => onWeightsCommit(weights)}
+                  onKeyUp={() => onWeightsCommit(weights)}
                   aria-label={`Weight for value ${v}`}
                   className="flex-1 accent-terracotta"
                 />
@@ -797,8 +896,9 @@ function OptionComparison({
           })}
         </div>
         <p className="mt-3 text-[11px] text-slateink-light italic">
-          Scores shift live as you move the sliders — they express how you value things, not how
-          likely outcomes are.
+          Scores shift live as you move the sliders and are saved when you release — they express
+          how you value things, not how likely outcomes are.
+          {weightsDirty && savingWeights ? ' Saving…' : weightsDirty ? ' Unsaved.' : ''}
         </p>
       </div>
     </div>

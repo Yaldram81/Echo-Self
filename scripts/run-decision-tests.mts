@@ -3,16 +3,21 @@
  * Run with: npx tsx scripts/run-decision-tests.mts
  */
 import {
+  ANALYSIS_VERSION,
+  analysisInputHash,
+  buildAnalysisSnapshot,
   findRelevantMemories,
   analyzeOptionValues,
   analyzeDecision,
   preferredOption,
   findWeightSensitivities,
+  findStabilityRanges,
   assessConstraints,
   extractCounterevidence,
   explainRanking,
   buildBeliefProposal,
   findAffectedBeliefs,
+  isSnapshotStale,
 } from '../src/lib/decisionAnalysis.ts';
 import type { Decision, Memory, Belief } from '../src/lib/types.ts';
 
@@ -359,6 +364,150 @@ const beliefs: Belief[] = [];
   const noReflection = decision();
   check('proposals: no reflection means no affected beliefs',
     findAffectedBeliefs(noReflection, beliefList).length === 0);
+}
+
+// --- 18. Input hash + snapshot: traceable to inputs, stale on any change ---
+{
+  const mems = [
+    memory('h1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('h2', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+    memory('h4', 'Staying gave security', 'Staying in the current role gave me security; relieved.'),
+  ];
+  const d = decision();
+  const overrides = {};
+  const hash1 = analysisInputHash(d, mems, overrides);
+  const hash2 = analysisInputHash(d, mems, overrides);
+  check('snapshot: identical inputs produce an identical hash', hash1 === hash2, `${hash1} vs ${hash2}`);
+
+  const rep = analyzeDecision(d, mems, beliefs);
+  check('snapshot: report carries the same input hash the builder records',
+    rep.inputHash === hash1, `${rep.inputHash} vs ${hash1}`);
+  const snap = buildAnalysisSnapshot(d, mems, beliefs, overrides, rep);
+  check('snapshot: snapshot records version, hash, weights, and evidence ids',
+    snap.engineVersion === ANALYSIS_VERSION && snap.inputHash === hash1 &&
+    Object.keys(snap.inputs.valueWeights).length === 2 &&
+    snap.inputs.evidenceMemoryIds.length >= 1, JSON.stringify(snap.inputs));
+
+  // Acceptance gate: change ONE weight → mathematically consistent staleness.
+  const changedWeights = { ...d, value_weights: { freedom: 0.7, security: 0.5 } };
+  check('snapshot: changing one weight makes the stored snapshot stale',
+    isSnapshotStale(snap, changedWeights, mems, overrides));
+  check('snapshot: unchanged inputs keep the snapshot fresh',
+    !isSnapshotStale(snap, d, mems, overrides));
+
+  // A weight change must also change the score deterministically.
+  const before = analyzeOptionValues('Take the offer', d, mems, []).score;
+  const after = analyzeOptionValues('Take the offer', changedWeights, mems, []).score;
+  check('snapshot: a weight change recalculates from real inputs (score follows)',
+    before !== after, `before=${before} after=${after}`);
+
+  // New evidence also stales the snapshot.
+  const moreMems = [...mems, memory('h3', 'Offer risked security', 'The offer put my security at risk; I dreaded it.')];
+  check('snapshot: a new relevant record makes the snapshot stale',
+    isSnapshotStale(snap, d, moreMems, overrides));
+
+  // A user correction stales it too.
+  check('snapshot: a user correction makes the snapshot stale',
+    isSnapshotStale(snap, d, mems, { 'd-test:Take the offer:freedom:h1': 'against' as const }));
+
+  // Missing/foreign snapshot is stale; snapshot survives JSON round-trip (DB shape).
+  check('snapshot: missing snapshot counts as stale', isSnapshotStale(null, d, mems, overrides));
+  const roundTrip = JSON.parse(JSON.stringify(snap)) as typeof snap;
+  check('snapshot: snapshot survives a JSON round-trip (database shape)',
+    !isSnapshotStale(roundTrip, d, mems, overrides));
+}
+
+// --- 19. Ranking stability: sweep range is consistent with the leader ---
+{
+  // Option A: pro on freedom, con on security. B: the mirror image. The leader
+  // then depends on the freedom/security weight split.
+  const d = decision({ value_weights: { freedom: 0.9, security: 0.1 } });
+  const mems = [
+    memory('r1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('r2', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+    memory('r3', 'Staying gave security', 'Staying in the current role gave me security; relieved.'),
+    memory('r4', 'Staying cost freedom', 'Staying in the current role cost me freedom; I avoided change.'),
+  ];
+  const relevant = findRelevantMemories(d, mems);
+  const ranges = findStabilityRanges(d, mems, relevant);
+  const freedomRange = ranges.find((r) => r.value === 'freedom');
+  check('stability: a range is produced for each value when a leader exists',
+    ranges.length === 2, JSON.stringify(ranges));
+  check('stability: leader leads across its swept range, including the current weight',
+    !!freedomRange && freedomRange.leader === 'Take the offer' &&
+    freedomRange.low <= 0.9 && 0.9 <= freedomRange.high,
+    JSON.stringify(freedomRange));
+  // The range bounds must be reproducible: at low-ε and high+step the leader changes.
+  if (freedomRange) {
+    const dLow = { ...d, value_weights: { ...d.value_weights, freedom: Math.max(0, freedomRange.low - 0.05) } };
+    const leaderLow = preferredOption(d.options.map((o) => analyzeOptionValues(o.label, dLow, mems, relevant)));
+    check('stability: just below the range the leader changes',
+      leaderLow !== freedomRange!.leader, `${leaderLow} at ${freedomRange!.low - 0.05}`);
+  }
+  // A narrow range is reported as such (span recorded honestly).
+  check('stability: spans lie within [0, 1]',
+    ranges.every((r) => r.span >= 0 && r.span <= 1), JSON.stringify(ranges.map((r) => r.span)));
+}
+
+// --- 20. Edge cases: no options, one option, no values, all-zero weights, constraints disqualify ---
+{
+  const mems = [memory('m1', 'Offer gave freedom', 'The offer gave me freedom; glad.')];
+
+  const noOptions = decision({ options: [] });
+  const repNoOptions = analyzeDecision(noOptions, mems, beliefs);
+  check('edge: no options means no alignments and no leader',
+    repNoOptions.optionAlignments.length === 0 && repNoOptions.preferredOption === null);
+
+  const oneOption = decision({ options: [OFFER] });
+  const repOne = analyzeDecision(oneOption, mems, beliefs);
+  check('edge: one option still yields a traceable score and can be the leader',
+    repOne.optionAlignments.length === 1 && repOne.preferredOption === 'Take the offer' &&
+    repOne.optionAlignments[0].trace.lines.length === 2,
+    JSON.stringify(repOne.optionAlignments.map((a) => a.score)));
+
+  const noValues = decision({ values: [], value_weights: {} });
+  const repNoValues = analyzeDecision(noValues, mems, beliefs);
+  check('edge: no values → incompleteness stated, no leader',
+    repNoValues.optionAlignments.every((a) => a.incompleteness !== null) &&
+    repNoValues.preferredOption === null, JSON.stringify(repNoValues.optionAlignments.map((a) => a.incompleteness)));
+
+  const zeroWeights = decision({ value_weights: { freedom: 0, security: 0 } });
+  const repZero = analyzeDecision(zeroWeights, mems, beliefs);
+  check('edge: all-zero weights → incompleteness stated, not a neutral 0',
+    repZero.optionAlignments.every((a) => a.incompleteness !== null && a.score === 0) &&
+    repZero.preferredOption === null);
+
+  // A blocking constraint is flagged, not silently dropped (disqualification is
+  // surfaced for the user; the engine never removes options on its own).
+  const constrained = decision({ constraints: 'Must stay within driving distance of family.' });
+  const blocking = [memory('b9', 'The distance rule', 'I refused any job that moves me farther from family; no relocations.')];
+  const statuses = assessConstraints(constrained, blocking);
+  check('edge: a disqualifying constraint is flagged evidence_against',
+    statuses.length === 1 && statuses[0].status === 'evidence_against', JSON.stringify(statuses));
+}
+
+// --- 21. Invalid/stale saved analysis and reopening after an outcome ---
+{
+  const mems = [memory('m1', 'Offer gave freedom', 'The offer gave me freedom; glad.')];
+  const d = decision();
+
+  // A snapshot saved by an older engine version is stale even with identical inputs.
+  const oldEngine = { ...buildAnalysisSnapshot(d, mems, beliefs, {}, analyzeDecision(d, mems, beliefs)), engineVersion: 'dm-3' };
+  check('edge: a snapshot from an older engine version is stale',
+    isSnapshotStale(oldEngine, d, mems, {}));
+
+  // Reopening clears the choice but the analysis inputs remain reproducible.
+  const decided = decision({ status: 'decided' as const, chosen_option: 'Take the offer', decided_at: new Date().toISOString(), reflection: { whatHappened: 'Fine.', matchesOriginalReasoning: true, surprises: '', lesson: '' } });
+  const snapshotWhileDecided = buildAnalysisSnapshot(decided, mems, beliefs, {}, analyzeDecision(decided, mems, beliefs));
+  const reopened: Decision = { ...decided, status: 'unresolved', chosen_option: null, rationale: null, decided_at: null, reflection: null, reflected_at: null };
+  check('edge: reopening after an outcome keeps the analysis reproducible (status is not an input)',
+    !isSnapshotStale(snapshotWhileDecided, reopened, mems, {}));
+
+  // The user-edited analysis path never fabricates a generated report.
+  const edited = decision({ analysis_edited: true, analysis: { summary: 'My own words.', options: [], contradictions: [], missingInformation: [], experiments: [] } });
+  const repEdited = analyzeDecision(edited, mems, beliefs);
+  check('edge: an edited analysis still computes a fresh report when asked, without overwriting the user text',
+    repEdited.summary.length > 0 && edited.analysis!.summary === 'My own words.');
 }
 
 console.log(`\nDecision engine tests: ${passed} passed, ${failed} failed`);

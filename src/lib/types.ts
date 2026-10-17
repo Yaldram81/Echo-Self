@@ -173,6 +173,21 @@ export interface ScoreTrace {
   score: number;
 }
 
+/** Persisted record of the exact inputs behind a generated analysis. */
+export interface AnalysisSnapshot {
+  /** Engine version that produced the report (must match ANALYSIS_VERSION). */
+  engineVersion: string;
+  /** FNV-1a hash over the canonical input bundle — detects any input change. */
+  inputHash: string;
+  computedAt: string;
+  inputs: {
+    valueWeights: Record<string, number>;
+    evidenceMemoryIds: string[];
+    explicitItems: { option: string; kind: 'pro' | 'con'; text: string }[];
+    overrideCount: number;
+  };
+}
+
 export interface Decision {
   id: string;
   title: string;
@@ -188,6 +203,8 @@ export interface Decision {
   success_definition: string | null;
   analysis: DecisionAnalysis | null;
   analysis_edited: boolean;
+  /** Stored record of which inputs produced the last generated analysis. */
+  analysis_snapshot: AnalysisSnapshot | null;
   value_weights: Record<string, number>;
   /** User-corrected classifications, keyed "<decisionId>:<option>:<value>:<memoryId>". */
   classification_overrides: Record<string, 'for' | 'against' | 'neutral' | 'unknown'>;

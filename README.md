@@ -108,13 +108,17 @@ The API key lives only in the edge function's server-side secrets. Nothing sensi
 
 The Decision Mirror's analysis is a rules engine, not a model call: relevant memories are retrieved and scored against the decision's context and stated values; each value's alignment per option is computed from how recorded experiences classify (for/against) with your adjustable weights; contradictions between stated beliefs and recorded behavior are pattern-matched; missing information (no constraints, no success definition, an unconsulted party in your records) becomes experiment suggestions. Everything it outputs is derived from real rows.
 
-**Transparency features (engine version dm-3, observed 2026-10-17):**
+**Transparency features (engine version dm-4, observed 2026-10-17):**
 - **Option-by-value comparison** — each option shows its per-value evidence counts (for / against / unknown) side by side, weighted by the user's sliders.
 - **Score trace** — an expandable arithmetic table per option: every value's (for − against) × weight contribution, the net, the classified mass, and the division that produces the score. Each line records how many inputs were explicit user judgments, keyword inferences, and user corrections, with links to the records. A judge can reproduce the number by hand.
 - **Ranking explainer** — a plain-language account of which value contributions decide the leader (or the tie), updating live as weights move. This is the acceptance gate: change a weight, and the decisive arithmetic is named.
 - **Counterevidence panel** — every record classified against an option, with origin (explicit/inferred/corrected) and rationale. Unknown and neutral records never appear: they are never evidence against.
 - **Strict explicit/inferred separation** — pros/cons the user wrote are explicit; keyword-matched memories are inferred with rationale and correctable; corrections are stored and honored. The engine never counts unknown evidence in a score.
 - **Sensitivity** — ±0.1 weight perturbations are tested and flagged when they flip the leader; the ranking explainer also states when the result is robust.
+- **Ranking-stability sweep** — each value's weight is swept across its full [0, 1] range (everything else fixed) and the span where the current leader stays ahead is reported. A span under 0.5 is labeled "narrow; the lead is fragile here" — the option wins only under a narrow weighting configuration. These are scenarios computed from the actual inputs, not predictions or simulations.
+- **Live weight recalculation** — sliders recompute the comparison from the stored inputs on every move (scores, trace, and ranking explainer all update); the change is saved on release, and a notice names the moved lead when the ranking changes.
+- **Persisted analysis snapshot** — every generated analysis stores a snapshot (`analysis_snapshot` on the decision row): engine version, a canonical-input FNV-1a hash, computation time, weights, evidence IDs, explicit items, and override count. The hash is computed over a recursively key-sorted bundle of all inputs (decision text, options, weights, overrides, retrieved evidence), so any input change — a moved slider, a new record, a user correction — makes the stored snapshot detectably stale; stale snapshots are labeled in the UI, never silently presented as current. The score is traceable to real inputs end to end.
+- **Honest incompleteness** — no values, all-zero weights, and no directional evidence each produce an explicit incompleteness statement instead of a misleading 0/neutral score; such options are never eligible to be named the leader.
 - **Reproducibility** — the report records its method version, weights, evidence IDs, explicit items, and override count. Same inputs → same report (tested).
 - **Preference, not prediction** — scores are preference alignment only; no probabilities, success rates, or outcome predictions are produced anywhere.
 - **Reflection with success comparison** — the reflection records how the outcome measured against the decision's stated success definition (met / partly / not met / redefined) with an optional note.
@@ -146,7 +150,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 - **memories** — title, content, category (`relationship | health | work | personal_growth | travel | finance | other`), source (`journal | conversation | photo | audio | note`), mood, confidence 0–100, tags, `ai_interpretation` (kept strictly separate from the user's original text in the UI), `occurred_at`.
 - **beliefs** — statement, kind (`belief | value`), strength, status (`active | evolving | revisited`), `origin` (`user | suggestion | confirmed_suggestion`), `last_reviewed`.
 - **beliefs_history** — strength snapshots with notes, for before/after evolution views.
-- **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson, success measurement against the stated definition), and `proposals` (JSON — approval-gated belief revisit suggestions).
+- **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, `analysis_snapshot` (JSON — engine version, canonical input hash, weights, evidence IDs, explicit items, override count; detects stale analyses), an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson, success measurement against the stated definition), `classification_overrides`, and `proposals` (JSON — approval-gated belief revisit suggestions).
 - **timeline_events** — typed chronological entries.
 - **interpretation_flags** — user corrections attached to flagged AI interpretations.
 - **graph_edge_confirmations** — per-user confirm/dismiss decisions on suggested graph edges, keyed by edge signature; creator-owned, endpoints must be visible to the creator.
@@ -163,7 +167,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 
 The **demo is now read-only for signed-out visitors**: sample rows (owner NULL) are visible to everyone but cannot be created, changed, or deleted without an account. The Settings page export and "delete everything" act only on the signed-in account's records; sample data is excluded. Backfill was intentionally a no-op: no existing (fictional) row was assigned to any user, and no data was deleted or rewritten.
 
-**Verified by test (scripts/run-decision-tests.mts, 35/35 passing — covers empty evidence, ties, zero weights, contradictory evidence, changed weights, incomplete constraints, trace arithmetic, counterevidence isolation, proposal generation):**
+**Verified by test (scripts/run-decision-tests.mts, 57/57 passing — covers empty evidence, ties, zero weights, contradictory evidence, changed weights, incomplete constraints, trace arithmetic, counterevidence isolation, proposal generation, snapshot hash stability, staleness on weight/evidence/correction change, stability-range consistency, no/one option, no values, all-zero weights, disqualifying constraints, old-engine snapshots, reopen reproducibility):**
 - A cannot read, update, delete, or insert-on-behalf-of B's records (memories, beliefs, decisions); forged `user_id` inserts are rejected; rows remain intact after every denied attempt.
 - Unauthenticated clients can read public sample rows but cannot insert, update, or delete anything.
 - Linked-record rules: A cannot attach history or flags to B's records; B can manage history on its own belief; A can flag a public sample memory; flag rows are private to their creator.
@@ -195,7 +199,7 @@ npm run typecheck  # strict TS check
 npm run lint       # eslint (0 errors, 0 warnings)
 npx tsx --env-file=.env scripts/run-workspace-tests.mts   # two-account security suite (37 checks)
 npx tsx --env-file=.env scripts/run-graph-tests.mts       # graph engine suite (26 checks)
-npx tsx scripts/run-decision-tests.mts                    # decision engine suite (35 checks)
+npx tsx scripts/run-decision-tests.mts                    # decision engine suite (57 checks)
 npx tsx scripts/run-retrieval-tests.mts                   # retrieval engine suite (65 checks)
 npx tsx --env-file=.env scripts/run-eval.mjs              # evidence inspector eval (26 cases)
 npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey (20 checks)
@@ -243,6 +247,7 @@ All migrations are safe to rerun. Verified guard per migration:
 | `20261017080451_extend_beliefs_origin_and_suggestions` | `ADD COLUMN IF NOT EXISTS`; suggestion beliefs guarded by `WHERE NOT EXISTS (statement LIKE …)` |
 | `20261017090840_add_decision_classification_overrides` | single `ADD COLUMN IF NOT EXISTS` |
 | `add_decision_proposals_column` | `ADD COLUMN` guarded by an `information_schema` existence check (jsonb on decisions; inherits the table's RLS) |
+| `add_decision_analysis_snapshot` | single `ADD COLUMN IF NOT EXISTS` (jsonb, nullable; no backfill needed — analyses record their snapshot on first render) |
 | `add_graph_edge_confirmations` | `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS` + re-`CREATE` per policy, `CREATE INDEX IF NOT EXISTS` |
 
 No migration drops columns or tables, deletes rows, or changes column types. Live-state checks at audit time confirmed the guards match reality (8 marker-tagged memories, 2 suggestion beliefs, 1 stored reflection).
