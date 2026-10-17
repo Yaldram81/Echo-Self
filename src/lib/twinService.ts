@@ -293,7 +293,7 @@ export async function askTwin(
       contextMemories
     );
     const uncertain = withUncertainty(audited, question, contextMemories);
-    return { reply: withCorrections(uncertain, contextMemories, corrections), contextMemories };
+    return { reply: withCorrections(uncertain, contextMemories, corrections, question), contextMemories };
   }
 
   // demo mode: local composition from real records
@@ -312,7 +312,7 @@ export async function askTwin(
     contextMemories
   );
   return {
-    reply: withCorrections(uncertain, contextMemories, corrections),
+    reply: withCorrections(uncertain, contextMemories, corrections, question),
     contextMemories,
   };
 }

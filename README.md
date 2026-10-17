@@ -124,6 +124,29 @@ The Decision Mirror's analysis is a rules engine, not a model call: relevant mem
 - **Reflection with success comparison** — the reflection records how the outcome measured against the decision's stated success definition (met / partly / not met / redefined) with an optional note.
 - **Approval-gated belief proposals** — after a divergent reflection, the mirror can propose a belief-strength revisit. Proposals are stored pending, applied only on an explicit Approve click, and dismissals are kept as a record. Nothing is applied automatically.
 
+### Persistent corrections and personal context evolution (Upgrade 4)
+
+The twin never rewrites a record. When an answer misreads one, the user saves a **correction** — a separate row beside the memory — and corrections shape future answers only after the user confirms them.
+
+**Lifecycle:** every correction starts as `proposed` (stored with provenance: the flagged answer excerpt, the target memory, an optional topic tag, timestamps). In the corrections panel the user then confirms, amends, replaces, or dismisses it:
+- **Confirmed** — authoritative for its record and topic; this is the only status that influences answers.
+- **Amended** — the note or topic is edited in place; the original answer excerpt is preserved.
+- **Superseded** — replaced by a newer correction (the old row keeps a `superseded_by` pointer and stays as history).
+- **Dismissed** — kept as a record but never used.
+`reviewed_at` is stamped on every status change; nothing is backdated.
+
+**How corrections influence answers (and their limits):**
+- Only `confirmed`, non-empty corrections enter retrieval, ranking, and the claim audit. Proposed, superseded, and dismissed rows are history.
+- Influence is **topic-scoped**: a correction boosts retrieval and attaches to claims only when its text or topic shares terms with the question (tested: a running correction stays inert on a gardening question).
+- Corrections are shown **beside the record they qualify, never instead of it** — the original text is always displayed and never modified. A corrected claim is downgraded to "partial" with the correction cited by id, not silently replaced.
+- When a corrected record conflicts with a newer record, **both are shown and the tension is named**; the correction never silently overrides newer evidence.
+- **Instruction boundary:** correction text is user data, not instructions. The edge-function prompt states this explicitly, and a correction containing commands ("ignore previous rules") is treated as quoted data — tested.
+- The AI is **not claimed to learn permanently**: each answer recomposes from the stored rows. A correction affects an answer because the verified, confirmed row is passed into that answer's context — nothing more.
+
+**Verified integration (stated explicitly):** in the demo compose path, a confirmed correction was verified to affect a subsequent answer end to end — it boosts retrieval of the corrected record, appears beside it in the answer, and downgrades the touched claim to partial (`run-correction-tests.mts`, 46/46, section "Relevant question uses a confirmed correction"). Live AI mode shares the same behavior via the deployed edge function (confirmed-only context block, topic labels, instruction-boundary rule), but that path is verified by code inspection and deployment, not by a live model call in this environment.
+
+**Security:** correction rows are private to their creator (RLS); status changes and amendments go through owner-checked policies; the twin-chat function reads them with the caller's JWT.
+
 ### Evidence Graph (relationships, confirmations, and the reflection loop)
 
 The graph derives every node from real rows (memories, beliefs/values, decisions, outcome reflections, belief-history entries) and every edge from a stored field, a re-derivable keyword match, or a user confirmation — no edge is invented to make the picture denser. Edges carry three bases, all visible in the node inspector and legend:
@@ -152,7 +175,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 - **beliefs_history** — strength snapshots with notes, for before/after evolution views.
 - **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, `analysis_snapshot` (JSON — engine version, canonical input hash, weights, evidence IDs, explicit items, override count; detects stale analyses), an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson, success measurement against the stated definition), `classification_overrides`, and `proposals` (JSON — approval-gated belief revisit suggestions).
 - **timeline_events** — typed chronological entries.
-- **interpretation_flags** — user corrections attached to flagged AI interpretations.
+- **interpretation_flags** — user corrections attached to flagged AI interpretations: `correction_note`, `answer_excerpt` (provenance of the flag), `topic`, status (`proposed | confirmed | superseded | dismissed`), `reviewed_at`, `superseded_by`; creator-owned, parent-gated on insert.
 - **graph_edge_confirmations** — per-user confirm/dismiss decisions on suggested graph edges, keyed by edge signature; creator-owned, endpoints must be visible to the creator.
 
 **Security posture:** row-level security is enabled on all six tables with **ownership-aware policies applied via migration** (see below). This app now has real accounts: sign-up/sign-in (Supabase email/password, email confirmation off by default), persistent sessions, and protected personal routes.
@@ -201,6 +224,7 @@ npx tsx --env-file=.env scripts/run-workspace-tests.mts   # two-account security
 npx tsx --env-file=.env scripts/run-graph-tests.mts       # graph engine suite (26 checks)
 npx tsx scripts/run-decision-tests.mts                    # decision engine suite (57 checks)
 npx tsx scripts/run-retrieval-tests.mts                   # retrieval engine suite (65 checks)
+npx tsx scripts/run-correction-tests.mts                  # correction lifecycle suite (46 checks)
 npx tsx --env-file=.env scripts/run-eval.mjs              # evidence inspector eval (26 cases)
 npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey (20 checks)
 ```
@@ -224,7 +248,7 @@ npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey
 - **Real accounts.** Email/password sign-up, sign-in, and sign-out with persistent sessions. Each account gets a private workspace; the fictional sample persona stays public and read-only.
 - **Retrieval is layered keyword-based.** Both the demo composer and the server-side ranking use intent-aware keyword scoring with query-dependent recency and reliability-weighted confidence — not embeddings. It's honest about this in its own "gaps" output; its weaknesses, the evidence behind them (code inspection vs. executed tests), and the current test results are documented in the retrieval engine section above.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
-- **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.
+- **One correction channel (updated).** Corrections now carry a full lifecycle — proposed → confirmed/superseded/dismissed — and confirmed corrections demonstrably shape later demo-mode answers and the live-mode context block. The twin still does not "learn" between answers: every answer is recomposed from stored rows, so a correction's influence exists only while its row is confirmed and its topic matches the question.
 
 ### Evidence Inspector evaluation (scripts/run-eval.mjs, 26 cases — observed 2026-10-17)
 
@@ -248,6 +272,7 @@ All migrations are safe to rerun. Verified guard per migration:
 | `20261017090840_add_decision_classification_overrides` | single `ADD COLUMN IF NOT EXISTS` |
 | `add_decision_proposals_column` | `ADD COLUMN` guarded by an `information_schema` existence check (jsonb on decisions; inherits the table's RLS) |
 | `add_decision_analysis_snapshot` | single `ADD COLUMN IF NOT EXISTS` (jsonb, nullable; no backfill needed — analyses record their snapshot on first render) |
+| `extend_interpretation_flags_lifecycle` | `ADD COLUMN IF NOT EXISTS` for `status`/`topic`/`reviewed_at`/`superseded_by`; `status` backfilled to `'confirmed'` only where `NULL` (pre-lifecycle rows keep full influence without inventing review dates); `DROP POLICY IF EXISTS` + re-`CREATE` for `update_own_flags`/`delete_own_flags`; `CREATE INDEX IF NOT EXISTS` |
 | `add_graph_edge_confirmations` | `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS` + re-`CREATE` per policy, `CREATE INDEX IF NOT EXISTS` |
 
 No migration drops columns or tables, deletes rows, or changes column types. Live-state checks at audit time confirmed the guards match reality (8 marker-tagged memories, 2 suggestion beliefs, 1 stored reflection).

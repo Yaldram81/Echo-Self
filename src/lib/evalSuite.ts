@@ -151,6 +151,10 @@ export const EVAL_FLAGS: InterpretationFlag[] = [
     answer_excerpt: 'The running habit appears to have lapsed.',
     correction_note: 'The lapse was planned rest for an injury, not a failed habit — I resumed the next week.',
     created_at: iso(1),
+    status: 'confirmed',
+    topic: 'running',
+    reviewed_at: null,
+    superseded_by: null,
   },
 ];
 

@@ -240,13 +240,27 @@ export interface TimelineEvent {
 
 export type ChatRole = 'user' | 'twin';
 
-/** A user correction saved against an interpretation of a memory record. */
+/** Lifecycle of a user correction. Only confirmed corrections are retrieved as authoritative context. */
+export type CorrectionStatus = 'proposed' | 'confirmed' | 'superseded' | 'dismissed';
+
+/**
+ * A user correction saved against an interpretation of a memory record.
+ * The original memory is never modified; the correction lives beside it.
+ */
 export interface InterpretationFlag {
   id: string;
   memory_id: string;
   answer_excerpt: string;
   correction_note: string;
   created_at: string;
+  /** proposed → confirmed on review; superseded/dismissed corrections stay as history. */
+  status: CorrectionStatus;
+  /** Optional topic tag the user supplies; retrieval uses it to scope relevance. */
+  topic: string | null;
+  /** When the user last changed the status; NULL until then, never invented. */
+  reviewed_at: string | null;
+  /** The correction that replaced this one, when superseded. */
+  superseded_by: string | null;
 }
 
 /** A stable reference from AI output back to an exact evidence record. */

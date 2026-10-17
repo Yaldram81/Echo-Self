@@ -57,15 +57,83 @@ export const edgeConfirmationsService = {
   },
 };
 
-export const flagsService = {  async create(input: { memory_id: string; answer_excerpt: string; correction_note: string }): Promise<void> {
-    const { error } = await supabase.from('interpretation_flags').insert(input);
-    if (error) throw new Error(error.message);
+export const flagsService = {
+  /**
+   * Save a new correction. New corrections enter as 'proposed' — the user
+   * reviews and confirms them in the corrections panel before they count as
+   * authoritative context. Nothing is invented: the note is the user's text.
+   */
+  async create(input: {
+    memory_id: string;
+    answer_excerpt: string;
+    correction_note: string;
+    topic?: string;
+  }): Promise<InterpretationFlag> {
+    return unwrap(
+      supabase
+        .from('interpretation_flags')
+        .insert({
+          memory_id: input.memory_id,
+          answer_excerpt: input.answer_excerpt,
+          correction_note: input.correction_note,
+          topic: input.topic?.trim() || null,
+          status: 'proposed',
+        })
+        .select()
+        .maybeSingle()
+    ) as Promise<InterpretationFlag>;
   },
   /** Saved corrections, newest first. RLS scopes these to the signed-in user. */
   async list(): Promise<InterpretationFlag[]> {
     return unwrap(
       supabase.from('interpretation_flags').select('*').order('created_at', { ascending: false })
     );
+  },
+  /**
+   * Change a correction's status. 'superseded' records which correction
+   * replaced it; reviewed_at is stamped by the database clock at write time,
+   * never backdated. Returns the updated row so the UI can prove persistence.
+   */
+  async setStatus(
+    id: string,
+    status: 'confirmed' | 'superseded' | 'dismissed' | 'proposed',
+    supersededBy?: string
+  ): Promise<InterpretationFlag> {
+    const { data, error } = await supabase
+      .from('interpretation_flags')
+      .update({
+        status,
+        superseded_by: status === 'superseded' ? (supersededBy ?? null) : null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as InterpretationFlag;
+  },
+  /** Amend the note or topic of a correction; the original answer excerpt is preserved. */
+  async amend(
+    id: string,
+    changes: { correction_note?: string; topic?: string | null }
+  ): Promise<InterpretationFlag> {
+    const { data, error } = await supabase
+      .from('interpretation_flags')
+      .update({
+        ...(changes.correction_note !== undefined ? { correction_note: changes.correction_note } : {}),
+        ...(changes.topic !== undefined ? { topic: changes.topic?.trim() || null } : {}),
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as InterpretationFlag;
+  },
+  /** Permanently remove a dismissed correction. */
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('interpretation_flags').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 };
 

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "retrieval-tests": "tsx scripts/run-retrieval-tests.mts",
+    "correction-tests": "tsx scripts/run-correction-tests.mts",
     "claim-integrity-tests": "tsx scripts/run-claim-integrity-tests.mts"
   },
   "dependencies": {

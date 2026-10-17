@@ -303,8 +303,10 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
   const tagText = (memory.tags ?? []).join(' ').toLowerCase();
   const category = memory.category.toLowerCase();
 
+  // Only CONFIRMED corrections rank as user text; proposed/superseded/dismissed
+  // stay history and never move a score.
   const notes = corrections
-    .filter((f) => f.memory_id === memory.id && f.correction_note?.trim())
+    .filter((f) => f.memory_id === memory.id && f.status === 'confirmed' && f.correction_note?.trim())
     .map((f) => f.correction_note.trim());
   const correctedBody = notes.length > 0 ? `${body} ${notes.join(' ').toLowerCase()}` : body;
 
@@ -363,7 +365,33 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
   };
 }
 
-/* ============================ deduplication ============================ */
+/* ============================ correction scoping ============================ */
+
+/**
+ * Corrections that may act as authoritative user context: status 'confirmed'
+ * with non-empty note text. Proposed, superseded, and dismissed corrections
+ * are history — they never influence retrieval, ranking, or answers.
+ */
+export function activeCorrections(flags: InterpretationFlag[]): InterpretationFlag[] {
+  return flags.filter((f) => f.status === 'confirmed' && !!f.correction_note?.trim());
+}
+
+/**
+ * Topic check: does a correction bear on this question? A correction counts as
+ * relevant when the question's terms (or an exact question phrase) appear in
+ * the correction's note or its user-supplied topic tag. This keeps a
+ * correction about one event from being applied to unrelated topics; the
+ * record-level relevance gate (the memory must itself be retrieved) still
+ * applies on top.
+ */
+export function correctionTouchesTopic(
+  flag: InterpretationFlag,
+  terms: string[],
+  phrases: string[]
+): boolean {
+  const hay = `${flag.correction_note} ${flag.topic ?? ''}`.toLowerCase();
+  return phrases.some((p) => hay.includes(p)) || terms.some((t) => hay.includes(t));
+}
 
 function tokensOf(text: string): Set<string> {
   return new Set(
@@ -447,7 +475,7 @@ export function retrieveCounterevidence(
   const scan = (c: ScoredCandidate, via: string) => {
     const text = `${c.memory.title} ${c.memory.content}`;
     const notes = flags
-      .filter((f) => f.memory_id === c.memory.id && f.correction_note?.trim())
+      .filter((f) => f.memory_id === c.memory.id && f.status === 'confirmed' && f.correction_note?.trim())
       .map((f) => f.correction_note.trim());
     const correctionOpposes = notes.length > 0 && opposite.test(notes.join(' '));
     if (opposite.test(text) || correctionOpposes) {
@@ -622,7 +650,7 @@ export function formatMemoryForContext(m: Memory): string {
  */
 export function userTextWithCorrections(m: Memory, flags: InterpretationFlag[]): string {
   const notes = flags
-    .filter((f) => f.memory_id === m.id && f.correction_note?.trim())
+    .filter((f) => f.memory_id === m.id && f.status === 'confirmed' && f.correction_note?.trim())
     .map((f) => f.correction_note.trim());
   return notes.length > 0 ? `${m.content} ${notes.join(' ')}` : m.content;
 }

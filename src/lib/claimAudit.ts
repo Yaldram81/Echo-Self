@@ -9,8 +9,7 @@ import type {
   SourceRef,
   TwinReply,
 } from './types';
-import { expandSynonyms } from './retrieval';
-
+import { correctionTouchesTopic, expandSynonyms, extractTerms } from './retrieval';
 /**
  * Claim audit: verifies that every claim in a twin reply is actually supported by
  * the text of records retrieved for THIS request — not merely that cited IDs exist.
@@ -417,18 +416,33 @@ export function withConflicts(reply: TwinReply, contextMemories: Memory[]): Twin
 
 /* ---------------- user corrections (side-by-side, never overwriting) ---------------- */
 
+
 /**
- * Attach saved user corrections to a reply: relevant corrections are shown
- * beside the records they amend (both sides, no winner picked), and claims
- * resting on a corrected record carry the correction as provenance.
+ * Attach saved user corrections to a reply. Rules:
+ * - Only CONFIRMED corrections participate. Proposed ones are shown as "not yet
+ *   reviewed" only on the record page; superseded/dismissed never surface.
+ * - A correction must be topical: the question's terms must appear in the
+ *   correction's note or topic tag, so a correction about one event is not
+ *   applied to unrelated topics.
+ * - Corrections are shown beside the records they amend (both sides, no winner
+ *   picked) and claims resting on a corrected record are downgraded to partial
+ *   with the correction as provenance — the original record text is kept.
  */
 export function withCorrections(
   reply: TwinReply,
   contextMemories: Memory[],
-  flags: InterpretationFlag[]
+  flags: InterpretationFlag[],
+  question = ''
 ): TwinReply {
   const ctxIds = new Set(contextMemories.map((m) => m.id));
-  const relevant = flags.filter((f) => ctxIds.has(f.memory_id) && f.correction_note?.trim());
+  const terms = expandSynonyms(extractTerms(question));
+  const relevant = flags.filter(
+    (f) =>
+      f.status === 'confirmed' &&
+      ctxIds.has(f.memory_id) &&
+      !!f.correction_note?.trim() &&
+      (terms.length === 0 || correctionTouchesTopic(f, terms, [question.toLowerCase()]))
+  );
   if (relevant.length === 0) return reply;
 
   const memById = new Map(contextMemories.map((m) => [m.id, m]));

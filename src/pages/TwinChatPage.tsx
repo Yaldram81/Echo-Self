@@ -8,6 +8,7 @@ import { useAsyncData } from '@/hooks/useAsyncData';
 import { SectionHeading, LoadingState, ErrorState, DemoModeBanner } from '@/components/ui';
 import { formatMemoryForContext } from '@/lib/retrieval';
 import { useAuth } from '@/lib/useAuth';
+import { CorrectionsPanel } from '@/components/CorrectionsPanel';
 import type { InterpretationFlag } from '@/lib/types';
 
 const SUGGESTED_QUESTIONS = [
@@ -44,7 +45,9 @@ export function TwinChatPage() {
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
   const [flagging, setFlagging] = useState<{ messageId: string; memoryId: string } | null>(null);
   const [flagNote, setFlagNote] = useState('');
+  const [flagTopic, setFlagTopic] = useState('');
   const [flagState, setFlagState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showCorrections, setShowCorrections] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -107,12 +110,17 @@ export function TwinChatPage() {
     if (!message || !memory) return;
     setFlagState('saving');
     try {
-      await flagsService.create({
+      // The service returns the persisted row; only a real row counts as saved.
+      const saved = await flagsService.create({
         memory_id: memory.id,
         answer_excerpt: message.content.slice(0, 500),
         correction_note: flagNote.trim(),
+        topic: flagTopic.trim() || undefined,
       });
+      if (!saved?.id) throw new Error('Correction was not persisted');
       setFlagState('saved');
+      setFlagNote('');
+      setFlagTopic('');
       flags.reload();
       setMessages((prev) =>
         prev.map((m) => (m.id === flagging.messageId ? { ...m, flagged: true } : m))
@@ -200,6 +208,7 @@ export function TwinChatPage() {
                   onFlag={(memoryId) => {
                     setFlagging({ messageId: m.id, memoryId });
                     setFlagNote('');
+                    setFlagTopic('');
                     setFlagState('idle');
                   }}
                   onFollowUp={(q) => send(q)}
@@ -262,6 +271,29 @@ export function TwinChatPage() {
         </div>
       )}
 
+      {!!user && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-serif text-base text-charcoal">Corrections review</h2>
+          <button
+            onClick={() => setShowCorrections((v) => !v)}
+            aria-expanded={showCorrections}
+            className="rounded-full border border-linen-dark bg-paper px-4 py-1.5 text-xs font-medium text-slateink-dark hover:border-terracotta hover:text-terracotta-deep transition-colors"
+          >
+            {showCorrections ? 'Hide' : 'Show'} ({flags.data?.length ?? 0})
+          </button>
+        </div>
+      )}
+
+      {!!user && showCorrections && (
+        <CorrectionsPanel
+          flags={flags.data ?? []}
+          memories={memories.data ?? []}
+          onChanged={() => {
+            flags.reload();
+          }}
+        />
+      )}
+
       {flagging && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 px-5"
@@ -281,7 +313,8 @@ export function TwinChatPage() {
                 <h2 className="font-serif text-lg text-charcoal mb-1">Flag this interpretation</h2>
                 <p className="text-xs text-slateink leading-relaxed">
                   About the memory "{memoryById.get(flagging.memoryId)?.title ?? 'Unknown record'}".
-                  Your correction is saved with the record and will appear beside it in future answers.
+                  The correction is saved beside the record — the original stays untouched. It only
+                  influences future answers after you confirm it in the corrections panel below.
                 </p>
               </div>
             </div>
@@ -296,9 +329,23 @@ export function TwinChatPage() {
               className="w-full rounded-xl border border-linen-dark bg-white/80 px-3.5 py-2.5 text-sm leading-relaxed focus:border-terracotta"
               placeholder="e.g. I no longer hold this belief the way it reads."
             />
+            <label htmlFor="flag-topic" className="block text-xs font-medium text-slateink-dark mb-1.5 mt-3">
+              Topic it applies to <span className="font-normal text-slateink-light">(optional — keeps the correction scoped, e.g. "running")</span>
+            </label>
+            <input
+              id="flag-topic"
+              value={flagTopic}
+              onChange={(e) => setFlagTopic(e.target.value)}
+              className="w-full rounded-xl border border-linen-dark bg-white/80 px-3.5 py-2.5 text-sm focus:border-terracotta"
+              placeholder="e.g. running"
+            />
             {flagState === 'saved' && (
-              <p className="mt-2 text-xs text-sage-dark flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" aria-hidden /> Correction saved with the record.
+              <p className="mt-2 text-xs text-sage-dark flex items-start gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
+                <span>
+                  Saved as a proposed correction. Confirm it in the corrections panel to make it
+                  part of relevant future answers — until then it does not influence the twin.
+                </span>
               </p>
             )}
             {flagState === 'error' && (
