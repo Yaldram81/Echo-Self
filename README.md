@@ -86,6 +86,23 @@ The Decision Mirror's analysis is a rules engine, not a model call: relevant mem
 - **Reflection with success comparison** — the reflection records how the outcome measured against the decision's stated success definition (met / partly / not met / redefined) with an optional note.
 - **Approval-gated belief proposals** — after a divergent reflection, the mirror can propose a belief-strength revisit. Proposals are stored pending, applied only on an explicit Approve click, and dismissals are kept as a record. Nothing is applied automatically.
 
+### Evidence Graph (relationships, confirmations, and the reflection loop)
+
+The graph derives every node from real rows (memories, beliefs/values, decisions, outcome reflections, belief-history entries) and every edge from a stored field, a re-derivable keyword match, or a user confirmation — no edge is invented to make the picture denser. Edges carry three bases, all visible in the node inspector and legend:
+- **Recorded (direct)** — a stored field points at the other record (reflection stored on the decision, history rows, a decision citing a value by name). These never require approval and cannot be dismissed.
+- **Confirmed by you** — a suggested edge the signed-in user explicitly accepted. Stored per user in `graph_edge_confirmations` (owner-scoped RLS; upsert per edge, latest decision wins); drawn solid with the confirmation date in the trace.
+- **Suggested (inferred)** — keyword-derived, always labeled with its method, and offered for Confirm / "Not a connection" in the inspector. Dismissed suggestions are removed from the graph but kept as a record so they are not re-surfaced as new.
+
+**Integrity on edits and deletions:** edges re-derive from live records, so nothing dangles when a source is edited or deleted; a confirmation whose endpoint records no longer exist is inert (tested — it can never resurrect an edge or dangle a node). Contradiction edges keep both sides and never coexist with a support edge on the same pair (tested).
+
+**Views and navigation:** a deterministic column layout (no physics/visualization library — SVG only), keyboard-navigable nodes with accessible labels, a node inspector linking to the original record, filters by entity type / time period / a specific decision, an inferred-links toggle, and a linked-list view on small screens replacing the wide diagram.
+
+**Reflection loop connection:** decided decisions expose their reflection node in the graph, linked back to the decision; the Decision Mirror page records the outcome, compares it against the original success definition and rationale, captures surprises, and may propose a belief revisit that applies only on explicit approval (see Deterministic decision analysis above).
+
+**Verified by test (scripts/run-graph-tests.mts, 26/26 passing against the seeded fictional sample — 16 memories, 8 beliefs, 4 decisions, 6 history rows):** every edge references existing nodes and record IDs with a non-empty trace; no fabricated edges (cross-checked against the derivable set); confirmation promotion, dismissal, re-decision, and deleted-record cleanup; support/contradiction exclusivity; disconnected records remain visible; determinism; empty inputs. Two-account security tests (37/37) additionally cover confirmation privacy, cross-account write denial, and anon read-free access.
+
+The sample persona is fiction and is labeled as such on every page; the graph draws no edges and no outcomes that the seeded rows do not support.
+
 ---
 
 ## Data model
@@ -98,6 +115,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 - **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson, success measurement against the stated definition), and `proposals` (JSON — approval-gated belief revisit suggestions).
 - **timeline_events** — typed chronological entries.
 - **interpretation_flags** — user corrections attached to flagged AI interpretations.
+- **graph_edge_confirmations** — per-user confirm/dismiss decisions on suggested graph edges, keyed by edge signature; creator-owned, endpoints must be visible to the creator.
 
 **Security posture:** row-level security is enabled on all six tables with **ownership-aware policies applied via migration** (see below). This app now has real accounts: sign-up/sign-in (Supabase email/password, email confirmation off by default), persistent sessions, and protected personal routes.
 
@@ -185,6 +203,7 @@ All six migrations are safe to rerun. Verified guard per migration:
 | `20261017080451_extend_beliefs_origin_and_suggestions` | `ADD COLUMN IF NOT EXISTS`; suggestion beliefs guarded by `WHERE NOT EXISTS (statement LIKE …)` |
 | `20261017090840_add_decision_classification_overrides` | single `ADD COLUMN IF NOT EXISTS` |
 | `add_decision_proposals_column` | `ADD COLUMN` guarded by an `information_schema` existence check (jsonb on decisions; inherits the table's RLS) |
+| `add_graph_edge_confirmations` | `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS` + re-`CREATE` per policy, `CREATE INDEX IF NOT EXISTS` |
 
 No migration drops columns or tables, deletes rows, or changes column types. Live-state checks at audit time confirmed the guards match reality (8 marker-tagged memories, 2 suggestion beliefs, 1 stored reflection).
 

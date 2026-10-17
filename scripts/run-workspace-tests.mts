@@ -245,11 +245,64 @@ async function main() {
       await allowed(A.client.from('memories').update({ title: 'A memory v2' }).eq('id', memA!.id))
     );
 
+    /* ---------------- graph edge confirmations ---------------- */
+    console.log('— Graph edge confirmations (suggested-edge approval)');
+    const edgeKey = `memory:${memA!.id}|evidence_supports|belief:${beliefA!.id}`;
+    const confirmRow = {
+      edge_key: edgeKey,
+      source_id: `memory:${memA!.id}`,
+      target_id: `belief:${beliefA!.id}`,
+      kind: 'evidence_supports',
+      status: 'confirmed' as const,
+    };
+    const { data: confA, error: confErrA } = await A.client
+      .from('graph_edge_confirmations')
+      .upsert(confirmRow, { onConflict: 'user_id,edge_key' })
+      .select()
+      .maybeSingle();
+    check('A confirms a suggested edge on own records (allowed)', !confErrA && !!confA, confErrA?.message);
+    check('confirmation owner defaults to the session user', confA?.user_id === A.userId);
+
+    const { data: confSeenByB } = await B.client
+      .from('graph_edge_confirmations')
+      .select('id')
+      .eq('edge_key', edgeKey);
+    check('B cannot READ A edge confirmations', (confSeenByB ?? []).length === 0);
+
+    check(
+      'B cannot WRITE a confirmation about A memory + A belief pair',
+      await denied(
+        B.client.from('graph_edge_confirmations').upsert(confirmRow, { onConflict: 'user_id,edge_key' })
+      )
+    );
+    check(
+      'anon cannot INSERT any confirmation (read-free table for signed-out)',
+      await denied(
+        anon.from('graph_edge_confirmations').upsert(confirmRow, { onConflict: 'user_id,edge_key' })
+      )
+    );
+
+    const { error: reconfirmErr } = await A.client
+      .from('graph_edge_confirmations')
+      .upsert({ ...confirmRow, status: 'dismissed' as const }, { onConflict: 'user_id,edge_key' });
+    const { data: confAfter } = await A.client
+      .from('graph_edge_confirmations')
+      .select('status')
+      .eq('edge_key', edgeKey)
+      .maybeSingle();
+    check('A re-decides own confirmation: latest status wins (upsert)', !reconfirmErr && confAfter?.status === 'dismissed', confAfter?.status);
+
+    const { data: confAnonView } = await anon
+      .from('graph_edge_confirmations')
+      .select('id');
+    check('anon sees zero confirmation rows (private decisions)', (confAnonView ?? []).length === 0);
+
     /* ---------------- cleanup (each account deletes only own rows) ---------------- */
     console.log('— Cleanup');
     if (sampleId) {
       await A.client.from('interpretation_flags').delete().eq('memory_id', sampleId);
     }
+    await A.client.from('graph_edge_confirmations').delete().eq('edge_key', edgeKey);
     await A.client.from('beliefs_history').delete().eq('belief_id', beliefA!.id);
     await B.client.from('beliefs_history').delete().eq('belief_id', beliefB!.id);
     await A.client.from('timeline_events').delete().eq('id', tlA!.id);

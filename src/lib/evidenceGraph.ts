@@ -15,7 +15,7 @@ import { findRelevantMemories } from './decisionAnalysis';
 
 export type GraphNodeType = 'memory' | 'belief' | 'value' | 'decision' | 'reflection';
 
-export type EdgeBasis = 'direct' | 'inferred';
+export type EdgeBasis = 'direct' | 'confirmed' | 'inferred';
 
 export type EdgeKind =
   | 'belief_history'
@@ -44,6 +44,8 @@ export interface GraphEdge {
   basis: EdgeBasis;
   /** Where this edge comes from: field name or derivation method. */
   trace: string;
+  /** For confirmed edges: when the user confirmed it. */
+  confirmedAt?: string;
 }
 
 export interface EvidenceGraph {
@@ -110,6 +112,39 @@ export function reflectionNode(d: Decision): GraphNode | null {
       ? 'outcome matched original reasoning'
       : 'outcome diverged from original reasoning',
   };
+}
+
+/**
+ * Merge the user's confirm/dismiss decisions into the derived graph.
+ *
+ * - A confirmed edge is promoted to basis 'confirmed' and becomes an
+ *   established, solid-line connection attributed to the user.
+ * - A dismissed edge is removed from the graph entirely (kept as a record in
+ *   the confirmations table so it is not re-surfaced as new).
+ * - Confirmations whose endpoint records no longer exist are dropped: edges
+ *   re-derive from live data, so a confirmation can never dangle a dead node
+ *   back into the graph. (Stale rows are left in the table; they are inert.)
+ * - Direct edges pass through unchanged — recorded data needs no approval.
+ */
+export function applyEdgeConfirmations(
+  graph: EvidenceGraph,
+  confirmations: { edge_key: string; status: 'confirmed' | 'dismissed'; created_at: string }[]
+): EvidenceGraph {
+  const nodeIds = new Set(graph.nodes.map((n) => n.id));
+  const byKey = new Map(confirmations.map((c) => [c.edge_key, c]));
+  const edges: GraphEdge[] = [];
+  for (const e of graph.edges) {
+    const c = byKey.get(e.id);
+    // Dismissal only applies to suggested (inferred) edges: recorded data
+    // cannot be removed by a confirmation action.
+    if (c?.status === 'dismissed' && e.basis === 'inferred') continue;
+    if (c?.status === 'confirmed' && nodeIds.has(e.source) && nodeIds.has(e.target)) {
+      edges.push({ ...e, basis: 'confirmed', confirmedAt: c.created_at, trace: `${e.trace} · confirmed by you ${new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` });
+    } else {
+      edges.push(e);
+    }
+  }
+  return { nodes: graph.nodes, edges };
 }
 
 /**

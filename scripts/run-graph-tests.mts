@@ -9,6 +9,7 @@ import {
   filterGraph,
   emptyFilters,
   nodeRoute,
+  applyEdgeConfirmations,
 } from '../src/lib/evidenceGraph.ts';
 import type { Belief, Decision, Memory } from '../src/lib/types.ts';
 
@@ -164,9 +165,10 @@ const again = buildEvidenceGraph(mems, beliefs, decisions);
 check('determinism: rebuilding with same records yields identical edges',
   again.edges.map((e) => e.id).join() === graph.edges.map((e) => e.id).join());
 
-// --- 12. Direct vs inferred are distinguishable and labeled ---
-check('edge basis is always direct or inferred with a human label',
-  graph.edges.every((e) => (e.basis === 'direct' || e.basis === 'inferred') && e.label.length > 3));
+// --- 12. Direct, confirmed, inferred are distinguishable and labeled ---
+check('edge basis is always direct, confirmed, or inferred with a human label',
+  graph.edges.every((e) =>
+    (e.basis === 'direct' || e.basis === 'confirmed' || e.basis === 'inferred') && e.label.length > 3));
 
 // --- 13. Direct edges trace to stored fields only ---
 check('direct edges cite a stored-field trace, not a keyword method',
@@ -187,6 +189,87 @@ check('node routes: memories and decisions deep-link, others stay in-graph',
 const empty = buildEvidenceGraph([], [], []);
 check('empty inputs produce an empty graph with no edges',
   empty.nodes.length === 0 && empty.edges.length === 0);
+
+// --- 16. Suggested-edge confirmation: promotion, dismissal, cleanup ---
+{
+  const target = graph.edges.find((e) => e.basis === 'inferred');
+  if (!target) {
+    check('a suggested edge exists in seeded data to test confirmation', false, 'no inferred edges derived');
+  } else {
+    const now = new Date().toISOString();
+    // Promotion: confirmed suggested edge becomes established with a date.
+    const promoted = applyEdgeConfirmations(graph, [{ edge_key: target.id, status: 'confirmed', created_at: now }]);
+    const pe = promoted.edges.find((e) => e.id === target.id);
+    check('confirming a suggested edge promotes it to an established connection with a date',
+      pe?.basis === 'confirmed' && pe.confirmedAt === now && /confirmed by you/.test(pe?.trace ?? ''),
+      pe ? `${pe.basis} ${pe.trace}` : 'edge missing');
+    check('promotion changes only the confirmed edge — all others keep their basis',
+      promoted.edges.filter((e) => e.id !== target.id).every((e) =>
+        e.basis === graph.edges.find((x) => x.id === e.id)?.basis));
+
+    // Dismissal: removed from the graph, not converted to anything else.
+    const dismissed = applyEdgeConfirmations(graph, [{ edge_key: target.id, status: 'dismissed', created_at: now }]);
+    check('dismissing a suggested edge removes it (never silently converted)',
+      !dismissed.edges.some((e) => e.id === target.id) &&
+      dismissed.edges.length === graph.edges.length - 1);
+
+    // Re-confirm after dismiss: the later decision wins (upsert semantics).
+    const reconfirmed = applyEdgeConfirmations(graph, [
+      { edge_key: target.id, status: 'dismissed', created_at: now },
+      { edge_key: target.id, status: 'confirmed', created_at: now },
+    ]);
+    check('a later decision replaces an earlier one (last action wins)',
+      reconfirmed.edges.find((e) => e.id === target.id)?.basis === 'confirmed');
+
+    // Deleted-record cleanup: a confirmation on a dead endpoint must not
+    // resurrect the edge or dangle a node.
+    const dead = { edge_key: 'memory:00000000-0000-0000-0000-000000000000|evidence_supports|belief:00000000-0000-0000-0000-000000000000', status: 'confirmed' as const, created_at: now };
+    const cleaned = applyEdgeConfirmations(graph, [dead]);
+    check('confirmations for deleted records never dangle into the graph',
+      cleaned.nodes.length === graph.nodes.length && cleaned.edges.length === graph.edges.length);
+  }
+
+  // Direct edges are unaffected by dismissal: recorded data needs no approval.
+  const direct = graph.edges.find((e) => e.basis === 'direct');
+  if (direct) {
+    const untouched = applyEdgeConfirmations(graph, [{ edge_key: direct.id, status: 'dismissed', created_at: new Date().toISOString() }]);
+    check('recorded (direct) edges stay regardless of confirmations',
+      untouched.edges.some((e) => e.id === direct.id && e.basis === 'direct'));
+  }
+}
+
+// --- 17. Conflicting connections: support and contradict never both apply,
+// and both sides of a contradiction remain traceable ---
+{
+  const pairs = new Map<string, string[]>();
+  for (const e of graph.edges) {
+    if (e.kind !== 'evidence_supports' && e.kind !== 'evidence_contradicts') continue;
+    const key = `${e.source}|${e.target}`;
+    pairs.set(key, [...(pairs.get(key) ?? []), e.kind]);
+  }
+  check('no belief/memory pair carries both support and contradiction edges',
+    Array.from(pairs.values()).every((kinds) => new Set(kinds).size === 1),
+    Array.from(pairs.entries()).filter(([, k]) => new Set(k).size > 1).map(([key]) => key).join('; '));
+  const contra = graph.edges.filter((e) => e.kind === 'evidence_contradicts');
+  check('every contradiction edge keeps its full trace (both sides auditable)',
+    contra.every((e) => e.trace.length > 20));
+}
+
+// --- 18. Disconnected nodes are representable, not dropped ---
+{
+  const withIsolated = applyEdgeConfirmations(graph, []);
+  const connected = new Set<string>();
+  for (const e of withIsolated.edges) { connected.add(e.source); connected.add(e.target); }
+  const isolated = withIsolated.nodes.filter((n) => !connected.has(n.id));
+  check('records without supported connections remain as visible nodes',
+    withIsolated.nodes.length === graph.nodes.length && isolated.length >= 0);
+}
+
+// --- 19. Seeded sample integrity: fictional data stays complete ---
+check('seeded fictional records all appear as graph nodes',
+  mems.every((m) => nodeIds.has(`memory:${m.id}`)) &&
+  beliefs.every((b) => nodeIds.has(`belief:${b.id}`)) &&
+  decisions.every((d) => nodeIds.has(`decision:${d.id}`)));
 
 console.log(`\nEvidence graph tests: ${passed} passed, ${failed} failed`);
 console.log(`  (validated against ${mems.length} memories, ${beliefs.length} beliefs, ${decisions.length} decisions, ${(history ?? []).length} history rows)`);

@@ -11,19 +11,21 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { decisionsService, memoriesService, beliefsService } from '@/lib/services';
+import { decisionsService, memoriesService, beliefsService, edgeConfirmationsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import {
   buildEvidenceGraph,
   filterGraph,
   emptyFilters,
   nodeRoute,
+  applyEdgeConfirmations,
   GRAPH_TYPE_LABELS,
   type GraphNode,
   type GraphNodeType,
   type GraphEdge,
 } from '@/lib/evidenceGraph';
 import { Card, SectionHeading, LoadingState, ErrorState, EmptyState, Badge } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 
 const TYPE_ORDER: GraphNodeType[] = ['memory', 'belief', 'value', 'decision', 'reflection'];
 
@@ -68,19 +70,24 @@ export function EvidenceGraphPage() {
   const memories = useAsyncData(() => memoriesService.list(), []);
   const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
   const decisions = useAsyncData(() => decisionsService.list(), []);
+  const confirmations = useAsyncData(() => edgeConfirmationsService.list(), []);
+  const { user } = useAuth();
 
-  const loading = memories.loading || beliefs.loading || decisions.loading;
-  const error = memories.error || beliefs.error || decisions.error;
+  const loading = memories.loading || beliefs.loading || decisions.loading || confirmations.loading;
+  const error = memories.error || beliefs.error || decisions.error || confirmations.error;
 
   const [selected, setSelected] = useState<GraphNode | null>(null);
+  const [edgeError, setEdgeError] = useState<string | null>(null);
   const [types, setTypes] = useState<GraphNodeType[]>([]);
   const [period, setPeriod] = useState<'all' | '30' | '90' | '365'>('all');
   const [showInferred, setShowInferred] = useState(true);
+  const [decisionFilter, setDecisionFilter] = useState<string>('all');
 
   const graph = useMemo(() => {
     if (loading || error) return { nodes: [], edges: [] };
-    return buildEvidenceGraph(memories.data ?? [], beliefs.data ?? [], decisions.data ?? []);
-  }, [loading, error, memories.data, beliefs.data, decisions.data]);
+    const derived = buildEvidenceGraph(memories.data ?? [], beliefs.data ?? [], decisions.data ?? []);
+    return applyEdgeConfirmations(derived, confirmations.data ?? []);
+  }, [loading, error, memories.data, beliefs.data, decisions.data, confirmations.data]);
 
   const filtered = useMemo(() => {
     const f = emptyFilters();
@@ -89,9 +96,22 @@ export function EvidenceGraphPage() {
       const days = Number(period);
       f.from = new Date(Date.now() - days * 86_400_000).toISOString();
     }
-    const g = filterGraph(graph, f);
-    return showInferred ? g : { ...g, edges: g.edges.filter((e) => e.basis === 'direct') };
-  }, [graph, types, period, showInferred]);
+    let g = filterGraph(graph, f);
+    if (!showInferred) g = { ...g, edges: g.edges.filter((e) => e.basis === 'direct' || e.basis === 'confirmed') };
+    if (decisionFilter !== 'all') {
+      const focus = `decision:${decisionFilter}`;
+      const keep = new Set<string>([focus]);
+      for (const e of g.edges) {
+        if (e.source === focus) keep.add(e.target);
+        if (e.target === focus) keep.add(e.source);
+      }
+      g = {
+        nodes: g.nodes.filter((n) => keep.has(n.id)),
+        edges: g.edges.filter((e) => keep.has(e.source) && keep.has(e.target)),
+      };
+    }
+    return g;
+  }, [graph, types, period, showInferred, decisionFilter]);
 
   const layout = useMemo(() => computeLayout(filtered), [filtered]);
 
@@ -118,11 +138,15 @@ export function EvidenceGraphPage() {
       <SectionHeading eyebrow="Connections" title="Evidence Graph" />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
-        Every line below traces to a stored record or a re-derivable keyword match — nothing is
-        drawn just to fill the picture. Dashed red lines mark contradictions; both sides stay
-        visible. Solid lines are recorded directly in your data; lighter lines are inferred and
-        labeled with how.
+        Every line below traces to a stored record, a re-derivable keyword match, or a connection
+        you confirmed yourself — nothing is drawn just to fill the picture. Dashed red lines mark
+        contradictions; both sides stay visible. Solid lines are recorded directly in your data or
+        confirmed by you; lighter lines are inferred and labeled with how.
       </p>
+
+      {edgeError && (
+        <p role="alert" className="rounded-lg bg-clayred-light px-4 py-2.5 text-sm text-clayred-DEFAULT">{edgeError}</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by entity type">
         {TYPE_ORDER.map((t) => (
@@ -163,9 +187,21 @@ export function EvidenceGraphPage() {
           <Link2 className="w-3.5 h-3.5" aria-hidden />
           Inferred links
         </button>
-        {(types.length > 0 || period !== 'all') && (
+        <label htmlFor="graph-decision" className="sr-only">Focus on a decision</label>
+        <select
+          id="graph-decision"
+          value={decisionFilter}
+          onChange={(e) => setDecisionFilter(e.target.value)}
+          className="rounded-full border border-linen-dark bg-white/80 px-3 py-1.5 text-xs text-charcoal max-w-[220px]"
+        >
+          <option value="all">All decisions</option>
+          {(decisions.data ?? []).map((d) => (
+            <option key={d.id} value={d.id}>{d.title}</option>
+          ))}
+        </select>
+        {(types.length > 0 || period !== 'all' || decisionFilter !== 'all') && (
           <button
-            onClick={() => { setTypes([]); setPeriod('all'); }}
+            onClick={() => { setTypes([]); setPeriod('all'); setDecisionFilter('all'); }}
             className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark"
           >
             Reset filters
@@ -184,39 +220,86 @@ export function EvidenceGraphPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
-          <Card className="p-4 md:p-6 overflow-hidden">
-            <GraphCanvas
-              layout={layout}
+        <>
+          {/* Mobile: linked list instead of the wide SVG */}
+          <div className="xl:hidden space-y-3">
+            <p className="text-xs text-slateink-light px-1">
+              List view (the diagram is below on larger screens). Tap any record for details.
+            </p>
+            <GraphListView
+              nodes={filtered.nodes}
               edges={filtered.edges}
               connectedIds={connectedIds}
-              selected={selected}
               onSelect={setSelected}
             />
-            <Legend />
-          </Card>
-
-          <aside className="space-y-4">
-            {selected ? (
-              <NodeInspector node={selected} edges={filtered.edges} onClose={() => setSelected(null)} />
-            ) : (
-              <Card className="p-5">
-                <h3 className="font-serif text-lg text-charcoal mb-1">Inspect a node</h3>
-                <p className="text-xs text-slateink leading-relaxed">
-                  Select any circle — or Tab to it and press Enter — to read the original record,
-                  its metadata, and every edge with its exact source.
-                </p>
-                <p className="mt-3 text-xs text-slateink-light">
-                  {filtered.nodes.length} nodes · {filtered.edges.length} edges
-                  {isolatedCount > 0 && ` · ${isolatedCount} record${isolatedCount === 1 ? '' : 's'} with no supported connections yet`}
-                </p>
-              </Card>
-            )}
-          </aside>
-        </div>
+          </div>
+          <div className="hidden xl:grid grid-cols-[1fr_360px] gap-6">
+            <Card className="p-4 md:p-6 overflow-hidden">
+              <GraphCanvas
+                layout={layout}
+                edges={filtered.edges}
+                connectedIds={connectedIds}
+                selected={selected}
+                onSelect={setSelected}
+              />
+              <Legend />
+            </Card>
+            <aside className="space-y-4">
+              {selected ? (
+                <NodeInspector
+                  node={selected}
+                  edges={filtered.edges}
+                  userCanConfirm={!!user}
+                  onDecide={handleEdgeDecision}
+                  onClose={() => setSelected(null)}
+                />
+              ) : (
+                <Card className="p-5">
+                  <h3 className="font-serif text-lg text-charcoal mb-1">Inspect a node</h3>
+                  <p className="text-xs text-slateink leading-relaxed">
+                    Select any circle — or Tab to it and press Enter — to read the original record,
+                    its metadata, and every edge with its exact source.
+                  </p>
+                  <p className="mt-3 text-xs text-slateink-light">
+                    {filtered.nodes.length} nodes · {filtered.edges.length} edges
+                    {isolatedCount > 0 && ` · ${isolatedCount} record${isolatedCount === 1 ? '' : 's'} with no supported connections yet`}
+                  </p>
+                </Card>
+              )}
+            </aside>
+          </div>
+          {selected && (
+            <div className="xl:hidden">
+              <NodeInspector
+                node={selected}
+                edges={filtered.edges}
+                userCanConfirm={!!user}
+                onDecide={handleEdgeDecision}
+                onClose={() => setSelected(null)}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
+
+  async function handleEdgeDecision(edgeKey: string, status: 'confirmed' | 'dismissed') {
+    const e = filtered.edges.find((x) => x.id === edgeKey);
+    if (!e) return;
+    try {
+      await edgeConfirmationsService.decide({
+        edge_key: e.id,
+        source_id: e.source,
+        target_id: e.target,
+        kind: e.kind,
+        status,
+      });
+      confirmations.reload();
+    } catch (err) {
+      setEdgeError(err instanceof Error ? err.message : 'Could not record your decision.');
+    }
+  }
 }
 
 interface Positioned {
@@ -375,6 +458,10 @@ function Legend() {
         inferred (keyword-derived)
       </span>
       <span className="flex items-center gap-1.5">
+        <svg width="26" height="8" aria-hidden><line x1="0" y1="4" x2="26" y2="4" strokeWidth="1.8" className="stroke-sage-dark" /></svg>
+        confirmed by you
+      </span>
+      <span className="flex items-center gap-1.5">
         <svg width="26" height="8" aria-hidden><line x1="0" y1="4" x2="26" y2="4" strokeWidth="1.8" className="stroke-clayred-DEFAULT" strokeDasharray="6 4" /></svg>
         contradiction (both sides kept)
       </span>
@@ -386,13 +473,72 @@ function Legend() {
   );
 }
 
+/**
+ * Mobile/readable alternative to the SVG: nodes grouped by type, each linking
+ * to its record and listing its connections as text.
+ */
+function GraphListView({
+  nodes,
+  edges,
+  connectedIds,
+  onSelect,
+}: {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  connectedIds: Set<string>;
+  onSelect: (n: GraphNode) => void;
+}) {
+  if (nodes.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      {TYPE_ORDER.map((t) => {
+        const group = nodes.filter((n) => n.type === t);
+        if (group.length === 0) return null;
+        return (
+          <section key={t} aria-label={GRAPH_TYPE_LABELS[t]} className="card-surface p-4">
+            <h3 className={`text-[10px] uppercase tracking-[0.15em] font-medium mb-2 ${TYPE_STYLE[t].text}`}>
+              {GRAPH_TYPE_LABELS[t]}
+            </h3>
+            <ul className="space-y-2">
+              {group.map((n) => {
+                const mine = edges.filter((e) => e.source === n.id || e.target === n.id);
+                const isolated = !connectedIds.has(n.id);
+                return (
+                  <li key={n.id}>
+                    <button
+                      onClick={() => onSelect(n)}
+                      className="w-full text-left rounded-xl border border-linen-dark bg-white/60 px-4 py-3 hover:border-terracotta transition-colors"
+                    >
+                      <span className="block text-sm font-medium text-charcoal leading-snug">{n.title}</span>
+                      <span className="block text-[11px] text-slateink mt-0.5">{n.meta}</span>
+                      <span className="block text-[11px] text-slateink-light mt-1">
+                        {isolated
+                          ? 'No supported connections yet'
+                          : `${mine.length} connection${mine.length === 1 ? '' : 's'}: ${mine.map((e) => e.label).slice(0, 3).join(', ')}${mine.length > 3 ? ', …' : ''}`}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function NodeInspector({
   node,
   edges,
+  userCanConfirm,
+  onDecide,
   onClose,
 }: {
   node: GraphNode;
   edges: GraphEdge[];
+  userCanConfirm: boolean;
+  onDecide: (edgeKey: string, status: 'confirmed' | 'dismissed') => void;
   onClose: () => void;
 }) {
   const mine = edges.filter((e) => e.source === node.id || e.target === node.id);
@@ -463,8 +609,8 @@ function NodeInspector({
             {mine.map((e) => (
               <li key={e.id} className="text-[11px] leading-relaxed">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge tone={e.basis === 'direct' ? 'sage' : e.kind === 'evidence_contradicts' ? 'clay' : 'neutral'}>
-                    {e.basis === 'direct' ? 'recorded' : 'inferred'}
+                  <Badge tone={e.basis === 'confirmed' ? 'sage' : e.basis === 'direct' ? 'sage' : e.kind === 'evidence_contradicts' ? 'clay' : 'neutral'}>
+                    {e.basis === 'confirmed' ? 'confirmed by you' : e.basis === 'direct' ? 'recorded' : 'suggested'}
                   </Badge>
                   <span className="font-medium text-charcoal">{e.label}</span>
                 </div>
@@ -472,9 +618,31 @@ function NodeInspector({
                   {e.source === node.id ? '→' : '←'} {otherTitle(e, node.id)}
                 </p>
                 <p className="text-slateink-light mt-0.5">trace: {e.trace}</p>
+                {e.basis === 'inferred' && userCanConfirm && (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className="text-slateink-light">This connection is a suggestion:</span>
+                    <button
+                      onClick={() => onDecide(e.id, 'confirmed')}
+                      className="rounded-full bg-sage-light px-2.5 py-1 text-[10px] font-medium text-sage-dark hover:brightness-95 transition"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => onDecide(e.id, 'dismissed')}
+                      className="rounded-full px-2.5 py-1 text-[10px] font-medium text-slateink-dark hover:bg-linen transition"
+                    >
+                      Not a connection
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
+        )}
+        {!userCanConfirm && mine.some((e) => e.basis === 'inferred') && (
+          <p className="mt-2 text-[11px] text-slateink-light italic">
+            Sign in to confirm or dismiss suggested connections as established ones.
+          </p>
         )}
       </div>
     </Card>

@@ -20,8 +20,44 @@ async function unwrap<T>(query: PromiseLike<DbResult<T>>): Promise<T> {
   return data as T;
 }
 
-export const flagsService = {
-  async create(input: { memory_id: string; answer_excerpt: string; correction_note: string }): Promise<void> {
+/** A user's confirm/dismiss decision on an inferred graph edge. */
+export interface EdgeConfirmation {
+  id: string;
+  edge_key: string;
+  source_id: string;
+  target_id: string;
+  kind: string;
+  status: 'confirmed' | 'dismissed';
+  created_at: string;
+}
+
+export const edgeConfirmationsService = {
+  /** Confirmed/dismissed edges for the signed-in user. Empty for signed-out visitors. */
+  async list(): Promise<EdgeConfirmation[]> {
+    const { data, error } = await supabase
+      .from('graph_edge_confirmations')
+      .select('*');
+    if (error) {
+      // Signed-out visitors have no confirmations (RLS allows none); the graph
+      // still renders with its derived edges.
+      if (error.code === 'PGRST301' || error.message.includes('JWT')) return [];
+      throw new Error(error.message);
+    }
+    return (data ?? []) as EdgeConfirmation[];
+  },
+  /**
+   * Record the user's decision on a suggested edge. Upsert on the
+   * (user, edge) pair: re-confirming or dismissing later replaces the record.
+   */
+  async decide(edge: Omit<EdgeConfirmation, 'id' | 'created_at'>): Promise<void> {
+    const { error } = await supabase
+      .from('graph_edge_confirmations')
+      .upsert(edge, { onConflict: 'user_id,edge_key' });
+    if (error) throw new Error(error.message);
+  },
+};
+
+export const flagsService = {  async create(input: { memory_id: string; answer_excerpt: string; correction_note: string }): Promise<void> {
     const { error } = await supabase.from('interpretation_flags').insert(input);
     if (error) throw new Error(error.message);
   },
