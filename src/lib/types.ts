@@ -124,6 +124,53 @@ export interface OutcomeReflection {
   matchesOriginalReasoning: boolean;
   surprises: string;
   lesson: string;
+  /** How the outcome measured against the decision's stated success definition. */
+  successMeasure?: 'met' | 'partly' | 'not_met' | 'redefined';
+  /** User's own words on how it measured, when they chose "redefined" or want nuance. */
+  successNote?: string;
+}
+
+/** A belief/value change the mirror proposes; nothing applies without explicit approval. */
+export interface BeliefProposal {
+  id: string;
+  beliefId: string;
+  beliefStatement: string;
+  /** What the mirror suggests changing, in user-visible terms. */
+  change: string;
+  /** Why: the divergence that triggered the proposal, citing the decision. */
+  reason: string;
+  status: 'pending' | 'approved' | 'dismissed';
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+/** Per-value arithmetic trace behind an option's alignment score. */
+export interface ValueTraceLine {
+  value: string;
+  weight: number;
+  supporting: number;
+  contradicting: number;
+  /** (supporting − contradicting) × weight */
+  contribution: number;
+  /** Explicit user judgments (pros/cons) included in the counts. */
+  explicitCount: number;
+  /** Inferred keyword classifications included in the counts. */
+  inferredCount: number;
+  /** User-corrected classifications included in the counts. */
+  overrideCount: number;
+  /** The record links behind the counts. */
+  memoryIds: string[];
+}
+
+export interface ScoreTrace {
+  /** Per-value weighted contributions. */
+  lines: ValueTraceLine[];
+  /** Σ (supporting − contradicting) × weight */
+  net: number;
+  /** Σ (supporting + contradicting) × weight */
+  classifiedMass: number;
+  /** The reported score: clamp(net ÷ classifiedMass, -1, 1). */
+  score: number;
 }
 
 export interface Decision {
@@ -144,6 +191,8 @@ export interface Decision {
   value_weights: Record<string, number>;
   /** User-corrected classifications, keyed "<decisionId>:<option>:<value>:<memoryId>". */
   classification_overrides: Record<string, 'for' | 'against' | 'neutral' | 'unknown'>;
+  /** Belief/value updates the mirror proposed after a divergent reflection. */
+  proposals?: BeliefProposal[];
   rationale: string | null;
   reflection: OutcomeReflection | null;
   reflected_at: string | null;

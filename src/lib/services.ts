@@ -3,6 +3,7 @@ import type {
   Belief,
   BeliefHistoryPoint,
   BeliefInput,
+  BeliefProposal,
   Decision,
   DecisionInput,
   InterpretationFlag,
@@ -148,7 +149,14 @@ export const decisionsService = {
   },
   async saveReflection(
     id: string,
-    reflection: { whatHappened: string; matchesOriginalReasoning: boolean; surprises: string; lesson: string }
+    reflection: {
+      whatHappened: string;
+      matchesOriginalReasoning: boolean;
+      surprises: string;
+      lesson: string;
+      successMeasure?: 'met' | 'partly' | 'not_met' | 'redefined';
+      successNote?: string;
+    }
   ): Promise<void> {
     const { error } = await supabase
       .from('decisions')
@@ -159,6 +167,44 @@ export const decisionsService = {
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from('decisions').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  },
+  /** Store a generated proposal (pending) or record the user's decision on one. */
+  async saveProposal(id: string, proposal: BeliefProposal): Promise<void> {
+    const current = await supabase
+      .from('decisions')
+      .select('proposals')
+      .eq('id', id)
+      .maybeSingle();
+    if (current.error) throw new Error(current.error.message);
+    const list = Array.isArray(current.data?.proposals)
+      ? (current.data.proposals as BeliefProposal[])
+      : [];
+    const next = list.some((p) => p.id === proposal.id)
+      ? list.map((p) => (p.id === proposal.id ? proposal : p))
+      : [...list, proposal];
+    const { error } = await supabase.from('decisions').update({ proposals: next }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  /**
+   * Apply an approved proposal: adjust the belief's strength and record the
+   * decision that motivated it in its review history. Called only after the
+   * user has explicitly approved the proposal in the UI.
+   */
+  async applyApprovedProposal(decisionId: string, proposal: BeliefProposal): Promise<void> {
+    if (proposal.status !== 'approved') {
+      throw new Error('Only approved proposals can be applied.');
+    }
+    const match = /from (\d+) to (\d+)/.exec(proposal.change);
+    const nextStrength = match ? Number(match[2]) : null;
+    if (nextStrength === null || Number.isNaN(nextStrength)) {
+      throw new Error('Proposal does not carry a valid strength change.');
+    }
+    const { error } = await supabase
+      .from('beliefs')
+      .update({ strength: nextStrength, last_reviewed: new Date().toISOString() })
+      .eq('id', proposal.beliefId);
+    if (error) throw new Error(error.message);
+    await this.saveProposal(decisionId, proposal);
   },
 };
 

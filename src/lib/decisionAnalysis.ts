@@ -1,4 +1,4 @@
-import type { Belief, Decision, Memory } from './types';
+import type { Belief, BeliefProposal, Decision, Memory, ScoreTrace, ValueTraceLine } from './types';
 
 /**
  * Deterministic decision analysis engine.
@@ -10,7 +10,7 @@ import type { Belief, Decision, Memory } from './types';
  * Scores are preference alignment, not probability of success.
  */
 
-export const ANALYSIS_VERSION = 'dm-2';
+export const ANALYSIS_VERSION = 'dm-3';
 
 export type Classification = 'for' | 'against' | 'neutral' | 'unknown';
 export type ClassificationOrigin = 'explicit' | 'inferred' | 'override';
@@ -52,6 +52,8 @@ export interface OptionAlignment {
   insufficientEvidence: boolean;
   values: ValueAlignmentResult[];
   classifications: MemoryClassification[];
+  /** Full arithmetic trace behind the score. */
+  trace: ScoreTrace;
 }
 
 export interface WeightSensitivity {
@@ -88,11 +90,23 @@ export interface DecisionReport {
   optionAlignments: OptionAlignment[];
   preferredOption: string | null;
   weightSensitivities: WeightSensitivity[];
+  /** Records classified AGAINST each option, with dates and links. */
+  counterevidence: CounterevidenceItem[];
   constraintStatuses: ConstraintStatus[];
   contradictions: string[];
   missingInformation: string[];
   experiments: string[];
   evidenceLimitations: string[];
+}
+
+export interface CounterevidenceItem {
+  optionLabel: string;
+  memoryId: string;
+  memoryTitle: string;
+  occurredAt: string;
+  value: string;
+  origin: ClassificationOrigin;
+  rationale: string;
 }
 
 const STOP_WORDS = new Set([
@@ -307,12 +321,34 @@ export function analyzeOptionValues(
   );
   const score = classifiedMass > 0 ? Math.max(-1, Math.min(1, net / classifiedMass)) : 0;
 
+  // Arithmetic trace: every line shows inputs (counts by origin), the weighted
+  // contribution, and the record links, so the score is reproducible by hand.
+  const lines: ValueTraceLine[] = valueResults.map((v) => {
+    const cls = classifications.filter((c) => c.value === v.value);
+    return {
+      value: v.value,
+      weight: v.weight,
+      supporting: v.supportingMemories,
+      contradicting: v.contradictingMemories,
+      contribution: (v.supportingMemories - v.contradictingMemories) * v.weight,
+      explicitCount: cls.filter((c) => c.origin === 'explicit').length,
+      inferredCount: cls.filter((c) => c.origin === 'inferred').length,
+      overrideCount: cls.filter((c) => c.origin === 'override').length,
+      memoryIds: cls
+        .filter((c) => c.classification === 'for' || c.classification === 'against')
+        .map((c) => c.memoryId)
+        .filter((id) => !id.startsWith('explicit:')),
+    };
+  });
+  const trace: ScoreTrace = { lines, net, classifiedMass, score };
+
   return {
     label: optionLabel,
     score,
     insufficientEvidence: classifiedMass === 0,
     values: valueResults,
     classifications,
+    trace,
   };
 }
 
@@ -550,6 +586,75 @@ export function buildSummary(
   return `${decision.title}: ${evidenceLine} The stated values in play are ${valueList}.${contradictionLine}${preferredLine}${sensitivityLine} Alignment reflects preference weighting you control — it is not a prediction of how either option will turn out.`;
 }
 
+/**
+ * Records classified AGAINST each option. Counterevidence is never hidden
+ * inside per-value lines; it is surfaced with dates and links. Unknown and
+ * neutral classifications are deliberately NOT counterevidence.
+ */
+export function extractCounterevidence(alignments: OptionAlignment[]): CounterevidenceItem[] {
+  const out: CounterevidenceItem[] = [];
+  for (const a of alignments) {
+    for (const c of a.classifications) {
+      if (c.classification !== 'against') continue;
+      out.push({
+        optionLabel: a.label,
+        memoryId: c.memoryId.startsWith('explicit:') ? '' : c.memoryId,
+        memoryTitle: c.memoryTitle,
+        occurredAt: '',
+        value: c.value,
+        origin: c.origin === 'override' ? 'override' : c.memoryId.startsWith('explicit:') ? 'explicit' : 'inferred',
+        rationale: c.rationale,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Why the comparison looks the way it does at the current weights: which
+ * value contributions decide the ranking. The acceptance gate: a judge can
+ * change a weight and understand exactly why the comparison changes.
+ */
+export function explainRanking(alignments: OptionAlignment[]): string[] {
+  const assessable = alignments.filter((a) => !a.insufficientEvidence);
+  if (assessable.length === 0) {
+    return ['No option has directional evidence, so no value contribution affects a ranking yet.'];
+  }
+  const best = assessable.reduce((a, b) => (b.score > a.score ? b : a));
+  const tied = assessable.filter((a) => a.score === best.score);
+  const others = assessable.filter((a) => a !== best && (tied.length > 1 || a.score < best.score));
+  const out: string[] = [];
+
+  if (tied.length > 1) {
+    out.push(
+      `Tie at ${(best.score * 100).toFixed(0)}%: ${tied.map((t) => `"${t.label}"`).join(' and ')} score equally, so no leader is named.`
+    );
+  } else {
+    out.push(`"${best.label}" leads at ${(best.score * 100).toFixed(0)}% alignment.`);
+  }
+
+  for (const other of others) {
+    const diff = best.score - other.score;
+    const decisive: string[] = [];
+    for (const lineB of best.trace.lines) {
+      const lineO = other.trace.lines.find((l) => l.value === lineB.value);
+      if (!lineO) continue;
+      const delta = lineB.contribution - lineO.contribution;
+      if (Math.abs(delta) > 1e-9) {
+        decisive.push(
+          `${lineB.value} (${lineB.supporting}−${lineB.contradicting})×${lineB.weight.toFixed(1)} = ${lineB.contribution.toFixed(2)} vs (${lineO.supporting}−${lineO.contradicting})×${lineO.weight.toFixed(1)} = ${lineO.contribution.toFixed(2)}, difference ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}`
+        );
+      }
+    }
+    out.push(
+      decisive.length > 0
+        ? `Against "${other.label}" (gap ${diff.toFixed(2)}): ${decisive.join('; ')}.`
+        : `Against "${other.label}": equal contributions on every value.`
+    );
+  }
+  return out;
+}
+
 export function analyzeDecision(
   decision: Decision,
   memories: Memory[],
@@ -586,6 +691,7 @@ export function analyzeDecision(
     optionAlignments,
     preferredOption: preferredOption(optionAlignments),
     weightSensitivities: sensitivities,
+    counterevidence: extractCounterevidence(optionAlignments),
     constraintStatuses,
     contradictions,
     missingInformation: missing,
@@ -595,8 +701,54 @@ export function analyzeDecision(
       'Value alignment scores reflect how you weighted your own values, not how likely any outcome is. The engine is not scientifically validated.',
       'Memories you have not recorded are invisible here; absence of evidence is not evidence of absence — missing evidence is reported as unknown.',
       'Constraint checks flag possible conflicts in your records; they never certify that an option satisfies a constraint.',
+      'Unknown and neutral classifications never count as evidence for or against an option; only records you wrote or classifications you confirmed move a score.',
     ],
   };
+}
+
+/**
+ * Propose a belief/value update after a divergent reflection. The mirror
+ * suggests; it never applies. Nothing changes unless the user approves.
+ */
+export function buildBeliefProposal(
+  decision: Decision,
+  belief: Belief
+): BeliefProposal {
+  const direction = decision.reflection?.matchesOriginalReasoning === false
+    ? 'diverged from your original reasoning'
+    : 'matched your original reasoning but taught you something new';
+  const currentStrength = belief.strength;
+  const suggested = decision.reflection?.matchesOriginalReasoning === false
+    ? Math.max(0, currentStrength - 10)
+    : Math.min(100, currentStrength + 10);
+  return {
+    id: `prop-${decision.id}-${belief.id}`,
+    beliefId: belief.id,
+    beliefStatement: belief.statement,
+    change: `Adjust strength of "${belief.statement}" from ${currentStrength} to ${suggested} and add a review note citing "${decision.title}".`,
+    reason: `Your reflection on "${decision.title}" ${direction}. The mirror proposes this belief revisit; approve to apply it, or dismiss — nothing changes until you decide.`,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    resolvedAt: null,
+  };
+}
+
+/**
+ * Which beliefs the reflection touches: those whose themes appear in the
+ * decision's values or reflection text. Keyword-based and deliberately
+ * conservative — an empty list means no proposal is made.
+ */
+export function findAffectedBeliefs(decision: Decision, beliefs: Belief[]): Belief[] {
+  if (!decision.reflection) return [];
+  const text = [
+    decision.values.join(' '),
+    decision.reflection.lesson,
+    decision.reflection.surprises,
+  ].join(' ').toLowerCase();
+  return beliefs.filter((b) => {
+    const words = b.statement.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
+    return words.some((w) => text.includes(w));
+  });
 }
 
 export function analysisToEditableText(report: DecisionReport): string {

@@ -9,6 +9,10 @@ import {
   preferredOption,
   findWeightSensitivities,
   assessConstraints,
+  extractCounterevidence,
+  explainRanking,
+  buildBeliefProposal,
+  findAffectedBeliefs,
 } from '../src/lib/decisionAnalysis.ts';
 import type { Decision, Memory, Belief } from '../src/lib/types.ts';
 
@@ -245,6 +249,116 @@ const beliefs: Belief[] = [];
   const b = analyzeOptionValues('Stay in current role', d, mems, []);
   check('cross-option evidence: each option counts only its own supporting record',
     a.score === 1 && b.score === 1, `a=${a.score} b=${b.score}`);
+}
+
+// --- 13. Score trace: arithmetic reproduces the reported score exactly ---
+{
+  const d = decision({ value_weights: { freedom: 0.8, security: 0.3 } });
+  const mems = [
+    memory('t1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('t2', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+    memory('t3', 'Staying gave security', 'Staying in the current role gave me security; relieved.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const t = a.trace;
+  const sumNet = t.lines.reduce((acc, l) => acc + l.contribution, 0);
+  const sumMass = t.lines.reduce((acc, l) => acc + (l.supporting + l.contradicting) * l.weight, 0);
+  check('trace: per-line contributions sum to the recorded net',
+    Math.abs(sumNet - t.net) < 1e-9, `${sumNet} vs ${t.net}`);
+  check('trace: per-line mass sums to the recorded classified mass',
+    Math.abs(sumMass - t.classifiedMass) < 1e-9, `${sumMass} vs ${t.classifiedMass}`);
+  check('trace: net/mass equals the reported score',
+    Math.abs(t.net / t.classifiedMass - t.score) < 1e-9, `${t.net}/${t.classifiedMass} vs ${t.score}`);
+  const freedomLine = t.lines.find((l) => l.value === 'freedom')!;
+  check('trace: each line records its origin counts and record links',
+    freedomLine.inferredCount >= 1 && freedomLine.memoryIds.includes('t1'), JSON.stringify(freedomLine));
+}
+
+// --- 14. Zero weights contribute nothing to net or mass ---
+{
+  const d = decision({ value_weights: { freedom: 0, security: 1 } });
+  const mems = [
+    memory('z1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('z2', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const freedomLine = a.trace.lines.find((l) => l.value === 'freedom')!;
+  check('zero weights: a value with weight 0 contributes 0 to net and mass',
+    freedomLine.weight === 0 && freedomLine.contribution === 0 &&
+    (freedomLine.supporting + freedomLine.contradicting) * freedomLine.weight === 0,
+    JSON.stringify(freedomLine));
+  // Score is driven only by the weighted value: 1 against × 1 / mass 1 = -1
+  check('zero weights: score comes solely from the weighted value',
+    a.score === -1, `got ${a.score}`);
+}
+
+// --- 15. Ties and changed weights: explainer names the decisive values ---
+{
+  const d = decision({ value_weights: { freedom: 0.5, security: 0.5 } });
+  const mems = [
+    memory('e1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('e2', 'Staying gave freedom', 'Staying in the current role kept my freedom; glad.'),
+    memory('e3', 'Staying gave security', 'Staying gave me security; relieved.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const b = analyzeOptionValues('Stay in current role', d, mems, []);
+  const lines = explainRanking([a, b]);
+  check('ties: explainer reports the tie instead of a leader',
+    lines.some((l) => /tie/i.test(l)), lines.join(' | '));
+  const d2 = decision({ value_weights: { freedom: 0.9, security: 0.1 } });
+  const mems2 = [
+    memory('e1', 'Offer gave freedom', 'The offer gave me freedom; glad.'),
+    memory('e2', 'Staying gave freedom', 'Staying in the current role kept my freedom; glad.'),
+    memory('e3', 'Staying gave security', 'Staying gave me security; relieved.'),
+    memory('e4', 'Offer risked security', 'The offer put my security at risk; I dreaded it.'),
+  ];
+  const a2 = analyzeOptionValues('Take the offer', d2, mems2, []);
+  const b2 = analyzeOptionValues('Stay in current role', d2, mems2, []);
+  const lines2 = explainRanking([a2, b2]);
+  check('changed weights: explainer names the decisive value arithmetic',
+    lines2.some((l) => /leads/i.test(l)) && lines2.some((l) => /×0\.9/.test(l) || /gap/.test(l)),
+    lines2.join(' | '));
+}
+
+// --- 16. Counterevidence: only directional-against items, with origin ---
+{
+  const d = decision({ value_weights: { freedom: 1, security: 0 } });
+  const mems = [
+    memory('ce1', 'Offer drained', 'The offer left me exhausted and resentful about freedom.'),
+    memory('ce2', 'Unclear mention', 'The offer schedule mentioned freedom in passing.'),
+    memory('ce3', 'Offer great', 'The offer gave me freedom; glad.'),
+  ];
+  const a = analyzeOptionValues('Take the offer', d, mems, []);
+  const ce = extractCounterevidence([a]);
+  check('counterevidence: only against-classified records appear',
+    ce.length === 1 && ce[0].memoryId === 'ce1' && ce[0].origin === 'inferred',
+    JSON.stringify(ce));
+  check('counterevidence: unknown/neutral records are never included',
+    !ce.some((c) => c.memoryId === 'ce2' || c.memoryId === 'ce3'), JSON.stringify(ce.map((c) => c.memoryId)));
+}
+
+// --- 17. Proposal generation and affected-belief matching ---
+{
+  const d = decision({
+    status: 'decided' as const,
+    chosen_option: 'Take the offer',
+    reflection: { whatHappened: 'It went badly.', matchesOriginalReasoning: false, surprises: '', lesson: 'I underestimated how much security matters to me.' },
+  });
+  const beliefList = [
+    { id: 'b1', statement: 'Security matters more than novelty', kind: 'belief' as const, status: 'active' as const, formed_at: new Date().toISOString(), description: null, origin: 'user' as const, last_reviewed: null, id2: undefined, category: 'work', strength: 60, last_reflected_at: new Date().toISOString(), history: [] },
+    { id: 'b2', statement: 'Remote work suits me', kind: 'belief' as const, status: 'active' as const, formed_at: new Date().toISOString(), description: null, origin: 'user' as const, last_reviewed: null, category: 'work', strength: 60, last_reflected_at: new Date().toISOString(), history: [] },
+  ] as unknown as Belief[];
+  const affected = findAffectedBeliefs(d, beliefList);
+  check('proposals: only beliefs sharing themes with the reflection are affected',
+    affected.length === 1 && affected[0].id === 'b1', JSON.stringify(affected.map((b) => b.id)));
+  if (affected.length === 1) {
+    const p = buildBeliefProposal(d, affected[0]);
+    check('proposals: divergent reflection proposes a strength decrease',
+      p.status === 'pending' && /from 60 to 50/.test(p.change), p.change);
+  }
+  const noReflection = decision();
+  check('proposals: no reflection means no affected beliefs',
+    findAffectedBeliefs(noReflection, beliefList).length === 0);
 }
 
 console.log(`\nDecision engine tests: ${passed} passed, ${failed} failed`);

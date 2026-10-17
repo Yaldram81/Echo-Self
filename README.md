@@ -74,6 +74,18 @@ The API key lives only in the edge function's server-side secrets. Nothing sensi
 
 The Decision Mirror's analysis is a rules engine, not a model call: relevant memories are retrieved and scored against the decision's context and stated values; each value's alignment per option is computed from how recorded experiences classify (for/against) with your adjustable weights; contradictions between stated beliefs and recorded behavior are pattern-matched; missing information (no constraints, no success definition, an unconsulted party in your records) becomes experiment suggestions. Everything it outputs is derived from real rows.
 
+**Transparency features (engine version dm-3, observed 2026-10-17):**
+- **Option-by-value comparison** — each option shows its per-value evidence counts (for / against / unknown) side by side, weighted by the user's sliders.
+- **Score trace** — an expandable arithmetic table per option: every value's (for − against) × weight contribution, the net, the classified mass, and the division that produces the score. Each line records how many inputs were explicit user judgments, keyword inferences, and user corrections, with links to the records. A judge can reproduce the number by hand.
+- **Ranking explainer** — a plain-language account of which value contributions decide the leader (or the tie), updating live as weights move. This is the acceptance gate: change a weight, and the decisive arithmetic is named.
+- **Counterevidence panel** — every record classified against an option, with origin (explicit/inferred/corrected) and rationale. Unknown and neutral records never appear: they are never evidence against.
+- **Strict explicit/inferred separation** — pros/cons the user wrote are explicit; keyword-matched memories are inferred with rationale and correctable; corrections are stored and honored. The engine never counts unknown evidence in a score.
+- **Sensitivity** — ±0.1 weight perturbations are tested and flagged when they flip the leader; the ranking explainer also states when the result is robust.
+- **Reproducibility** — the report records its method version, weights, evidence IDs, explicit items, and override count. Same inputs → same report (tested).
+- **Preference, not prediction** — scores are preference alignment only; no probabilities, success rates, or outcome predictions are produced anywhere.
+- **Reflection with success comparison** — the reflection records how the outcome measured against the decision's stated success definition (met / partly / not met / redefined) with an optional note.
+- **Approval-gated belief proposals** — after a divergent reflection, the mirror can propose a belief-strength revisit. Proposals are stored pending, applied only on an explicit Approve click, and dismissals are kept as a record. Nothing is applied automatically.
+
 ---
 
 ## Data model
@@ -83,7 +95,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 - **memories** — title, content, category (`relationship | health | work | personal_growth | travel | finance | other`), source (`journal | conversation | photo | audio | note`), mood, confidence 0–100, tags, `ai_interpretation` (kept strictly separate from the user's original text in the UI), `occurred_at`.
 - **beliefs** — statement, kind (`belief | value`), strength, status (`active | evolving | revisited`), `origin` (`user | suggestion | confirmed_suggestion`), `last_reviewed`.
 - **beliefs_history** — strength snapshots with notes, for before/after evolution views.
-- **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, and an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson).
+- **decisions** — title, context, status (`unresolved | decided | archived`), options (JSON), constraints, uncertainties, values, `value_weights`, `success_definition`, chosen option + rationale, structured `analysis`, an outcome `reflection` (what happened, whether it matched the reasoning, surprises, lesson, success measurement against the stated definition), and `proposals` (JSON — approval-gated belief revisit suggestions).
 - **timeline_events** — typed chronological entries.
 - **interpretation_flags** — user corrections attached to flagged AI interpretations.
 
@@ -99,7 +111,7 @@ Six tables in the `public` schema (migrations in `supabase/migrations/`):
 
 The **demo is now read-only for signed-out visitors**: sample rows (owner NULL) are visible to everyone but cannot be created, changed, or deleted without an account. The Settings page export and "delete everything" act only on the signed-in account's records; sample data is excluded. Backfill was intentionally a no-op: no existing (fictional) row was assigned to any user, and no data was deleted or rewritten.
 
-**Verified by test (two live accounts A and B, script `scripts/run-workspace-tests.mts`, 30/30 passing):**
+**Verified by test (scripts/run-decision-tests.mts, 35/35 passing — covers empty evidence, ties, zero weights, contradictory evidence, changed weights, incomplete constraints, trace arithmetic, counterevidence isolation, proposal generation):**
 - A cannot read, update, delete, or insert-on-behalf-of B's records (memories, beliefs, decisions); forged `user_id` inserts are rejected; rows remain intact after every denied attempt.
 - Unauthenticated clients can read public sample rows but cannot insert, update, or delete anything.
 - Linked-record rules: A cannot attach history or flags to B's records; B can manage history on its own belief; A can flag a public sample memory; flag rows are private to their creator.
@@ -172,6 +184,7 @@ All six migrations are safe to rerun. Verified guard per migration:
 | `20261017075415_extend_decisions_decision_mirror` | `ADD COLUMN IF NOT EXISTS`; updates guarded by `constraints IS NULL` / `analysis IS NULL`; the new decided decision guarded by `WHERE NOT EXISTS (title …)` |
 | `20261017080451_extend_beliefs_origin_and_suggestions` | `ADD COLUMN IF NOT EXISTS`; suggestion beliefs guarded by `WHERE NOT EXISTS (statement LIKE …)` |
 | `20261017090840_add_decision_classification_overrides` | single `ADD COLUMN IF NOT EXISTS` |
+| `add_decision_proposals_column` | `ADD COLUMN` guarded by an `information_schema` existence check (jsonb on decisions; inherits the table's RLS) |
 
 No migration drops columns or tables, deletes rows, or changes column types. Live-state checks at audit time confirmed the guards match reality (8 marker-tagged memories, 2 suggestion beliefs, 1 stored reflection).
 

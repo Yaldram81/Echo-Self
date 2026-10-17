@@ -9,16 +9,147 @@ import {
   Pencil,
   Flag,
   Sparkles,
+  ShieldAlert,
+  CheckCircle2,
+  Calculator,
 } from 'lucide-react';
 import { decisionsService, memoriesService, beliefsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import type { Belief, Decision, DecisionAnalysis, Memory } from '@/lib/types';
 import { DecisionForm } from '@/components/DecisionForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { analysisToEditableText, analyzeDecision } from '@/lib/decisionAnalysis';
+import {
+  analysisToEditableText,
+  analyzeDecision,
+  buildBeliefProposal,
+  explainRanking,
+  findAffectedBeliefs,
+} from '@/lib/decisionAnalysis';
 import { LoadingState, ErrorState, Badge } from '@/components/ui';
 
 type Report = ReturnType<typeof analyzeDecision>;
+
+/**
+ * Belief/value updates the mirror proposes after a reflection. Strictly
+ * opt-in: the proposal is stored pending, applied only on explicit approval,
+ * and dismissed proposals are kept as a record (never auto-retried).
+ */
+function ProposalSection({
+  decision,
+  beliefs,
+  onChanged,
+}: {
+  decision: Decision;
+  beliefs: Belief[];
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const proposals = decision.proposals ?? [];
+  const affected = findAffectedBeliefs(decision, beliefs);
+
+  async function generate() {
+    setBusy('generate');
+    setError(null);
+    try {
+      for (const belief of affected) {
+        const proposal = buildBeliefProposal(decision, belief);
+        await decisionsService.saveProposal(decision.id, proposal);
+      }
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the proposal.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function resolve(proposalId: string, action: 'approved' | 'dismissed') {
+    const proposal = proposals.find((p) => p.id === proposalId);
+    if (!proposal) return;
+    setBusy(proposalId);
+    setError(null);
+    try {
+      const resolved: typeof proposal = { ...proposal, status: action, resolvedAt: new Date().toISOString() };
+      if (action === 'approved') {
+        await decisionsService.applyApprovedProposal(decision.id, resolved);
+      } else {
+        await decisionsService.saveProposal(decision.id, resolved);
+      }
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record your decision.');
+      setBusy(null);
+    }
+  }
+
+  const pending = proposals.filter((p) => p.status === 'pending');
+  const resolved = proposals.filter((p) => p.status !== 'pending');
+  if (!decision.reflection) return null;
+
+  return (
+    <section aria-label="Proposed belief updates" className="card-surface p-6 md:p-8">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-serif text-xl text-charcoal">Proposed belief updates</h2>
+        {decision.reflection && pending.length === 0 && resolved.length === 0 && (
+          <button
+            onClick={generate}
+            disabled={busy === 'generate' || affected.length === 0}
+            className="rounded-full border border-linen-dark bg-linen-light px-4 py-1.5 text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
+          >
+            {busy === 'generate' ? 'Preparing…' : 'Review suggestions'}
+          </button>
+      )}
+      </div>
+      <p className="text-xs text-slateink-light leading-relaxed mb-4">
+        After a reflection, the mirror may suggest revisiting a belief. Suggestions are shown
+        with the exact change; <strong>nothing is applied unless you approve it</strong>.
+      </p>
+      {error && (
+        <p role="alert" className="mb-3 rounded-lg bg-clayred-light px-4 py-2 text-sm text-clayred-DEFAULT">{error}</p>
+      )}
+      {pending.length === 0 && resolved.length === 0 && (
+        <p className="text-xs text-slateink-light italic">
+          {affected.length === 0
+            ? 'No recorded beliefs match this decision\'s themes, so no suggestions are available.'
+            : 'No suggestions prepared yet.'}
+        </p>
+      )}
+      <ul className="space-y-3">
+        {proposals.map((p) => (
+          <li key={p.id} className="rounded-xl border border-linen-dark bg-linen-light/40 px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-charcoal leading-relaxed">{p.change}</p>
+                <p className="mt-1 text-xs text-slateink leading-relaxed">{p.reason}</p>
+              </div>
+              {p.status === 'pending' ? (
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => resolve(p.id, 'approved')}
+                    disabled={busy === p.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-sage-light px-3.5 py-1.5 text-xs font-medium text-sage-dark hover:brightness-95 transition disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" aria-hidden /> Approve
+                  </button>
+                  <button
+                    onClick={() => resolve(p.id, 'dismissed')}
+                    disabled={busy === p.id}
+                    className="rounded-full px-3.5 py-1.5 text-xs font-medium text-slateink-dark hover:bg-linen transition disabled:opacity-50"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ) : (
+                <Badge tone={p.status === 'approved' ? 'sage' : 'neutral'}>{p.status}</Badge>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
   const decision = useAsyncData(() => decisionsService.get(decisionId), [decisionId]);
@@ -122,6 +253,7 @@ function MirrorView({
       <DecisionAnalysisSection decision={decision} memories={memories} beliefs={beliefs} onChanged={onChanged} />
       <ChoiceSection decision={decision} onChanged={onChanged} />
       <ReflectionSection decision={decision} onChanged={onChanged} />
+      <ProposalSection decision={decision} beliefs={beliefs} onChanged={onChanged} />
     </div>
   );
 }
@@ -378,6 +510,37 @@ function GeneratedReport({
         onOverride={onOverride}
       />
 
+      <RankingExplainer alignments={report.optionAlignments} />
+
+      {report.counterevidence.length > 0 && (
+        <div className="card-surface p-6 md:p-8">
+          <h3 className="flex items-center gap-2 font-serif text-lg text-charcoal mb-1">
+            <ShieldAlert className="w-4 h-4 text-clayred-DEFAULT" aria-hidden />
+            Counterevidence
+          </h3>
+          <p className="text-xs text-slateink-light mb-3">
+            Every record or statement that points against an option, with its source. Unknown and
+            unresolved items are never counted here — only directional evidence appears.
+          </p>
+          <ul className="space-y-2.5">
+            {report.counterevidence.map((ce, i) => (
+              <li key={i} className="text-xs leading-relaxed">
+                <span className="font-medium text-charcoal">{ce.optionLabel}</span>
+                {' '}-{' '}
+                {ce.memoryId ? (
+                  <a href={`#/memory/${ce.memoryId}`} className="text-terracotta-deep hover:underline underline-offset-2">{ce.memoryTitle}</a>
+                ) : (
+                  <span className="text-charcoal-soft italic">your own con: "{ce.memoryTitle}"</span>
+                )}
+                <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${ce.origin === 'explicit' ? 'bg-terracotta/10 text-terracotta-deep' : ce.origin === 'override' ? 'bg-sage-light text-sage-dark' : 'bg-linen text-slateink'}`}>{ce.origin}</span>
+                <span className="ml-2 text-slateink-light capitalize">on {ce.value}</span>
+                <p className="text-slateink mt-0.5">{ce.rationale}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {report.weightSensitivities.length > 0 && (
         <div className="card-surface border-amberclay-DEFAULT/40 p-6 md:p-8">
           <h3 className="flex items-center gap-2 font-serif text-lg text-charcoal mb-1">
@@ -472,6 +635,80 @@ function GeneratedReport({
   );
 }
 
+function RankingExplainer({ alignments }: { alignments: Report['optionAlignments'] }) {
+  const lines = explainRanking(alignments);
+  if (lines.length === 0) return null;
+  return (
+    <div className="card-surface p-6 md:p-8">
+      <h3 className="flex items-center gap-2 font-serif text-lg text-charcoal mb-1">
+        <Calculator className="w-4 h-4 text-terracotta-deep" aria-hidden />
+        Why the comparison looks this way
+      </h3>
+      <p className="text-xs text-slateink-light mb-3">
+        The decisive value contributions at the current weights — the same numbers the sliders
+        change. Move a weight below and this explanation updates with it.
+      </p>
+      <ul className="space-y-2">
+        {lines.map((l, i) => (
+          <li key={i} className="text-xs leading-relaxed text-charcoal-soft font-mono">· {l}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['trace'] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-terracotta-deep hover:text-terracotta-dark"
+      >
+        <Calculator className="w-3 h-3" aria-hidden />
+        {open ? 'Hide the arithmetic' : 'Show the arithmetic behind this score'}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-xl bg-linen-light/60 border border-linen-dark px-4 py-3">
+          <table className="w-full text-[11px] tabular-nums">
+            <thead>
+              <tr className="text-left text-slateink-light">
+                <th className="py-1 pr-2 font-medium">Value</th>
+                <th className="py-1 pr-2 font-medium">For</th>
+                <th className="py-1 pr-2 font-medium">Against</th>
+                <th className="py-1 pr-2 font-medium">Weight</th>
+                <th className="py-1 font-medium">Contribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trace.lines.map((l) => (
+                <tr key={l.value} className="border-t border-linen-dark/50">
+                  <td className="py-1 pr-2 capitalize">{l.value}</td>
+                  <td className="py-1 pr-2">{l.supporting}</td>
+                  <td className="py-1 pr-2">{l.contradicting}</td>
+                  <td className="py-1 pr-2">{l.weight.toFixed(1)}</td>
+                  <td className="py-1">({l.supporting}−{l.contradicting})×{l.weight.toFixed(1)} = {l.contribution.toFixed(2)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-linen-dark font-medium">
+                <td className="py-1 pr-2" colSpan={4}>Net / mass → score</td>
+                <td className="py-1">{trace.net.toFixed(2)} / {trace.classifiedMass.toFixed(2)} = {trace.score.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] leading-relaxed text-slateink-light">
+            Counts include your explicit pros/cons ({trace.lines.reduce((a, l) => a + l.explicitCount, 0)}),
+            keyword-inferred classifications ({trace.lines.reduce((a, l) => a + l.inferredCount, 0)} — correctable),
+            and your corrections ({trace.lines.reduce((a, l) => a + l.overrideCount, 0)}).
+            Unknown and neutral records are never in these counts.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OptionComparison({
   alignments,
   weights,
@@ -504,6 +741,7 @@ function OptionComparison({
               <h4 className="font-serif text-lg text-charcoal">{a.label}</h4>
               <AlignmentBadge score={a.score} insufficient={a.insufficientEvidence} />
             </div>
+            <ScoreTraceView trace={a.trace} />
             {a.insufficientEvidence && (
               <p className="mb-3 rounded-lg bg-amberclay-light/50 px-3 py-2 text-[11px] text-charcoal-soft">
                 No directional evidence classifies for this option — the score is unknown, not a
@@ -851,6 +1089,10 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
   const [surprises, setSurprises] = useState(decision.reflection?.surprises ?? '');
   const [lesson, setLesson] = useState(decision.reflection?.lesson ?? '');
   const [matches, setMatches] = useState(decision.reflection?.matchesOriginalReasoning ?? true);
+  const [successMeasure, setSuccessMeasure] = useState<'' | 'met' | 'partly' | 'not_met' | 'redefined'>(
+    decision.reflection?.successMeasure ?? ''
+  );
+  const [successNote, setSuccessNote] = useState(decision.reflection?.successNote ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -868,6 +1110,8 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
         matchesOriginalReasoning: matches,
         surprises: surprises.trim(),
         lesson: lesson.trim(),
+        successMeasure: successMeasure || undefined,
+        successNote: successNote.trim() || undefined,
       });
       setOpen(false);
       onChanged();
@@ -889,6 +1133,8 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
               setSurprises(decision.reflection!.surprises);
               setLesson(decision.reflection!.lesson);
               setMatches(decision.reflection!.matchesOriginalReasoning);
+              setSuccessMeasure(decision.reflection!.successMeasure ?? '');
+              setSuccessNote(decision.reflection!.successNote ?? '');
               setOpen(true);
             }}
             className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark"
@@ -938,6 +1184,28 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
               {decision.reflection.lesson}
             </p>
           )}
+          {decision.reflection.successMeasure && (
+            <div className="rounded-xl bg-linen-light/70 border border-linen-dark/60 px-5 py-4">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-slateink font-medium mb-1.5">
+                Against your definition of success
+              </p>
+              {decision.success_definition && (
+                <p className="text-xs text-charcoal-soft italic mb-2">"{decision.success_definition}"</p>
+              )}
+              <Badge
+                tone={
+                  decision.reflection.successMeasure === 'met' ? 'sage'
+                  : decision.reflection.successMeasure === 'partly' ? 'neutral'
+                  : 'clay'
+                }
+              >
+                {decision.reflection.successMeasure.replace('_', ' ')}
+              </Badge>
+              {decision.reflection.successNote && (
+                <p className="mt-2 text-sm text-slateink leading-relaxed">{decision.reflection.successNote}</p>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -973,6 +1241,42 @@ function ReflectionSection({ decision, onChanged }: { decision: Decision; onChan
             >
               No
             </button>
+          </div>
+          <div>
+            <p className="block text-xs font-medium text-slateink-dark mb-1.5">Against your definition of success</p>
+            {decision.success_definition ? (
+              <p className="text-xs text-charcoal-soft italic mb-2">"{decision.success_definition}"</p>
+            ) : (
+              <p className="text-xs text-slateink-light italic mb-2">No success definition was recorded for this decision.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {(['met', 'partly', 'not_met', 'redefined'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setSuccessMeasure(m)}
+                  aria-pressed={successMeasure === m}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium ${
+                    successMeasure === m
+                      ? m === 'met' ? 'bg-sage-light text-sage-dark'
+                        : m === 'not_met' ? 'bg-clayred-light text-clayred-DEFAULT'
+                        : 'bg-terracotta/15 text-terracotta-deep'
+                      : 'bg-linen/70 text-slateink-dark'
+                  }`}
+                >
+                  {m.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+            {successMeasure === 'redefined' && (
+              <textarea
+                aria-label="How you now define success for this decision"
+                rows={2}
+                value={successNote}
+                onChange={(e) => setSuccessNote(e.target.value)}
+                placeholder="How do you now define success?"
+                className="mt-2 w-full rounded-xl border border-linen-dark bg-white/80 px-3.5 py-2.5 text-sm leading-relaxed focus:border-terracotta"
+              />
+            )}
           </div>
           <div>
             <label htmlFor="ref-surprises" className="block text-xs font-medium text-slateink-dark mb-1.5">
