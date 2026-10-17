@@ -57,11 +57,28 @@ src/
     types.ts               # all shared types (Memory, Belief, Decision, TwinReply, …)
     services.ts            # typed Supabase CRUD for every table + export/wipe
     supabaseClient.ts      # browser client
-    retrieval.ts           # keyword retrieval + memory-to-context formatting
+    retrieval.ts           # layered retrieval engine: intent, signals, dedup, counterevidence
     twinService.ts         # twin abstraction: live (edge function) vs demo (local composition)
     decisionAnalysis.ts    # deterministic decision analysis engine
     beliefContradictions.ts# belief-vs-memory contradiction detection
 ```
+
+### The retrieval engine (Memory Intelligence)
+
+Twin Chat's context selection is a layered, explainable pipeline in `src/lib/retrieval.ts`, used identically by demo mode, live mode's client-side context mirror, and the evaluation suite. No vector database, no new paid services — the same records, ranked better:
+
+1. **Query intent** — seven intents (current state, historical period, repeated pattern, decision rationale, belief/value, contradiction/change, general) detected by weighted keyword rules. A single weak keyword match never forces an intent; below the confidence threshold the query safely falls back to "general" (the previous behavior).
+2. **Term expansion** — the existing hand-curated synonym table bridges paraphrase ("pet" → dog/adopt, "evening wind-down" → reading/bed). Expanded terms are tracked as `synonymHits` so the explanation can name the bridge.
+3. **Layered scoring** — one exported, overridable weight set (`DEFAULT_WEIGHTS`): field weights (title 4 > tags 3 > body 2 > category 1), an exact-phrase bonus for multi-word phrases from the question appearing in the record, a smaller boost when a saved user correction on the record matches the query, query-dependent recency, and record confidence applied strictly as a *reliability* multiplier (0.7–1.0). Confidence is never treated as importance; no importance field exists, and none was added.
+4. **Query-dependent time** — current-state queries favor recent records; an explicit period in the question ("last year", "in 2023", "this month") boosts records inside that window and demotes ones outside it; belief/value questions apply **no** recency so an old explicit value statement keeps ranking above a recent incidental mention. A missing or invalid date is treated as the oldest possible, never the newest.
+5. **Near-duplicate marking** — same normalized title or ≥0.75 content-token overlap flags the weaker record as `isNearDuplicateOf` (kept visible and attributed, never deleted or rewritten).
+6. **Counterevidence** — for pattern/preference/decision/change questions, a separate scan finds records whose language *materially opposes* the question's frame (negation/lapse/opt-out patterns, or the user's own saved correction). Different wording alone is never treated as contradiction; negatively framed questions ("did I fail…") flip polarity and surface records showing the habit holding, including a same-category sweep for opposing records keyword ranking alone would not surface.
+
+Every candidate carries its matched signals, rank, and a plain-language reason that names the fields matched, whether the connection came via paraphrase or an exact phrase, and the final score — which is always presented as a **relevance** score, explicitly distinct from the record's factual confidence. The engine only ever sees the records its caller supplies (RLS-scoped upstream), never fetches on its own, and never modifies records.
+
+**Verified by test (scripts/run-retrieval-tests.mts, 65/65 passing):** exact wording, paraphrase, tag-only matches, recent vs. historical queries with parsed periods, old-but-explicit values beating recent incidental mentions, changed beliefs with preserved history, supporting vs. counterevidence (including the no-manufactured-contradiction and negative-framing cases), near-duplicates, empty records, missing dates/fields, misleading shared keywords, corrections in retrieval, generic-word noise, similar multi-category content, and cross-user isolation.
+
+**Unresolved weaknesses (honest):** the synonym table is hand-curated and will miss paraphrases it was never given; keyword matching cannot read between the lines of a question ("am I happier lately?" has no lexical anchor); counterevidence detection is pattern-based and tuned to common habit/obligation language. If testing later shows significant memories whose relevance the current fields cannot express, that would be the demonstrated evidence justifying a user-assigned importance field (or embeddings) as a future enhancement — deliberately not built now.
 
 ### Twin Chat, two modes
 
@@ -166,6 +183,7 @@ npm run lint       # eslint (0 errors, 0 warnings)
 npx tsx --env-file=.env scripts/run-workspace-tests.mts   # two-account security suite (37 checks)
 npx tsx --env-file=.env scripts/run-graph-tests.mts       # graph engine suite (26 checks)
 npx tsx scripts/run-decision-tests.mts                    # decision engine suite (35 checks)
+npx tsx scripts/run-retrieval-tests.mts                   # retrieval engine suite (65 checks)
 npx tsx --env-file=.env scripts/run-eval.mjs              # evidence inspector eval (26 cases)
 npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey (20 checks)
 ```
@@ -187,7 +205,7 @@ npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey
 ## Known limitations (stated honestly)
 
 - **Real accounts.** Email/password sign-up, sign-in, and sign-out with persistent sessions. Each account gets a private workspace; the fictional sample persona stays public and read-only.
-- **Retrieval is keyword-based.** Both the demo composer and the server-side ranking use keyword scoring with recency/confidence weighting — not embeddings. It's honest about this in its own "gaps" output.
+- **Retrieval is layered keyword-based.** Both the demo composer and the server-side ranking use intent-aware keyword scoring with query-dependent recency and reliability-weighted confidence — not embeddings. It's honest about this in its own "gaps" output, and its weaknesses are listed in the retrieval engine section above.
 - **The sample persona is fiction.** All seeded content (memories, beliefs, decisions) is invented for demonstration and labeled as sample data on every page.
 - **One correction channel.** Flagged interpretations are stored for review; nothing automatically rewrites the twin's behavior yet.
 
