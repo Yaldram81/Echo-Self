@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, Quote, ChevronDown, Flag, Pencil, AlertTriangle, Settings2, ShieldAlert } from 'lucide-react';
+import { Send, Sparkles, Quote, ChevronDown, Flag, Pencil, AlertTriangle, Settings2, ShieldAlert, ScanSearch } from 'lucide-react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { memoriesService, beliefsService, flagsService } from '@/lib/services';
 import { askTwin, twinMode, TwinUnavailableError } from '@/lib/twinService';
@@ -381,6 +381,14 @@ export function TwinChatPage() {
   );
 }
 
+const REVIEW_LABEL_META: Record<string, { text: string; cls: string }> = {
+  supported: { text: 'reviewer: supported', cls: 'bg-sage-light/60 text-sage-dark border border-sage-dark/25' },
+  partially_supported: { text: 'reviewer: partially supported', cls: 'bg-amberclay-light text-amberclay-DEFAULT border border-amberclay-DEFAULT/30' },
+  contradicted: { text: 'reviewer: contradicted', cls: 'bg-clayred-light text-clayred-DEFAULT border border-clayred-DEFAULT/25' },
+  unsupported: { text: 'reviewer: not supported', cls: 'bg-clayred-light text-clayred-DEFAULT border border-clayred-DEFAULT/25' },
+  unable_to_assess: { text: 'reviewer: cannot decide', cls: 'bg-linen text-slateink-dark border border-linen-dark' },
+};
+
 function TwinMessage({
   message,
   memories,
@@ -414,6 +422,13 @@ function TwinMessage({
         <p className="whitespace-pre-line text-sm leading-relaxed text-charcoal">
           {message.content}
         </p>
+
+        {reply && reply.review?.note && (
+          <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-slateink-dark border border-linen-dark/60 bg-paper/70 rounded-lg px-2.5 py-1.5">
+            <ScanSearch className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slateink-light" aria-hidden />
+            {reply.review.note}
+          </p>
+        )}
 
         {reply && reply.conflicts && reply.conflicts.length > 0 && (
           <div className="mt-3 space-y-2">
@@ -474,7 +489,9 @@ function TwinMessage({
               Claim by claim
             </p>
             <ul className="space-y-1.5">
-              {reply.claims.map((c, i) => (
+              {reply.claims.map((c, i) => {
+                const reviewMeta = c.review?.state === 'reviewed' ? REVIEW_LABEL_META[c.review.label] : undefined;
+                return (
                 <li key={i} className="rounded-xl bg-white/70 border border-linen-dark/70 px-3 py-2">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <p className="text-xs leading-relaxed text-charcoal">{c.claim}</p>
@@ -492,6 +509,21 @@ function TwinMessage({
                       {c.type.replace(/_/g, ' ')}
                     </span>
                   </div>
+                  {c.review?.state === 'reviewed' && reviewMeta && (
+                    <div className="mt-1.5 rounded-lg border border-slateink-light/20 bg-paper/60 px-2.5 py-1.5">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-[9px] uppercase tracking-wide font-medium ${reviewMeta.cls}`}>
+                        {reviewMeta.text}
+                      </span>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slateink-dark">
+                        {c.review.explanation}
+                      </p>
+                    </div>
+                  )}
+                  {c.review?.state === 'unreviewed' && (
+                    <p className="mt-1 text-[10px] leading-relaxed text-slateink-light italic">
+                      Not semantically reviewed — the status above comes from the deterministic audit only.
+                    </p>
+                  )}
                   {c.evidenceStatus && c.evidenceStatus !== 'direct' && (
                     <p className="text-[10px] uppercase tracking-[0.1em] text-slateink-light mb-1">
                       Evidence: {c.evidenceStatus}
@@ -537,7 +569,8 @@ function TwinMessage({
                     </p>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}

@@ -23,7 +23,7 @@ interface SuiteResult {
   detail: string;
 }
 
-const SUITES: { name: string; script: string; kind: 'deterministic' | 'live-service' }[] = [
+const SUITES: { name: string; script: string; kind: 'deterministic' | 'live-service' | 'live-model' }[] = [
   { name: 'Retrieval engine', script: 'scripts/run-retrieval-tests.mts', kind: 'deterministic' },
   { name: 'Claim integrity (evidence audit)', script: 'scripts/run-claim-integrity-tests.mts', kind: 'deterministic' },
   { name: 'Correction lifecycle', script: 'scripts/run-correction-tests.mts', kind: 'deterministic' },
@@ -31,6 +31,8 @@ const SUITES: { name: string; script: string; kind: 'deterministic' | 'live-serv
   { name: 'Twin Chat eval cases (audit pipeline)', script: 'scripts/run-eval.mjs', kind: 'deterministic' },
   { name: 'Robustness (malformed AI, garbage inputs, credentials)', script: 'scripts/run-robustness-tests.mts', kind: 'deterministic' },
   { name: 'Relationship analysis (counterevidence candidates)', script: 'scripts/run-relationship-tests.mts', kind: 'deterministic' },
+  { name: 'Semantic claim review (labels, coercion, downgrades, fallbacks)', script: 'scripts/run-claim-review-tests.mts', kind: 'deterministic' },
+  { name: 'Semantic claim review live eval (provider, labeled set)', script: 'scripts/run-claim-review-live-eval.mts', kind: 'live-model' },
   { name: 'Static verification (routes, links, SEO, robots, a11y invariants)', script: 'scripts/run-static-checks.mts', kind: 'deterministic' },
   { name: 'Evidence graph', script: 'scripts/run-graph-tests.mts', kind: 'live-service' },
   { name: 'Workspace isolation (two-account RLS)', script: 'scripts/run-workspace-tests.mts', kind: 'live-service' },
@@ -45,6 +47,18 @@ for (const s of SUITES) {
   if (s.kind === 'live-service' && !hasSupabaseCreds) {
     results.push({ ...s, status: 'skipped', passed: 0, failed: 0, detail: 'Supabase credentials not present in environment — not run, not counted.' });
     console.log(`SKIP  ${s.name}`);
+    continue;
+  }
+  if (s.kind === 'live-model') {
+    // Never runs in the automated regression pass: a real model call is
+    // nondeterministic and costs money on every run. Kept out of the report
+    // entirely unless explicitly enabled.
+    if (process.env.RUN_LIVE_MODEL_EVAL !== 'true') {
+      console.log(`SKIP  ${s.name} (set RUN_LIVE_MODEL_EVAL=true and configure a provider key to run)`);
+      continue;
+    }
+    results.push({ ...s, status: 'skipped', passed: 0, failed: 0, detail: 'Executed separately via npm run claim-review-live-eval.' });
+    console.log(`NOTE  ${s.name} is enabled; run it via npm run claim-review-live-eval and record the output.`);
     continue;
   }
   const args = s.script.endsWith('.mts') && s.kind === 'live-service' ? ['--env-file=.env', s.script] : [s.script];

@@ -1,6 +1,6 @@
 # EchoSelf Evaluation Report
 
-Generated: 2026-10-17T21:24:57.587Z
+Generated: 2026-10-17T22:19:12.699Z
 
 ## How to read this report
 
@@ -11,7 +11,7 @@ Generated: 2026-10-17T21:24:57.587Z
 
 ## Summary
 
-- Deterministic: **418 passed, 0 failed** across 8 suites.
+- Deterministic: **485 passed, 0 failed** across 9 suites.
 - Live-service: **86 passed, 0 failed** across 3 executed suites.
 - Skipped: 0 suite(s).
 - Crashed: 0 suite(s).
@@ -27,6 +27,7 @@ Generated: 2026-10-17T21:24:57.587Z
 | Twin Chat eval cases (audit pipeline) | deterministic | `npx tsx scripts/run-eval.mjs` | passed | 26 | 0 |
 | Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | passed | 18 | 0 |
 | Relationship analysis (counterevidence candidates) | deterministic | `npx tsx scripts/run-relationship-tests.mts` | passed | 25 | 0 |
+| Semantic claim review (labels, coercion, downgrades, fallbacks) | deterministic | `npx tsx scripts/run-claim-review-tests.mts` | passed | 67 | 0 |
 | Static verification (routes, links, SEO, robots, a11y invariants) | deterministic | `npx tsx scripts/run-static-checks.mts` | passed | 78 | 0 |
 | Evidence graph | live-service | `npx tsx --env-file=.env scripts/run-graph-tests.mts` | passed | 26 | 0 |
 | Workspace isolation (two-account RLS) | live-service | `npx tsx --env-file=.env scripts/run-workspace-tests.mts` | passed | 37 | 0 |

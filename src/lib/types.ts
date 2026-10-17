@@ -289,6 +289,32 @@ export interface SourceRef {
 /** How well the evidence actually backs the claim, after audit. */
 export type EvidenceStatus = 'direct' | 'partial' | 'conflicting' | 'insufficient';
 
+/**
+ * Semantic claim review (Upgrade 4): a second, server-side model pass that
+ * judges MEANING — whether the cited record text actually supports the claim.
+ * Distinct from the deterministic audit (structure, ids, verbatim quotes) and
+ * never described as proof: a review label is one model's judgment of the
+ * supplied evidence, not a calibrated probability.
+ */
+export type ReviewLabel =
+  | 'supported'
+  | 'partially_supported'
+  | 'contradicted'
+  | 'unsupported'
+  | 'unable_to_assess';
+
+export type ClaimReview =
+  | { state: 'reviewed'; label: ReviewLabel; explanation: string }
+  | { state: 'unreviewed'; reason?: string };
+
+/** Reply-level record of whether the semantic review leg ran at all. */
+export interface ReplyReview {
+  ran: boolean;
+  model?: string;
+  /** Plain-language note when the review did not run or is bounded. */
+  note?: string;
+}
+
 export type ClaimType = 'directly_supported' | 'interpretation' | 'conflicting_evidence' | 'unknown';
 
 /** Per-claim evidence: which retrieved records back this claim, with the supporting excerpt. */
@@ -317,6 +343,11 @@ export interface AnswerClaim {
   evidence: ClaimEvidence[];
   /** User corrections that override or annotate this claim, when present. */
   corrections?: InterpretationFlag[];
+  /**
+   * Semantic review outcome for this claim. Absent or malformed input is
+   * normalized to the unreviewed state — never to a verified label.
+   */
+  review?: ClaimReview;
 }
 
 /** Two retrieved records that pull in opposite directions; both are shown, no winner picked. */
@@ -351,6 +382,8 @@ export interface TwinReply {
   conflicts?: EvidenceConflict[];
   /** User corrections relevant to this reply's evidence, shown beside their records. */
   corrections?: EvidenceCorrection[];
+  /** Whether the server-side semantic review leg ran for this reply. */
+  review?: ReplyReview;
 }
 
 export interface ChatMessage {

@@ -7,6 +7,7 @@ import {
   withConflicts,
   withCorrections,
   withUncertainty,
+  withSemanticReview,
   rejectInventedContent,
   isWeakMatch,
 } from './claimAudit';
@@ -157,7 +158,9 @@ async function askLive(question: string): Promise<TwinReply> {
   if (!reply) {
     throw new TwinUnavailableError('service-error', 'The twin returned an unexpected response. Please try again.');
   }
-  return reply;
+  // Semantic review (layer 2) is normalized here: malformed review payloads
+  // become unreviewed, never verified.
+  return withSemanticReview(reply);
 }
 
 function validateSources(reply: TwinReply, contextMemories: Memory[]): TwinReply {
@@ -354,7 +357,8 @@ export async function askTwin(
     contextMemories
   );
   return {
-    reply: withCorrections(uncertain, contextMemories, corrections, question),
+    // Demo replies are never semantically reviewed: state that explicitly.
+    reply: withSemanticReview(withCorrections(uncertain, contextMemories, corrections, question)),
     contextMemories,
   };
 }

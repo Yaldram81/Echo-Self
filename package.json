@@ -20,7 +20,9 @@
     "robustness-tests": "tsx scripts/run-robustness-tests.mts",
     "eval:all": "tsx --env-file=.env scripts/run-all-eval.mts",
     "hybrid-tests": "tsx scripts/run-hybrid-tests.mts",
-    "relationship-tests": "tsx scripts/run-relationship-tests.mts"
+    "relationship-tests": "tsx scripts/run-relationship-tests.mts",
+    "claim-review-tests": "tsx scripts/run-claim-review-tests.mts",
+    "claim-review-live-eval": "tsx --env-file=.env scripts/run-claim-review-live-eval.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

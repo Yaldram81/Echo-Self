@@ -8,7 +8,11 @@ import type {
   Memory,
   SourceRef,
   TwinReply,
+  ReviewLabel,
+  ClaimReview,
+  ReplyReview,
 } from './types';
+import { reviewDowngrade } from './claimReviewShared';
 import { correctionTouchesTopic, expandSynonyms, extractTerms } from './retrieval';
 /**
  * Claim audit: verifies that every claim in a twin reply is actually supported by
@@ -395,6 +399,114 @@ export function auditReply(reply: TwinReply, contextMemories: Memory[]): TwinRep
   const verifiedSources = auditedSources.filter((s) => verifiedIds.has(s.memoryId));
 
   return { ...reply, sources: verifiedSources, claims };
+}
+
+/* ---------------- semantic claim review (layer 2, Upgrade 4) ---------------- */
+
+/**
+ * Normalizes the review payload arriving from the twin-chat edge function and
+ * applies the conservative downgrade matrix. Rules:
+ * - Review labels never UPGRADE a claim; the deterministic audit stays the floor.
+ * - contradicted/unsupported: a directly_supported claim loses its supported
+ *   status (becomes interpretation, evidence kept visible as provenance).
+ * - partially_supported / unable_to_assess: direct becomes partial.
+ * - supported: no change — review approval is not deterministic proof.
+ * - Any missing or malformed per-claim review becomes unreviewed, never verified.
+ */
+export function withSemanticReview(reply: TwinReply): TwinReply {
+  const payload = reply.review;
+  const note: string | undefined =
+    payload && typeof payload === 'object' && typeof (payload as { note?: unknown }).note === 'string'
+      ? (payload as { note: string }).note
+      : undefined;
+  const ran =
+    !!payload &&
+    typeof payload === 'object' &&
+    (payload as { ran?: unknown }).ran === true;
+  const model =
+    ran && typeof (payload as { model?: unknown }).model === 'string'
+      ? (payload as { model: string }).model
+      : undefined;
+
+  const rawResults = ran && Array.isArray((payload as unknown as { results?: unknown })?.results)
+    ? (payload as unknown as { results: unknown[] }).results
+    : [];
+  const byClaim = new Map<string, { label: ReviewLabel; explanation: string }>();
+  const VALID = new Set<ReviewLabel>([
+    'supported', 'partially_supported', 'contradicted', 'unsupported', 'unable_to_assess',
+  ]);
+  for (const r of rawResults) {
+    if (!r || typeof r !== 'object') continue;
+    const o = r as Record<string, unknown>;
+    if (typeof o.claimId !== 'string' || !o.claimId.trim()) continue;
+    if (typeof o.label !== 'string' || !VALID.has(o.label as ReviewLabel)) continue;
+    if (typeof o.explanation !== 'string' || !o.explanation.trim()) continue;
+    byClaim.set(o.claimId.trim(), {
+      label: o.label as ReviewLabel,
+      explanation: o.explanation.trim().slice(0, 400),
+    });
+  }
+
+  const claims: AnswerClaim[] | undefined = reply.claims?.map((c) => {
+    const r = ran ? byClaim.get(c.claim) : undefined;
+    const review: ClaimReview = r
+      ? { state: 'reviewed', label: r.label, explanation: r.explanation }
+      : {
+          state: 'unreviewed',
+          reason: ran
+            ? 'The reviewer did not return a verdict for this claim; the deterministic audit stands unreviewed.'
+            : note ?? 'Semantic review unavailable for this reply; claims carry the deterministic audit only.',
+        };
+
+    if (!r) return { ...c, review };
+
+    let type = c.type;
+    let evidenceStatus = c.evidenceStatus;
+    const basisParts: string[] = [];
+    if (r.label === 'contradicted' || r.label === 'unsupported') {
+      if (type === 'directly_supported') {
+        type = 'interpretation';
+        evidenceStatus = evidenceStatus === 'direct' ? 'partial' : evidenceStatus;
+        basisParts.push(
+          `Semantic review judged this ${r.label === 'contradicted' ? 'contradicted by' : 'unsupported by'} the cited record text; the supported label was removed.`
+        );
+      }
+    } else if ((r.label === 'partially_supported' || r.label === 'unable_to_assess') && evidenceStatus === 'direct') {
+      evidenceStatus = 'partial';
+      basisParts.push('Semantic review found the support partial or hard to assess; downgraded from direct.');
+    }
+    if (r.label === 'contradicted' && type === 'conflicting_evidence') {
+      basisParts.push(`Semantic review also found counterevidence: ${r.explanation}`);
+    }
+    void reviewDowngrade; // matrix encoded here and in claimReviewShared (kept in sync by tests)
+    return {
+      ...c,
+      type,
+      evidenceStatus,
+      basis: basisParts.length ? [...basisParts, c.basis].filter(Boolean).join(' ') : c.basis,
+      review,
+    };
+  });
+
+  // A review that ran but matched no actual claim (all ghost ids, or a reply
+  // without claims) is treated as not ran — nothing was reviewed.
+  const matchedCount = claims?.filter((c) => c.review?.state === 'reviewed').length ?? 0;
+  const effectiveRan = ran && matchedCount > 0;
+
+  const replyReview: ReplyReview = {
+    ran: effectiveRan,
+    model,
+    note: effectiveRan
+      ? `Semantic claim review ran (${model}): labels are one model's judgment of the evidence, not deterministic proof.`
+      : note ?? 'Semantic claim review did not run; claims carry the deterministic audit only.',
+  };
+
+  return {
+    ...reply,
+    claims,
+    review: replyReview,
+    gaps: effectiveRan ? reply.gaps : Array.from(new Set([...(reply.gaps ?? []), replyReview.note!])),
+  };
 }
 
 /**

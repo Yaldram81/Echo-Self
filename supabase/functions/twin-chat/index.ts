@@ -1,4 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import {
+  CLAIM_REVIEW_SYSTEM, REVIEW_LIMITS, buildReviewUserTurn, coerceReviewResults,
+  type ReviewInputClaim,
+} from './claimReview.ts';
 
 // Deployed with verify_jwt = true: Supabase's gateway rejects requests without
 // a valid project JWT before this function runs, so the Gemini key cannot be
@@ -27,6 +31,13 @@ const LIMITS = {
   userDaily: numEnv('TWIN_USER_DAILY', 100),
   providerTimeoutMs: numEnv('TWIN_PROVIDER_TIMEOUT_MS', 30_000),
   providerRetries: numEnv('TWIN_PROVIDER_RETRIES', 1),
+  // Semantic claim review (Upgrade 4). REVIEW_MODEL selects the reviewer model;
+  // it must be a model the configured provider credential actually supports —
+  // nothing is assumed. TWIN_CLAIM_REVIEW=false disables the leg entirely.
+  reviewEnabled: Deno.env.get('TWIN_CLAIM_REVIEW') !== 'false',
+  reviewModel: Deno.env.get('TWIN_REVIEW_MODEL') || 'gemini-2.5-flash',
+  reviewTimeoutMs: numEnv('TWIN_REVIEW_TIMEOUT_MS', 20_000),
+  reviewRetries: numEnv('TWIN_REVIEW_RETRIES', 0),
 };
 
 function numEnv(name: string, dflt: number): number {
@@ -84,6 +95,12 @@ type TwinResponse = {
   followUps: string[];
   claims?: TwinClaim[];
   mode: 'live';
+  review?: {
+    ran: boolean;
+    model?: string;
+    note?: string;
+    results?: { claimId: string; label: string; explanation: string }[];
+  };
 };
 
 const GENERIC_ERROR = 'The twin service is temporarily unavailable. Please try again shortly.';
@@ -360,6 +377,131 @@ function coerceResponse(raw: Record<string, unknown> | null, memories: MemoryRow
   };
 }
 
+// --- semantic claim review (Upgrade 4, second validation layer) -------------
+
+/**
+ * One batched reviewer call for up to REVIEW_LIMITS.maxClaims claims. The
+ * reviewer reads only: the question, each claim's text + type, the text of the
+ * records actually cited for it, and any retrieved counterevidence. Nothing
+ * else about the account is sent. Reviewer failures are non-fatal: the caller
+ * keeps the deterministic result and marks claims unreviewed — never "verified".
+ */
+async function reviewClaims(
+  question: string,
+  claims: TwinClaim[],
+  memories: MemoryRow[],
+  apiKey: string
+): Promise<{ ran: boolean; model: string; results: { claimId: string; label: string; explanation: string }[]; note?: string }> {
+  const model = LIMITS.reviewModel;
+  if (!LIMITS.reviewEnabled) {
+    return { ran: false, model, results: [], note: 'Semantic claim review is disabled by configuration; claims carry the deterministic audit only.' };
+  }
+
+  // Review only substantive claims with evidence; unknown/empty claims have
+  // nothing for a reviewer to judge and would burn budget.
+  const reviewable = claims
+    .filter((c) => (c.type === 'directly_supported' || c.type === 'conflicting_evidence' || c.type === 'interpretation') && c.evidence.length > 0)
+    .slice(0, REVIEW_LIMITS.maxClaims);
+  if (reviewable.length === 0) {
+    return { ran: false, model, results: [], note: 'No claims with evidence to review.' };
+  }
+
+  const memById = new Map(memories.map((m) => [m.id, m]));
+  const counterpartMap = conflictCounterparts(memories);
+  const inputs: ReviewInputClaim[] = reviewable.map((c, i) => {
+    const sourceIds = c.evidence.map((e) => e.memoryId);
+    // Counterevidence: deterministic layer-1 conflict counterparts of the cited
+    // records (from conflictCounterparts), never invented by the reviewer.
+    const counterIds = new Set<string>();
+    for (const id of sourceIds) for (const cid of counterpartMap.get(id) ?? []) counterIds.add(cid);
+    return {
+      claimId: `k${i + 1}`,
+      claim: c.claim,
+      claimType: c.type,
+      sources: sourceIds
+        .map((id) => {
+          const m = memById.get(id);
+          return m ? { id, title: m.title, occurredAt: m.occurred_at, text: m.content } : null;
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null),
+      counterevidence: [...counterIds]
+        .filter((id) => !sourceIds.includes(id))
+        .map((id) => {
+          const m = memById.get(id);
+          return m ? { id, title: m.title, text: m.content } : null;
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .slice(0, 2),
+    };
+  });
+
+  const validIds = new Set(inputs.map((c) => c.claimId));
+  let lastKind: 'timeout' | 'error' = 'error';
+  for (let attempt = 0; attempt <= LIMITS.reviewRetries; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LIMITS.reviewTimeoutMs);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: CLAIM_REVIEW_SYSTEM }] },
+            contents: [{ role: 'user', parts: [{ text: buildReviewUserTurn(question, inputs) }] }],
+            generationConfig: {
+              maxOutputTokens: REVIEW_LIMITS.maxOutputTokens,
+              temperature: 0.1,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+      if (!res.ok) {
+        lastKind = 'error';
+        if (res.status === 429 || res.status >= 500) continue;
+        break;
+      }
+      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      const parts = data.candidates?.[0]?.content?.parts;
+      const text = Array.isArray(parts)
+        ? parts.filter((p) => typeof p.text === 'string').map((p) => p.text as string).join('')
+        : '';
+      const parsed = extractJson(text);
+      // Review results map back to the ORIGINAL claim text so the client can
+      // match them without trusting reviewer-echoed ids beyond this mapping.
+      const results = coerceReviewResults(parsed, validIds)
+        .map((r) => {
+          const input = inputs.find((inp) => inp.claimId === r.claimId);
+          const reviewed = input ? reviewable[inputs.indexOf(input)] : null;
+          return reviewed ? { claimId: reviewed.claim, label: r.label, explanation: r.explanation } : null;
+        })
+        .filter((r): r is { claimId: string; label: string; explanation: string } => r !== null);
+      if (results.length === 0) {
+        lastKind = 'error';
+        continue;
+      }
+      return { ran: true, model, results };
+    } catch (err) {
+      lastKind = err instanceof DOMException && err.name === 'AbortError' ? 'timeout' : 'error';
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  console.error(`claim review unavailable (${lastKind}); claims left unreviewed`);
+  return {
+    ran: false,
+    model,
+    results: [],
+    note:
+      lastKind === 'timeout'
+        ? 'The semantic claim review timed out; claims were left in their deterministic audit state, not marked verified.'
+        : 'The semantic claim review was unavailable; claims were left in their deterministic audit state, not marked verified.',
+  };
+}
+
 // --- quota enforcement ------------------------------------------------------
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -556,9 +698,33 @@ Deno.serve(async (req: Request) => {
       return json({ error: GENERIC_ERROR }, 502);
     }
 
+    // Semantic claim review (layer 2). Best-effort: any failure leaves the
+    // claims in their deterministic state, explicitly marked unreviewed.
+    let review: TwinResponse['review'];
+    try {
+      const reviewOutcome = await reviewClaims(
+        question, response.claims ?? [], selected, apiKey
+      );
+      review = {
+        ran: reviewOutcome.ran,
+        model: reviewOutcome.ran ? reviewOutcome.model : undefined,
+        note: reviewOutcome.note,
+        results: reviewOutcome.ran ? reviewOutcome.results : undefined,
+      };
+      if (reviewOutcome.ran) {
+        await logUsage(quotaKey, 'review_success', providerResult.usage);
+      }
+    } catch (reviewErr) {
+      console.error('claim review crashed; leaving claims unreviewed', reviewErr);
+      review = {
+        ran: false,
+        note: 'The semantic claim review failed unexpectedly; claims were left in their deterministic audit state, not marked verified.',
+      };
+    }
+
     await logUsage(quotaKey, 'success', providerResult.usage);
 
-    return json(response);
+    return json({ ...response, review });
   } catch (err) {
     console.error('twin-chat failure', err);
     return json({ error: GENERIC_ERROR }, 500);
