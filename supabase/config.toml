@@ -1,2 +1,5 @@
 [functions.twin-chat]
 verify_jwt = true
+
+[functions.memory-embed]
+verify_jwt = true

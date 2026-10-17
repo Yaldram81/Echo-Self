@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { memoryEmbeddingService } from './memoryEmbeddingService';
 import type {
   Belief,
   BeliefHistoryPoint,
@@ -149,18 +150,24 @@ export const memoriesService = {
     ) as Promise<Memory | null>;
   },
   async create(input: MemoryInput): Promise<Memory> {
-    return unwrap(
+    const memory = await unwrap(
       supabase.from('memories').insert(input).select().maybeSingle()
-    ) as Promise<Memory>;
+    ) as Memory;
+    // Fire-and-forget: indexing must never block or fail a user's save.
+    void memoryEmbeddingService.indexMemories([memory]).catch(() => {});
+    return memory;
   },
   async update(id: string, input: MemoryInput): Promise<Memory> {
-    return unwrap(
+    const memory = await unwrap(
       supabase.from('memories').update(input).eq('id', id).select().maybeSingle()
-    ) as Promise<Memory>;
+    ) as Memory;
+    void memoryEmbeddingService.indexMemories([memory]).catch(() => {});
+    return memory;
   },
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from('memories').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    // Deleting the memory cascades to its embedding row in the database.
   },
 };
 

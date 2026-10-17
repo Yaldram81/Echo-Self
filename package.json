@@ -18,7 +18,8 @@
     "journey-tests": "tsx --env-file=.env scripts/run-e2e-journey.mts",
     "twin-eval": "tsx scripts/run-eval.mjs",
     "robustness-tests": "tsx scripts/run-robustness-tests.mts",
-    "eval:all": "tsx --env-file=.env scripts/run-all-eval.mts"
+    "eval:all": "tsx --env-file=.env scripts/run-all-eval.mts",
+    "hybrid-tests": "tsx scripts/run-hybrid-tests.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

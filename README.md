@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="#testing-and-evaluation"><img src="https://img.shields.io/badge/tests-444%20passing-4a7c59" alt="Tests: 444 passing" /></a>
+  <a href="#testing-and-evaluation"><img src="https://img.shields.io/badge/tests-460%2B%20passing-4a7c59" alt="Tests: 460+ passing" /></a>
   <a href="#getting-started"><img src="https://img.shields.io/badge/TypeScript-strict-2b2a26" alt="TypeScript strict" /></a>
   <a href="#security-and-privacy"><img src="https://img.shields.io/badge/RLS-ownership--scoped-c4643b" alt="RLS: ownership-scoped" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-none--yet-6b6558" alt="License: none yet" /></a>
@@ -31,11 +31,12 @@ The honest sentence first: **this is a demo build.** It ships with a clearly lab
 |---|---|
 | **Application** | React 18 + TypeScript single-page app, custom History-API router (no router or state library) |
 | **Styling** | Tailwind CSS, editorial design system (Fraunces serif / Inter sans, paper-and-terracotta palette) |
-| **Data layer** | Supabase Postgres, 7 tables, all with ownership-aware row-level security |
+| **Data layer** | Supabase Postgres, 8 tables, all with ownership-aware row-level security |
 | **Auth** | Supabase email/password; per-account private workspaces; public read-only sample persona |
-| **AI integration** | `twin-chat` Edge Function → Google Gemini (JWT-gated; key server-side only) |
+| **AI integration** | `twin-chat` + `memory-embed` Edge Functions → Google Gemini (JWT-gated; keys server-side only) |
+| **Retrieval** | Hybrid: explainable keyword engine fused (RRF) with pgvector semantic search; keyword-only fallback |
 | **Decision engine** | Deterministic rules engine (`dm-4`) with persisted, hash-stamped analysis snapshots |
-| **Testing** | 12 suite runners, 444 automated checks (deterministic + live-service), zero failures |
+| **Testing** | 13 suite runners, 460+ automated checks (deterministic + live-service), zero failures |
 | **Status** | Demo build; live mode dormant until a `GEMINI_API_KEY` secret is configured |
 
 ## Product capabilities
@@ -53,7 +54,7 @@ All ten capabilities below are implemented and exercised by the test suites.
 | **Evidence Graph** | A deterministic SVG graph of memories, beliefs, decisions, and reflections — every edge either recorded, user-confirmed, or keyword-suggested and labeled. Keyboard-navigable, with a linked-list view on small screens. |
 | **Reflection Loop** | Record what happened after a decision, compare it against the original success definition, capture surprises — and optionally approve a proposed belief-strength revisit (nothing applies automatically). |
 | **Personal Timeline** | A unified chronology of memories, decisions, belief changes, and reflections, with deep links into each source record. |
-| **Private workspace & data controls** | Email/password accounts, per-user isolation enforced by RLS, full JSON/CSV export of all seven tables, and owner-scoped delete-everything (sample data excluded). |
+| **Private workspace & data controls** | Email/password accounts, per-user isolation enforced by RLS, full JSON/CSV export of all personal tables, and owner-scoped delete-everything (sample data excluded). |
 
 ## What makes EchoSelf different
 
@@ -92,8 +93,8 @@ flowchart LR
 
   subgraph supabase["Supabase (trusted platform)"]
     AUTH["Email/password Auth"]
-    RLS["Postgres + Row-Level Security<br/>(7 tables, ownership-scoped)"]
-    EF["Edge Function: twin-chat<br/>(verify_jwt = true)"]
+    RLS["Postgres + Row-Level Security<br/>(8 tables, ownership-scoped)<br/>+ pgvector embeddings (HNSW)"]
+    EF["Edge Functions: twin-chat, memory-embed<br/>(verify_jwt = true)"]
   end
 
   PROVIDER["Google Gemini API<br/>(key in server-side secrets)"]
@@ -138,7 +139,9 @@ flowchart LR
 │   ├── hooks/                     # useAsyncData, dialog a11y
 │   ├── lib/
 │   │   ├── router.ts              # route parsing, hrefs, per-route metadata
-│   │   ├── retrieval.ts           # layered retrieval engine (intent, signals, counterevidence)
+│   │   ├── retrieval.ts           # layered keyword engine (intent, signals, counterevidence)
+│   │   ├── hybridRetrieval.ts     # RRF fusion of keyword + semantic legs, mode reporting
+│   │   ├── memoryEmbeddingService.ts # client port to the memory-embed edge function
 │   │   ├── twinService.ts         # live (edge function) vs demo (local composition)
 │   │   ├── claimAudit.ts          # claim audit, invented-quote/date rejection
 │   │   ├── decisionAnalysis.ts    # deterministic decision engine (dm-4)
@@ -149,7 +152,8 @@ flowchart LR
 │   └── pages/                     # one file per route + two detail pages
 └── supabase/
     ├── functions/twin-chat/       # AI edge function (Gemini call, server-side key)
-    ├── migrations/                # 14 idempotent migrations
+    ├── functions/memory-embed/    # embedding edge function (query + index + backfill)
+    ├── migrations/                # idempotent migrations incl. pgvector embeddings
     └── config.toml
 ```
 
@@ -169,10 +173,10 @@ npm run lint       # eslint
 Test suites (each can also be run through the npm scripts of the same name):
 
 ```bash
-npm run eval:all              # every suite in sequence → EVALUATION_REPORT.md (444 checks)
+npm run eval:all              # every suite in sequence → EVALUATION_REPORT.md (460+ checks)
 
 # individually
-npm run retrieval-tests       # retrieval engine (65)
+npm run retrieval-tests       # retrieval engine (100, incl. synonym-expansion quality)
 npm run correction-tests      # correction lifecycle (46)
 npm run decision-tests        # decision engine (57)
 npm run graph-tests           # evidence graph (26)
@@ -215,7 +219,19 @@ The enforcement RPC (`enforce_ai_quota`) is a security-definer function executab
 
 ## Understanding the intelligence
 
-**Memory retrieval.** A layered, explainable pipeline (`src/lib/retrieval.ts`), shared identically by demo mode, live mode's client-side context mirror, and the test suite. Query intent is detected from weighted keyword rules (current state, historical period, repeated pattern, decision rationale, belief/value, contradiction/change, general) with a safe fallback to *general*. Hand-curated synonyms bridge paraphrase, tracked as `synonymHits` so the explanation can name the bridge. Layered scoring weights fields (title 4 > tags 3 > body 2 > category 1), adds an exact-phrase bonus, a boost for matching saved corrections, query-dependent recency, and applies your 0–100 confidence strictly as a *reliability* multiplier (0.7–1.0) — never as importance. Your optional 1–5 **significance rating** (`user_importance`) applies as a separate preference multiplier (0.9–1.2; unrated = exactly 1.0) *after* relevance: it reorders near-equal matches only, never rescues an irrelevant record, never overrides an explicit time period, and is excluded from evidence-support labels. An explicit period in the question ("last year", "in 2023") boosts records inside the window; belief/value questions apply no recency so an old explicit value statement outranks a recent incidental mention. Near-duplicates (same normalized title or ≥ 0.75 token overlap) are marked, never deleted. For pattern and change questions, a separate counterevidence scan surfaces records whose language materially opposes the question's frame — including negatively framed questions ("did I fail…"), which flip polarity. Every candidate carries its matched signals, rank, and a plain-language reason.
+**Memory retrieval.** A layered, explainable pipeline (`src/lib/retrieval.ts`), shared identically by demo mode, live mode's client-side context mirror, and the test suite. Query intent is detected from weighted keyword rules (current state, historical period, repeated pattern, decision rationale, belief/value, contradiction/change, general) with a safe fallback to *general*. A small hand-curated synonym table bridges paraphrase as a lightweight fallback: expansion is one-level (no chaining), capped at 8 terms per query, provenance-tracked (`synonymHits`), phrase-gated for ambiguous words, and scored at half weight (`synonymFactor: 0.5`) so a weak expansion match cannot outrank an exact one. Layered scoring weights fields (title 4 > tags 3 > body 2 > category 1), adds an exact-phrase bonus, a boost for matching saved corrections, query-dependent recency, and applies your 0–100 confidence strictly as a *reliability* multiplier (0.7–1.0) — never as importance. Your optional 1–5 **significance rating** (`user_importance`) applies as a separate preference multiplier (0.9–1.2; unrated = exactly 1.0) *after* relevance: it reorders near-equal matches only, never rescues an irrelevant record, never overrides an explicit time period, and is excluded from evidence-support labels. An explicit period in the question ("last year", "in 2023") boosts records inside the window; belief/value questions apply no recency so an old explicit value statement outranks a recent incidental mention. Near-duplicates (same normalized title or ≥ 0.75 token overlap) are marked, never deleted. For pattern and change questions, a separate counterevidence scan surfaces records whose language materially opposes the question's frame — including negatively framed questions ("did I fail…"), which flip polarity. Every candidate carries its matched signals, rank, and a plain-language reason.
+
+### Hybrid semantic retrieval
+
+Live-mode retrieval fuses the keyword engine above with vector similarity search (pgvector, cosine distance, HNSW index):
+
+- **Embeddings.** The `memory-embed` edge function (JWT-gated, server-side Gemini key) produces 768-dimension vectors with `text-embedding-004`. The only text ever sent to the embedding provider is the memory's own title, category, tags, and content — nothing else, and never another user's data.
+- **Storage and indexing.** Vectors live in the `memory_embeddings` table (`vector(768)`, HNSW index) with the owning user's id, the producing model's name, and a SHA-256 content hash of the embedded text. Embeddings are generated when a memory is created or materially edited (fire-and-forget, never blocking a save) and deleted automatically with the memory (database cascade). Demo/sample rows (`user_id IS NULL`) are **never embedded**, so the fictional demo corpus and real user records can never share a retrieval index.
+- **Fusion.** The keyword ranking and the semantic ranking are combined with Reciprocal Rank Fusion (RRF, k = 60; semantic weight 0.8 vs keyword 1.0) — a rank-based method, so the two legs' incomparable score scales never meet directly. Records found only by the semantic leg enter the results with zero keyword relevance and an honest provenance note ("surfaced by semantic similarity, no keyword overlap"); a weak semantic match still cannot displace a strong exact match at the top.
+- **Authorization.** Vector matching runs through a SECURITY INVOKER database function (`match_memory_embeddings`) that filters on `auth.uid()` *inside* the database, plus row-level security on the table. Other users' embeddings are unreachable by construction — and, defensively, the client also drops any semantic neighbor id outside the records the caller was already authorized to supply.
+- **Explicit mode.** The active mode is reported, never silently claimed: `hybrid` (both legs ran), `keyword` (embeddings unconfigured/unavailable/failed — the pre-hybrid behavior, fully preserved), or semantic-empty (nothing indexed yet for this user). When semantic retrieval is unavailable for a question, live replies declare it in their gaps list.
+- **Idempotent backfill.** Sign-in triggers a background backfill of all your memories; the content-hash check means unchanged records are skipped, retries never duplicate rows, and progress/failed batches degrade gracefully (keyword-only retrieval continues).
+- **Model-version safety.** Embedding rows store their producing model; the match function compares only vectors from the same model as the query embedding. Switching embedding models requires a new migration for the new dimension — dimensions are never silently mixed.
 
 **Evidence verification.** After retrieval, replies pass through two layers of deterministic checks. Server-side (edge function): citations are filtered against the ids actually supplied to the model, inline `[id]` citations are honored, claims without defensible evidence are downgraded to *interpretation*. Client-side (claim audit): excerpts and dates are re-derived from stored records — invented quotes and dates are stripped and the removal declared in the gaps list; a valid citation id alone is never treated as proof. Uncertainty is declared when records are sparse (one match), stale (newest > 6 months), or only incidentally relevant. What these checks cannot do: read semantics. A citation proves the record exists and the text appears in it, not that the record's meaning supports the claim — the deterministic layer bounds the damage, it does not verify meaning.
 
@@ -225,7 +241,7 @@ The enforcement RPC (`enforce_ai_quota`) is a security-definer function executab
 
 ## Data model
 
-Seven tables in the `public` schema; all have row-level security enabled with ownership-aware policies.
+Eight tables in the `public` schema; all have row-level security enabled with ownership-aware policies.
 
 | Table | Purpose | Relationships | Access |
 |---|---|---|---|
@@ -236,6 +252,7 @@ Seven tables in the `public` schema; all have row-level security enabled with ow
 | `timeline_events` | Typed chronological entries | Links to source records | Same boundary |
 | `interpretation_flags` | User corrections: note, `answer_excerpt` (provenance), topic, lifecycle status | `memory_id` → `memories` | Private to creator; attach requires a visible parent memory |
 | `graph_edge_confirmations` | Per-user confirm/dismiss of suggested graph edges | Keyed by edge signature; endpoints must be visible to the creator | Private to creator |
+| `memory_embeddings` | Derived pgvector embeddings for hybrid retrieval: 768-dim vector, producing model, content hash for idempotent refresh | `memory_id` → `memories` (cascade delete); owner-mirrored `user_id` | Owner-only (no anon policies); demo rows never embedded |
 
 `user_id` columns default to `auth.uid()` at insert time, so the browser never supplies ownership — a forged owner id fails the insert check. UPDATE policies carry `auth.uid() = user_id` on both sides, so a row cannot be reassigned.
 
@@ -244,23 +261,24 @@ Seven tables in the `public` schema; all have row-level security enabled with ow
 EchoSelf processes personal reflections, so the security posture is stated precisely, with verification status attached.
 
 - **Authentication.** Supabase email/password; per-account private workspaces; email confirmation off by default (the sign-up flow states this when confirmation is required).
-- **Ownership-aware RLS.** All seven tables. Sample rows (`user_id IS NULL`) are readable by everyone — including signed-out visitors — and **writable by no one**; personal rows are visible and writable only by their owner. `interpretation_flags` and `graph_edge_confirmations` have no anon policies at all.
-- **Privilege hardening.** `TRUNCATE` and `REFERENCES` revoked from client roles on all seven tables; UPDATE narrowed from table-wide to user-content columns (identity, ownership, and timestamp columns are not updatable through the data API; a correction stays attached to its record and excerpt).
+- **Ownership-aware RLS.** All eight tables. Sample rows (`user_id IS NULL`) are readable by everyone — including signed-out visitors — and **writable by no one**; personal rows are visible and writable only by their owner. `interpretation_flags`, `graph_edge_confirmations`, and `memory_embeddings` have no anon policies at all.
+- **Privilege hardening.** `TRUNCATE` and `REFERENCES` revoked from client roles on all tables; UPDATE narrowed from table-wide to user-content columns (identity, ownership, and timestamp columns are not updatable through the data API; a correction stays attached to its record and excerpt).
 - **Server-side secrets.** The client bundle contains only the publishable anon key and project URL. The Gemini key lives in Edge Function secrets only. Errors returned to clients are generic; details go to server logs.
-- **JWT-gated AI path.** The `twin-chat` function runs with `verify_jwt = true`, and reads the caller's data with the caller's own JWT — its context is RLS-scoped exactly like the browser's. The service-role key is used only for the quota RPC and usage-log writes, never for personal-data reads.
+- **JWT-gated AI path.** The `twin-chat` and `memory-embed` functions run with `verify_jwt = true` and read/write the caller's data with the caller's own JWT — their access is RLS-scoped exactly like the browser's. The service-role key is used only for the quota RPC and usage-log writes, never for personal-data reads. The embedding provider key never reaches the browser.
+- **External embedding processing, opt-out by inaction.** When semantic retrieval is enabled (live mode + sign-in), the *text* of a user's own records (title, category, tags, content) is sent to the configured embedding provider to produce vectors. This is documented in the embedding function itself; users who never sign in (demo visitors) never have any text processed externally, and demo records are never embedded at all.
 - **App-enforced AI quotas.** Per-user per-minute and daily budgets enforced atomically server-side before any provider call, with 429 + Retry-After responses, body/context/output caps, provider timeouts, and a fail-closed policy if the quota store is unavailable (see "AI quotas" above for details and verified behavior).
 - **Demo isolation.** The public demo uses fictional sample data, labeled on every page. Export and delete-everything act only on the signed-in account's rows; sample data is excluded by both query filter and RLS.
 - **AI input/output validation.** Questions are length-validated server-side; correction text is framed as data, not instructions, in the model prompt (prompt-injection content in a record is quoted as data — tested). Replies are coerced and audited before display.
 
-**Verified vs. not.** The two-account suite (37 checks) demonstrates cross-account read/write/delete denial, forged-owner rejection, and owner-scoped export/wipe. The Supabase security advisor reports zero findings — one signal, not proof. **Not verified:** no live end-to-end request against a real model in this environment; no attempted attack on the platform gateway itself (rate limits, JWT forgery at the edge) — those are Supabase platform responsibilities. No storage buckets or realtime channels are used. RLS was verified against these seven tables only; new tables would need the same treatment.
+**Verified vs. not.** The two-account suite (37 checks) demonstrates cross-account read/write/delete denial, forged-owner rejection, and owner-scoped export/wipe. The Supabase security advisor reports zero findings — one signal, not proof. **Not verified:** no live end-to-end request against a real model in this environment; no attempted attack on the platform gateway itself (rate limits, JWT forgery at the edge) — those are Supabase platform responsibilities. No storage buckets or realtime channels are used. RLS was verified against these tables; new tables would need the same treatment.
 
 ## Testing and evaluation
 
-Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 358 deterministic + 86 live-service checks, 0 failures (2026-10-17, against the real database); quota suite 12/12 including a live 429 against the deployed function.**
+Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 349 deterministic + 63 live-service checks, 0 failures, plus the 16-check hybrid suite (2026-10-17, against the real database).**
 
 | Suite | Checks | Covers |
 |---|---|---|
-| `retrieval-tests` | 65 | Intent routing, paraphrase, tags, recency windows, values over recency, counterevidence, near-duplicates, cross-user isolation |
+| `retrieval-tests` | 100 | Intent routing, paraphrase, tags, recency windows, values over recency, counterevidence, near-duplicates, cross-user isolation, synonym-expansion quality (ambiguity, negation, temporal terms, chaining, caps, exact-vs-weak priority) |
 | `decision-tests` | 57 | Score arithmetic, ties, zero weights, contradictions, sensitivity, snapshot hash stability and staleness, proposals |
 | `correction-tests` | 46 | Full lifecycle, topic-scoping, side-by-side display, claim downgrading, instruction boundary |
 | `static-checks` | 78 | Routes, links, SEO metadata, robots/sitemap consistency, a11y invariants |
@@ -271,6 +289,7 @@ Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. 
 | `twin-eval` | 26 | Evidence inspector cases: supported, paraphrase, unsupported, conflicting, stale, invented content |
 | `journey-tests` | 23 | Live end-to-end visitor journey: explore → sign-up → save → ask → cite → correct → decide → export → delete → sign-out/in |
 | `quota-tests` | 12 | AI quotas: 429 + Retry-After after the per-minute limit (live), unauthenticated denial, spoofed user ids, oversized bodies, quota-RPC and quota-table privilege denial |
+| `hybrid-tests` | 16 | RRF fusion math, semantic-only discovery, keyword-priority preservation, embedding-failure fallback, mode reporting, cross-user neighbor filtering |
 
 These are executed checks, not coverage percentages: the deterministic suites run in-process; the live-service suites run against the real database (and, for the journey, the deployed edge function). The evidence inspector eval additionally reports citation validity and abstention accuracy on its 26 cases (100% and 100% on the last run — a property of the case set, not a general benchmark).
 
@@ -280,8 +299,10 @@ These are executed checks, not coverage percentages: the deterministic suites ru
 
 Findings are labeled by how they were established — code inspection (a known property of the implementation) versus observed in tests.
 
-- **Lexical retrieval cannot see conceptual connections.** *Inspection + suite sampling.* Retrieval is keyword- and synonym-based — no embeddings. Exact wording, paraphrase, and tag-only matches all pass in the suite, but a conceptually related memory sharing no recognizable lexical signal with the question will not be found. Inherent to the current approach; not fixed by it.
-- **Hand-curated synonyms.** *Inspection.* The synonym table is small and manually maintained; a miss degrades to plain keyword matching rather than failing.
+- **Lexical retrieval cannot see conceptual connections.** *Partially addressed by hybrid retrieval.* The keyword engine alone is lexical; the hybrid semantic leg (above) now surfaces conceptually related records with low lexical overlap — but only for signed-in users with indexed records and a configured provider. Demo mode and any keyword-only fallback remain lexical by design.
+- **Hand-curated synonyms — bounded by design, not comprehensive.** *Inspection + suite.* The synonym table is a small, manually maintained paraphrase bridge: one level of expansion, hard-capped per query, phrase-gated for ambiguous words, and scored at reduced weight. It can improve a subset of retrieval cases; it **cannot** provide comprehensive semantic understanding, and it is not a substitute for the semantic (embedding) leg. A paraphrase outside the table degrades to plain keyword matching rather than failing. Entries must stay unambiguous and domain-tight: historically, ambiguous triggers ("wind", "raise") manufactured false matches on unrelated records and were removed — adding entries follows the audit rules documented next to the table in `src/lib/retrieval.ts`.
+- **Hybrid retrieval depends on indexing state.** *By design.* Semantic recall only covers records that have been embedded (created/edited after the feature, or backfilled at sign-in). A record not yet indexed is still findable by keywords only; mode reporting makes the gap visible. A paraphrased question retrieves a conceptually related record through the semantic path **only when** that record is indexed and the provider is configured.
+- **Embedding-provider dependency.** *By design.* The semantic leg sends record text to the configured provider; if it is unconfigured, unreachable, or the stored vectors' model/dimension no longer match, retrieval degrades to keyword-only and says so. No semantic result is ever claimed from a failed leg.
 - **Counterevidence detection is pattern-based.** *Inspection.* Opposition signals are regexes tuned to common habit and obligation language; subtler contradictions of wording, tone, or value trade-offs may be missed — and none is claimed where the patterns find none.
 - **No model-based semantic evidence review.** *Inspection.* There is no second AI call that reads the retrieved records and the claims together; the deterministic audit bounds fabrication but cannot verify that a cited record's *meaning* supports a claim.
 - **Decision scoring assumes classified evidence.** *Inspection.* Scores rest on the for/against classification of retrieved records; unclassified or sparse evidence produces explicit incompleteness statements, and the score is preference alignment — never a prediction.
@@ -292,14 +313,14 @@ Findings are labeled by how they were established — code inspection (a known p
 
 ## Roadmap
 
-**Implemented** (all verified by the suites above): memory library, evidence-grounded Twin Chat with claim inspector, correction lifecycle, Decision Mirror with persisted snapshots, beliefs with suggestion gating and history, Evidence Graph with confirmations, reflection loop, timeline, per-account workspaces with RLS, export and owner-scoped wipe, 444-check evaluation infrastructure.
+**Implemented** (all verified by the suites above): memory library, evidence-grounded Twin Chat with claim inspector, correction lifecycle, Decision Mirror with persisted snapshots, beliefs with suggestion gating and history, Evidence Graph with confirmations, reflection loop, timeline, per-account workspaces with RLS, hybrid keyword+semantic retrieval with pgvector, export and owner-scoped wipe, 460+-check evaluation infrastructure.
 
 **Candidate next steps** — not commitments:
 
-- [ ] Add embeddings-based retrieval alongside the lexical layer, evaluated by the existing retrieval suite before any switch.
 - [ ] A second, model-based evidence-review pass in live mode (claims re-checked against retrieved records), behind the same audit contract.
 - [ ] Live-mode end-to-end verification against a real model as part of the standard suite.
-- [ ] Additional synonym coverage driven by observed retrieval misses from real usage.
+- [ ] Additional synonym coverage driven by observed retrieval misses from real usage — following the audit rules, not for volume.
+- [ ] A settings control to disable external embedding processing per account (currently implicit: stay signed out, or use demo mode).
 
 ## Troubleshooting
 

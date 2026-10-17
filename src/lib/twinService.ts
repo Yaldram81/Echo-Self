@@ -1,5 +1,7 @@
 import type { Belief, ClaimType, InterpretationFlag, Memory, SourceRef, TwinReply } from './types';
 import { findBeliefConflicts, formatMemoryForContext, retrieveMemories } from './retrieval';
+import { createHybridRetriever } from './hybridRetrieval';
+import { embeddingPort } from './memoryEmbeddingService';
 import {
   auditReply,
   withConflicts,
@@ -301,6 +303,8 @@ function composeDemoReply(question: string, memories: Memory[], beliefs: Belief[
   };
 }
 
+const hybridRetrieve = createHybridRetriever(embeddingPort);
+
 export async function askTwin(
   question: string,
   memories: Memory[],
@@ -308,10 +312,11 @@ export async function askTwin(
   corrections: InterpretationFlag[] = []
 ): Promise<{ reply: TwinReply; contextMemories: Memory[] }> {
   if (twinMode() === 'live') {
-    // Retrieval is mirrored client-side so evidence panels can show the exact
-    // records the model saw. The server runs its own ranking over the same rows.
-    const candidates = retrieveMemories(question, memories, 8);
-    const contextMemories = candidates.map((c) => c.memory);
+    // Hybrid retrieval: keyword leg (always) + semantic leg (server-side
+    // embeddings, ownership-scoped). Any embedding failure degrades to the
+    // keyword engine and the active mode is reported, never silently claimed.
+    const { result: hybridResult, status } = await hybridRetrieve(question, memories, { flags: corrections, limit: 8 });
+    const contextMemories = hybridResult.candidates.filter((c) => !c.isNearDuplicateOf).map((c) => c.memory);
     const reply = await askLive(question);
     // Audit against the records retrieved for THIS request: claim-level support,
     // invented quote/date rejection, and conflicts. Failure surfaces, never fabricates.
@@ -321,7 +326,16 @@ export async function askTwin(
       contextMemories
     );
     const uncertain = withUncertainty(audited, question, contextMemories);
-    return { reply: withCorrections(uncertain, contextMemories, corrections, question), contextMemories };
+    const corrected = withCorrections(uncertain, contextMemories, corrections, question);
+    if (!status.semanticUsed) {
+      corrected.gaps = [
+        ...(corrected.gaps ?? []),
+        status.mode === 'keyword'
+          ? 'Semantic retrieval was unavailable for this question; records were matched by keywords only.'
+          : 'No semantically indexed records matched yet; matching was keyword-only.',
+      ];
+    }
+    return { reply: corrected, contextMemories };
   }
 
   // demo mode: local composition from real records

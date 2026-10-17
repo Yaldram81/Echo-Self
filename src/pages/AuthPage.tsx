@@ -3,6 +3,7 @@ import { Feather, LogIn, UserPlus, LoaderCircle } from 'lucide-react';
 import { Card, SectionHeading } from '@/components/ui';
 import { supabase } from '@/lib/supabaseClient';
 import { authErrorMessage } from '@/lib/authMessages';
+import type { Memory } from '@/lib/types';
 import { navigateTo } from '@/lib/router';
 
 type Mode = 'signin' | 'signup';
@@ -46,6 +47,25 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
         return;
       }
       setNotice('Signed in. Redirecting to your workspace…');
+      // Fire-and-forget embedding backfill: keeps the semantic index fresh
+      // (idempotent, content-hash based) without blocking navigation.
+      void (async () => {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) return;
+          const { data: rows } = await supabase
+            .from('memories')
+            .select('*')
+            .not('user_id', 'is', null)
+            .limit(500);
+          if (rows?.length) {
+            const { memoryEmbeddingService } = await import('@/lib/memoryEmbeddingService');
+            await memoryEmbeddingService.backfillAll(rows as Memory[]);
+          }
+        } catch {
+          // backfill failure degrades to keyword-only retrieval; never blocks sign-in
+        }
+      })();
       navigateTo('home');
     } catch {
       setError('Could not reach the account service. Check your connection and try again.');

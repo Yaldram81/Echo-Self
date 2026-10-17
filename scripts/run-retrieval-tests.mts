@@ -9,7 +9,7 @@
  * Run with: npx tsx scripts/run-retrieval-tests.mts
  */
 import {
-  detectIntent, expandSynonyms, extractTerms, findBeliefConflicts, parseQueryPeriod,
+  detectIntent, expandQuery, expandSynonyms, extractTerms, findBeliefConflicts, MAX_EXPANSIONS, parseQueryPeriod,
   retrieve, retrieveCounterevidence, retrieveMemories, userTextWithCorrections,
   type Belief, type InterpretationFlag, type Memory,
 } from '../src/lib/retrieval.ts';
@@ -446,6 +446,105 @@ console.log('\n— User-controlled importance (separate from confidence and rele
     r5.candidates.find((c) => c.memory.id === 'imp-rel')?.signals.importance === 5);
   check('unrated candidate exposes null importance',
     b.candidates[0]?.signals.importance === null);
+}
+
+/* ----------------------- 17. synonym expansion quality ----------------------- */
+console.log('\n— Synonym expansion quality (Upgrade 2) —');
+{
+  // Intended matches still work through expansion.
+  const pet = [mem('syn-dog', 'Adopted a second dog', 'We debated for eight months and finally adopted.', { tags: ['dogs', 'family'] })];
+  const rPet = retrieve('Did I get a pet recently?', pet, { now: NOW });
+  check('intended synonym: pet → dog record retrieved', rPet.candidates.some((c) => c.memory.id === 'syn-dog'));
+  check('intended synonym: dog recorded as synonym hit',
+    (rPet.candidates[0]?.signals.synonymHits.length ?? 0) > 0, rPet.candidates[0]?.signals.synonymHits.join(','));
+  check('intended synonym: reason names related wording',
+    (rPet.candidates[0]?.reason ?? '').includes('related wording'));
+
+  // Variant folding: negotiated → negotiate entry.
+  const rVar = expandQuery('What did I record about negotiating?');
+  check('variant folding: negotiating finds negotiate entry', rVar.expanded.includes('salary'), rVar.expanded.join(','));
+
+  // Phrase-gated: "wind down" expands; bare "wind" must NOT.
+  const rWindDown = expandQuery('How is my wind-down routine going?');
+  check('phrase-gated: "wind down" expands to reading/bed/sleep',
+    rWindDown.expanded.includes('reading') && rWindDown.expanded.includes('sleep'), rWindDown.expanded.join(','));
+  const rBareWind = expandQuery('Was it windy during the walk today?');
+  check('ambiguous bare "wind" does not expand', !rBareWind.expanded.includes('sleep') && !rBareWind.expanded.includes('reading'), rBareWind.expanded.join(','));
+
+  // Removed ambiguous triggers: raise / counter must not expand.
+  const rRaise = expandQuery('Did I raise the kids alone this year?');
+  check('ambiguous "raise" does not expand to salary', !rRaise.expanded.includes('salary'), rRaise.expanded.join(','));
+  const rCounter = expandQuery('What happened at the kitchen counter?');
+  check('ambiguous "counter" never appears as an expansion target', !rCounter.expanded.includes('counter'));
+
+  // Negation and temporal words are never expansion keys or targets.
+  const rNeg = expandQuery('I did not negotiate the subscription price');
+  check('negation term "not" never drives expansion', !rNeg.expanded.some((t) => ['not', 'did'].includes(t)));
+  check('negated query still tokenizes real content terms',
+    rNeg.original.includes('negotiate') || rNeg.original.includes('negotiated'), rNeg.original.join(','));
+  check('temporal words are never expansion keys or targets',
+    !expandQuery('What happened last week?').expanded.some((t) => ['last', 'week', 'ago'].includes(t)));
+
+  // Common generic words must not trigger strong boosts.
+  const generic = [mem('syn-generic', 'A change of pace', 'Things felt different after the meeting.', { tags: ['general'] })];
+  const rGeneric = retrieve('What do I think about the thing?', generic, { now: NOW });
+  check('generic-word hit stays weak and is flagged incidental',
+    rGeneric.candidates.length === 0 ||
+      (rGeneric.candidates[0].signals.incidentalOnly === true && rGeneric.candidates[0].score < 4),
+    rGeneric.candidates[0]?.reason ?? 'none');
+  const strongAnchor = [mem('syn-anchor', 'The thing I committed to', 'The thing I committed to this month is daily writing.', { tags: ['writing'] })];
+  const rAnchor = retrieve('What do I think about the thing?', [...generic, ...strongAnchor], { now: NOW });
+  check('generic body hit never outranks a title-anchored match',
+    rAnchor.candidates[0]?.memory.id === 'syn-anchor', rAnchor.candidates.map((c) => `${c.memory.id}:${c.score.toFixed(2)}`).join(','));
+
+  // No chaining: expansion targets are never re-looked-up.
+  const rChain = expandQuery('Did I adopt a finance habit?');
+  const chainSet = new Set([...rChain.original, ...rChain.expanded]);
+  check('one-level expansion: targets are not re-expanded',
+    !rChain.expanded.some((t) => expandSynonyms([t]).some((x) => !chainSet.has(x) && !rChain.expanded.includes(x))), rChain.expanded.join(','));
+
+  // Bounded growth and determinism.
+  const rCap = expandQuery('pet pet pet pet workout exercise subscription negotiate finance evening');
+  check('expansion is capped (MAX_EXPANSIONS)', rCap.expanded.length <= MAX_EXPANSIONS, String(rCap.expanded.length));
+  check('expansion is duplicate-free', new Set(rCap.expanded).size === rCap.expanded.length);
+  const rDet1 = expandQuery('pet workout');
+  const rDet2 = expandQuery('pet workout');
+  check('expansion is deterministic', rDet1.expanded.join(',') === rDet2.expanded.join(','));
+  check('provenance records the source term',
+    (rDet1.via['dog'] ?? []).includes('pet'), JSON.stringify(rDet1.via));
+
+  // Exact match must outrank a weak synonym-only match.
+  const mix = [
+    mem('syn-exact', 'Salary talk', 'Discussed the salary number directly.', { tags: ['salary'] }),
+    mem('syn-far', 'Evening wind-down', 'Reading before bed, sleep came easier.', { tags: ['reading'] }),
+  ];
+  const rMix = retrieve('salary', mix, { now: NOW });
+  const exact = rMix.candidates.find((c) => c.memory.id === 'syn-exact');
+  const far = rMix.candidates.find((c) => c.memory.id === 'syn-far');
+  check('weak synonym-only match never outranks an exact match',
+    !!exact && (!far || exact.score > far.score),
+    exact && far ? `${exact.score.toFixed(2)} vs ${far.score.toFixed(2)}` : 'missing');
+  check('synonym-only candidate flagged as weaker evidence',
+    !far || (far.signals.bodyHits.length === 0 && far.signals.titleHits.length === 0), far?.reason ?? '');
+
+  // False matches introduced by expansion must be attributable + bounded.
+  const falseMatch = [
+    mem('syn-fm', 'Pet store visit', 'Browsed the pet store on Saturday.', { tags: ['pets'] }),
+    mem('syn-other', 'Quarterly tax filing', 'Filed the quarterly paperwork.', { tags: ['work'] }),
+  ];
+  const rFM = retrieve('pet', falseMatch, { now: NOW });
+  check('query hits only records reachable via expansion',
+    rFM.candidates.every((c) => c.memory.id === 'syn-fm'), rFM.candidates.map((c) => c.memory.id).join(','));
+
+  // Lexically unrelated query: no expansion can manufacture a match.
+  const rNone = retrieve('What is my stance on quantum computing?', mix, { now: NOW });
+  check('unrelated query retrieves nothing (expansion cannot manufacture evidence)', rNone.candidates.length === 0, rNone.candidates.map((c) => c.memory.id).join(','));
+
+  // Cross-user isolation unchanged: only caller-supplied records are ranked.
+  const theirs = [mem('syn-theirs', 'Their pet adoption', 'Adopted a dog yesterday.', { tags: ['dogs'] })];
+  const rCross = retrieve('Did I get a pet?', theirs, { now: NOW });
+  check('cross-user records remain inaccessible',
+    rCross.candidates.every((c) => theirs.some((m) => m.id === c.memory.id)));
 }
 
 console.log(`\nRetrieval engine tests: ${passed} passed, ${failed} failed`);

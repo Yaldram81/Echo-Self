@@ -42,27 +42,119 @@ function recencyFactor(iso: string): number {
   return Math.max(0, 1 - ageDays / 365);
 }
 
-/** Lightweight paraphrase bridging: question terms expanded to record vocabulary. */
+/* ================= query normalization & synonym expansion ================= */
+
+/**
+ * Hand-curated paraphrase bridge — a lightweight FALLBACK for wording the
+ * exact-match layer cannot reach, not a semantic index. Every entry must earn
+ * its place: unambiguous, domain-tight, and not reproducible by a record's own
+ * tags. Audit rules (keep this list small):
+ *   - No ambiguous triggers: a word that shifts meaning by context (e.g.
+ *     "raise", "wind", "counter") must NOT expand — it manufactured false
+ *     matches (a weather "wind" pulled sleep records; "raise the kids" pulled
+ *     salary records).
+ *   - No over-general targets: expanding "consistent" → "routine" leaked into
+ *     unrelated categories. Intent rules already handle consistency language.
+ *   - No word-variant duplicates: variant folding below handles plurals and
+ *     common verb forms, so "exercise/exercises" is ONE entry.
+ * Expansion is one level: targets are never looked up again. No synonym ever
+ * manufactures evidence of a contradiction or support for a claim — expansion
+ * only widens which records are *considered*, at reduced ranking weight.
+ */
 const SYNONYMS: Record<string, string[]> = {
   pet: ['dog', 'cat', 'adopt'],
-  wind: ['reading', 'bed', 'sleep'],
   evening: ['night', 'bed'],
   workout: ['gym', 'running'],
   exercise: ['running', 'gym'],
-  exercises: ['running', 'gym'],
-  consistent: ['routine', 'habit', 'streak'],
-  consistently: ['routine', 'habit', 'streak'],
   subscription: ['membership'],
-  negotiate: ['salary', 'counter'],
-  raise: ['salary', 'counter'],
+  negotiate: ['salary'],
   finance: ['money'],
 };
 
+/**
+ * Phrase-gated expansion: multiword triggers whose parts are ambiguous alone.
+ * "wind" must not expand (weather, winding a watch), but the phrase
+ * "wind down" reliably means relaxing — expand only when the full phrase is
+ * present in the question.
+ */
+const PHRASE_SYNONYMS: { pattern: RegExp; label: string; terms: string[] }[] = [
+  { pattern: /\bwind(?:ing)?[\s-]+down\b/i, label: 'wind down', terms: ['reading', 'bed', 'sleep'] },
+];
+
+/**
+ * Conservative dictionary-lookup folding: maps an inflected question term to
+ * possible base forms so "negotiated" finds the "negotiate" entry. Used ONLY
+ * for synonym lookup — never to alter query terms, never to strip negation or
+ * temporal meaning ("not", "last", "ago" are stopwords and never keys).
+ */
+function lookupKeys(term: string): string[] {
+  const keys = [term];
+  if (term.endsWith('ies') && term.length > 5) keys.push(`${term.slice(0, -3)}y`);
+  if (term.endsWith('es') && term.length > 4) keys.push(term.slice(0, -2));
+  if (term.endsWith('s') && term.length > 3) keys.push(term.slice(0, -1));
+  if (term.endsWith('ed') && term.length > 5) keys.push(term.slice(0, -1), term.slice(0, -2));
+  if (term.endsWith('ing') && term.length > 6) keys.push(`${term.slice(0, -3)}e`, term.slice(0, -3));
+  return keys;
+}
+
+/** Hard cap on expansion terms per query: bounded, deterministic growth. */
+export const MAX_EXPANSIONS = 8;
+
+export interface QueryExpansion {
+  /** Original question terms — never modified. */
+  original: string[];
+  /** Bounded, de-duplicated expansion terms in deterministic order. */
+  expanded: string[];
+  /** Provenance: expansion term → question term(s) or phrase that produced it. */
+  via: Record<string, string[]>;
+  /** Phrase triggers that fired, for the explanation. */
+  phraseTriggers: string[];
+}
+
+/**
+ * One-level, capped expansion of a question. No chaining (expansion targets
+ * are never re-looked-up), no duplicates, deterministic order, hard cap.
+ */
+export function expandQuery(question: string): QueryExpansion {
+  const original = extractTerms(question);
+  const expanded: string[] = [];
+  const via: Record<string, string[]> = {};
+  const add = (term: string, source: string) => {
+    const existing = via[term];
+    if (existing) {
+      if (!existing.includes(source)) existing.push(source);
+      return;
+    }
+    if (original.includes(term) || expanded.length >= MAX_EXPANSIONS) return;
+    expanded.push(term);
+    via[term] = [source];
+  };
+  for (const t of original) {
+    for (const key of lookupKeys(t)) {
+      for (const syn of SYNONYMS[key] ?? []) add(syn, t);
+    }
+  }
+  const phraseTriggers: string[] = [];
+  for (const p of PHRASE_SYNONYMS) {
+    if (p.pattern.test(question)) {
+      phraseTriggers.push(p.label);
+      for (const syn of p.terms) add(syn, p.label);
+    }
+  }
+  return { original, expanded, via, phraseTriggers };
+}
+
+/**
+ * Legacy wrapper kept for callers that expand an already-extracted term list.
+ * Same table, same caps, no chaining.
+ */
 export function expandSynonyms(terms: string[]): string[] {
   const out = [...terms];
   for (const t of terms) {
-    for (const syn of SYNONYMS[t] ?? []) {
-      if (!out.includes(syn)) out.push(syn);
+    for (const key of lookupKeys(t)) {
+      for (const syn of SYNONYMS[key] ?? []) {
+        if (!out.includes(syn)) out.push(syn);
+      }
     }
   }
   return out;
@@ -184,6 +276,12 @@ export interface RetrievalWeights {
   /** Additive boost when a saved user correction on the record matches. */
   correction: number;
   /**
+   * Weight multiplier for synonym-expansion hits (0–1]. Expansion matches are
+   * a fallback signal: a weak synonym match must not outrank directly relevant
+   * evidence, so expansion-only hits score at a fraction of exact hits.
+   */
+  synonymFactor: number;
+  /**
    * Importance multiplier range from user_importance (1–5): unrated records
    * keep 1.0; rated records get 1.0 + (rating − 3) × span, i.e. 0.9–1.2.
    * A post-relevance, never a substitute for matching the question.
@@ -194,8 +292,8 @@ export interface RetrievalWeights {
 /**
  * One configurable place for every ranking weight. No hidden bonuses: the
  * weights are exported, documented, and overridable per call. A record's
- * confidence is a reliability signal only — it never substitutes for
- * user-assigned importance (no such field exists yet).
+ * confidence is a reliability signal only; user-assigned importance is a
+ * separate preference signal — neither substitutes for matching the question.
  */
 export const DEFAULT_WEIGHTS: RetrievalWeights = {
   title: 4,
@@ -207,6 +305,7 @@ export const DEFAULT_WEIGHTS: RetrievalWeights = {
   confidenceFloor: 0.7,
   confidenceSpan: 0.3,
   correction: 2,
+  synonymFactor: 0.5,
   importanceSpan: 0.1,
 };
 
@@ -217,7 +316,8 @@ export interface CandidateSignals {
   tagHits: string[];
   categoryHits: string[];
   bodyHits: string[];
-  /** Expanded synonym terms that matched — wording the record itself uses. */
+  /** Expanded synonym terms that matched — wording the record itself uses.
+   * Weaker than an exact term match; see RetrievalWeights.synonymFactor. */
   synonymHits: string[];
   /** A multi-word phrase from the question appears in the record text. */
   phraseMatch: boolean;
@@ -282,8 +382,9 @@ function questionPhrases(question: string): string[] {
 interface ScoreInput {
   memory: Memory;
   question: string;
-  terms: string[];
   originalTerms: string[];
+  /** Expansion terms (from expandQuery) — scored at weights.synonymFactor. */
+  expansionTerms: string[];
   phrases: string[];
   weights: RetrievalWeights;
   intent: DetectedIntent;
@@ -309,7 +410,8 @@ function temporalFactor(input: Pick<ScoreInput, 'period' | 'memory'> & { intent:
 }
 
 function scoreCandidate(input: ScoreInput): ScoredCandidate {
-  const { memory, terms, originalTerms, phrases, weights, corrections } = input;
+  const { memory, originalTerms, expansionTerms, phrases, weights, corrections } = input;
+  const terms = [...originalTerms, ...expansionTerms];
   const title = (memory.title ?? '').toLowerCase();
   const body = (memory.content ?? '').toLowerCase();
   const tagText = (memory.tags ?? []).join(' ').toLowerCase();
@@ -322,19 +424,30 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     .map((f) => f.correction_note.trim());
   const correctedBody = notes.length > 0 ? `${body} ${notes.join(' ').toLowerCase()}` : body;
 
-  const inTitle = terms.filter((t) => title.includes(t));
-  const inTags = terms.filter((t) => tagText.includes(t));
-  const inCategory = terms.filter((t) => category.includes(t));
-  const inBody = terms.filter((t) => correctedBody.includes(t));
-  const synonymHits = originalTerms.length > 0
-    ? terms.filter((t) => !originalTerms.includes(t) && (title.includes(t) || correctedBody.includes(t)))
-    : [];
+  // Exact hits (the question's own words) score at full weight; expansion hits
+  // score at weights.synonymFactor so a weak paraphrase bridge cannot outrank
+  // directly relevant evidence.
+  const inTitle = originalTerms.filter((t) => title.includes(t));
+  const inTags = originalTerms.filter((t) => tagText.includes(t));
+  const inCategory = originalTerms.filter((t) => category.includes(t));
+  const inBody = originalTerms.filter((t) => correctedBody.includes(t));
+  const synTitle = expansionTerms.filter((t) => title.includes(t));
+  const synTags = expansionTerms.filter((t) => tagText.includes(t));
+  const synCategory = expansionTerms.filter((t) => category.includes(t));
+  const synBody = expansionTerms.filter((t) => correctedBody.includes(t));
+  const synonymHits = [...synTitle, ...synTags, ...synCategory, ...synBody];
 
-  let relevance =
+  const exactRelevance =
     inTitle.length * weights.title +
     inTags.length * weights.tag +
     inCategory.length * weights.category +
     inBody.length * weights.body;
+  const synonymRelevance =
+    (synTitle.length * weights.title +
+      synTags.length * weights.tag +
+      synCategory.length * weights.category +
+      synBody.length * weights.body) * weights.synonymFactor;
+  let relevance = exactRelevance + synonymRelevance;
 
   const phraseMatch = phrases.some((p) => correctedBody.includes(p) || title.includes(p));
   if (phraseMatch) relevance += weights.phrase;
@@ -360,7 +473,10 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     relevance * (1 + recency * weights.recency) * (weights.confidenceFloor + trust * weights.confidenceSpan) * importanceFactor;
 
   // Incidental: matched only generic body words, no title/tag/category anchor.
-  const incidentalOnly = inTitle.length === 0 && inTags.length === 0 && inCategory.length === 0 && inBody.length <= 1;
+  const incidentalOnly =
+    inTitle.length === 0 && inTags.length === 0 && inCategory.length === 0 &&
+    inBody.length <= 1 && synBody.length === 0 && synTags.length === 0 && synTitle.length === 0;
+  const synonymOnly = exactRelevance === 0 && synonymHits.length > 0 && !phraseMatch;
 
   const matchedFields = [
     inTitle.length > 0 ? `title (${inTitle.slice(0, 3).join(', ')})` : null,
@@ -377,6 +493,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     timeNote,
     importanceNote,
     incidentalOnly ? 'weak/incidental overlap; treat with caution' : null,
+    synonymOnly ? 'matched only through related wording, not your exact words; weaker evidence of relevance' : null,
   ].filter(Boolean);
 
   return {
@@ -386,7 +503,7 @@ function scoreCandidate(input: ScoreInput): ScoredCandidate {
     recency,
     score,
     signals: { titleHits: inTitle, tagHits: inTags, categoryHits: inCategory, bodyHits: inBody, synonymHits, phraseMatch, correctionMatch, incidentalOnly, importance },
-    reason: `${reasonParts.join('; ')}. Relevance ${relevance} → ranking score ${score.toFixed(2)} (relevance only; record confidence ${memory.confidence}/100 is a separate reliability field${importance != null ? `, user significance ${importance}/5 a separate preference field` : ''}).`,
+    reason: `${reasonParts.join('; ')}. Relevance ${relevance.toFixed(2)} → ranking score ${score.toFixed(2)} (relevance only; record confidence ${memory.confidence}/100 is a separate reliability field${importance != null ? `, user significance ${importance}/5 a separate preference field` : ''}).`,
     isNearDuplicateOf: undefined,
   };
 }
@@ -555,17 +672,19 @@ export function retrieve(question: string, memories: Memory[], options: Retrieve
   const weights: RetrievalWeights = { ...DEFAULT_WEIGHTS, ...options.weights };
   const intent = detectIntent(question);
   const period = parseQueryPeriod(question, now);
-  const originalTerms = extractTerms(question);
-  const terms = expandSynonyms(originalTerms);
+  const expansion = expandQuery(question);
+  const originalTerms = expansion.original;
   const phrases = questionPhrases(question);
 
-  if (terms.length === 0 || memories.length === 0) {
+  if (originalTerms.length === 0 || memories.length === 0) {
     return { intent, period, candidates: [], counterevidence: [] };
   }
 
   const candidates = memories
     .map((memory) =>
-      scoreCandidate({ memory, question, terms, originalTerms, phrases, weights, intent, period, corrections: flags })
+      scoreCandidate({
+        memory, question, originalTerms, expansionTerms: expansion.expanded, phrases, weights, intent, period, corrections: flags,
+      })
     )
     .filter((c) => c.relevance > 0)
     .sort((a, b) => b.score - a.score);
