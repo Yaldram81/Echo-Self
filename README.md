@@ -8,17 +8,20 @@ An evidence-grounded self-reflection companion. You record memories, state belie
 
 ## What the app does
 
-### Seven destinations (hash-routed, no page reloads)
+### Destinations (path-routed, real URLs)
+
+Every destination is a distinct URL that survives refresh, supports deep links, and carries its own document title and description. Navigation uses true links (middle-click/new-tab works); a 404.html fallback ships with the build for static hosts.
 
 | Route | Page | What it does |
 |---|---|---|
-| `#/home` | Overview | Stats (memories, open decisions, beliefs in motion), recent memories, unresolved decisions, evolving beliefs, and a link into Twin Chat. |
-| `#/memories` | Memories | Create, edit, search, filter (category / tag / date range), and delete evidence records. Each has a detail page at `#/memory/:id`. |
-| `#/chat` | Twin Chat | Ask questions; get structured, evidence-grounded answers with expandable source panels, stated inferences, declared gaps, and follow-up suggestions. |
-| `#/decisions` | Decision Mirror | Structured decision workspace: options, constraints, values with adjustable weights, a deterministic analysis, recorded choices, reopen, and outcome reflection. Detail page at `#/decision/:id`. |
-| `#/beliefs` | Beliefs & Values | Beliefs and values with strength scores, evolution history, AI-suggested patterns (explicitly labeled until you confirm or dismiss them), and contradiction detection against recorded memories. |
-| `#/timeline` | Timeline | Unified chronology assembled from memories, decisions, belief changes, and reflections — with deep links into each source record. |
-| `#/settings` | Settings & Privacy | Record counts, full JSON/CSV export, delete-everything, and an honest statement of what this build does and does not guarantee. |
+| `/` | Overview | Stats (memories, open decisions, beliefs in motion), recent memories, unresolved decisions, evolving beliefs, and a link into Twin Chat. |
+| `/memories` | Memories | Create, edit, search, filter (category / tag / date range), and delete evidence records. Each has a detail page at `/memory/:id`. |
+| `/chat` | Twin Chat | Ask questions; get structured, evidence-grounded answers with expandable source panels, stated inferences, declared gaps, and follow-up suggestions. |
+| `/decisions` | Decision Mirror | Structured decision workspace: options, constraints, values with adjustable weights, a deterministic analysis, recorded choices, reopen, and outcome reflection. Detail page at `/decision/:id`. |
+| `/beliefs` | Beliefs & Values | Beliefs and values with strength scores, evolution history, AI-suggested patterns (explicitly labeled until you confirm or dismiss them), and contradiction detection against recorded memories. |
+| `/timeline` | Timeline | Unified chronology assembled from memories, decisions, belief changes, and reflections — with deep links into each source record. |
+| `/settings` | Settings & Privacy | Record counts, full JSON/CSV export (all seven tables), delete-everything, and an honest statement of what this build does and does not guarantee. |
+| `/signin`, `/signup` | Account | Email/password sign-in and sign-up; personal pages redirect signed-out visitors here. |
 
 ### The honesty model (the core design constraint)
 
@@ -39,7 +42,8 @@ An evidence-grounded self-reflection companion. You record memories, state belie
 
 ```
 src/
-  App.tsx                  # hash router: pages + memory/decision detail views
+  App.tsx                  # path router (History API): pages + memory/decision detail views
+  lib/router.ts            # route parsing, hrefs, per-route titles/descriptions
   components/
     AppShell.tsx           # header, responsive nav (desktop + mobile menu), footer, skip link
     ui.tsx                 # Card, Badge, Loading/Error/Empty states, DemoModeBanner, meters
@@ -156,9 +160,14 @@ A "luxury editorial" direction: warm paper background (`#F7F3EB`), linen borders
 ```bash
 npm install
 npm run dev        # local dev server
-npm run build      # production build
+npm run build      # production build (emits 404.html SPA fallback)
 npm run typecheck  # strict TS check
-npm run lint       # eslint (currently 0 errors)
+npm run lint       # eslint (0 errors, 0 warnings)
+npx tsx --env-file=.env scripts/run-workspace-tests.mts   # two-account security suite (37 checks)
+npx tsx --env-file=.env scripts/run-graph-tests.mts       # graph engine suite (26 checks)
+npx tsx scripts/run-decision-tests.mts                    # decision engine suite (35 checks)
+npx tsx --env-file=.env scripts/run-eval.mjs              # evidence inspector eval (26 cases)
+npx tsx --env-file=.env scripts/run-e2e-journey.mts       # full visitor journey (20 checks)
 ```
 
 **Database:** the bundled Supabase project is pre-provisioned; credentials live in `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Migrations are applied via the Supabase tooling; the seed data is idempotent.
@@ -192,7 +201,7 @@ Failures found and fixed while building: the original 19-case suite had no way t
 
 ## Migrations: rerun safety
 
-All six migrations are safe to rerun. Verified guard per migration:
+All migrations are safe to rerun. Verified guard per migration:
 
 | Migration | Guard |
 |---|---|

@@ -180,8 +180,8 @@ check('direct edges cite a stored-field trace, not a keyword method',
 check('node routes: memories and decisions deep-link, others stay in-graph',
   graph.nodes.every((n) => {
     const r = nodeRoute(n);
-    if (n.type === 'memory') return r === `#/memory/${n.id.split(':')[1]}`;
-    if (n.type === 'decision') return r === `#/decision/${n.id.split(':')[1]}`;
+    if (n.type === 'memory') return r === `/memory/${n.id.split(':')[1]}`;
+    if (n.type === 'decision') return r === `/decision/${n.id.split(':')[1]}`;
     return r === null;
   }));
 

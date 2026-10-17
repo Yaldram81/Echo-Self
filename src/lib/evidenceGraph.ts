@@ -360,8 +360,8 @@ export function filterGraph(graph: EvidenceGraph, f: GraphFilters): EvidenceGrap
 
 export function nodeRoute(node: GraphNode): string | null {
   const raw = node.id.split(':')[1];
-  if (node.type === 'memory') return `#/memory/${raw}`;
-  if (node.type === 'decision') return `#/decision/${raw}`;
+  if (node.type === 'memory') return `/memory/${raw}`;
+  if (node.type === 'decision') return `/decision/${raw}`;
   return null;
 }
 

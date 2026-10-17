@@ -83,7 +83,7 @@ export function HomePage() {
                 title="Recent memories"
                 action={
                   <a
-                    href="#/memories"
+                    href="/memories"
                     className="inline-flex items-center gap-1 text-sm text-terracotta-deep hover:text-terracotta-dark font-medium"
                   >
                     All memories <ArrowRight className="w-4 h-4" aria-hidden />
@@ -123,7 +123,7 @@ export function HomePage() {
                 title="Decisions waiting"
                 action={
                   <a
-                    href="#/decisions"
+                    href="/decisions"
                     className="inline-flex items-center gap-1 text-sm text-terracotta-deep hover:text-terracotta-dark font-medium"
                   >
                     Decision Mirror <ArrowRight className="w-4 h-4" aria-hidden />
@@ -162,7 +162,7 @@ export function HomePage() {
               title="Beliefs and priorities in motion"
               action={
                 <a
-                  href="#/beliefs"
+                  href="/beliefs"
                   className="inline-flex items-center gap-1 text-sm text-terracotta-deep hover:text-terracotta-dark font-medium"
                 >
                   Beliefs &amp; Values <ArrowRight className="w-4 h-4" aria-hidden />
@@ -202,7 +202,7 @@ export function HomePage() {
               </p>
             </div>
             <a
-              href="#/chat"
+              href="/chat"
               className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
             >
               <MessageCircle className="w-4 h-4" aria-hidden />

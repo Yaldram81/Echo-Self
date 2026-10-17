@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { dataManagementService } from '@/lib/services';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/useAuth';
 import { SectionHeading, Card } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
@@ -50,7 +50,7 @@ function toCsv(rows: Record<string, unknown>[]): string {
   return [cols.join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
 }
 
-const DATA_TABLES = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags'] as const;
+const DATA_TABLES = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations'] as const;
 
 export function SettingsPage() {
   const { user } = useAuth();

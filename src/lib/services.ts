@@ -262,9 +262,13 @@ export const timelineService = {
 };
 
 export const dataManagementService = {
-  /** Export every record the persistence layer holds for this user. */
+  /**
+   * Export every record the persistence layer holds for this user. Covers all
+   * user-owned tables including decision proposals (stored on decisions) and
+   * graph edge confirmations. Sample rows are excluded.
+   */
   async exportAll(): Promise<Record<string, unknown[]>> {
-    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags'] as const;
+    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations'] as const;
     const out: Record<string, unknown[]> = {};
     for (const table of tables) {
       // Personal workspaces only: the public sample rows (user_id IS NULL)

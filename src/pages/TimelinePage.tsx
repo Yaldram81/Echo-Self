@@ -36,7 +36,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
       title: m.title,
       description: m.content,
       occurredAt: m.occurred_at,
-      href: `#/memory/${m.id}`,
+      href: `/memory/${m.id}`,
       linkedIds: [],
       linkDemonstrated: false,
     });
@@ -59,7 +59,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
           ? `Chose "${d.chosen_option}"${d.rationale ? ` — ${d.rationale}` : ''}`
           : d.context,
       occurredAt: d.status === 'decided' && d.decided_at ? d.decided_at : d.created_at,
-      href: `#/decision/${d.id}`,
+      href: `/decision/${d.id}`,
       linkedIds: related.slice(0, 3).map((m) => `memory:${m.id}`),
       linkDemonstrated: related.length > 0,
     });
@@ -71,7 +71,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
         title: `Reflection: ${d.title}`,
         description: d.reflection.whatHappened,
         occurredAt: d.reflected_at ?? d.decided_at ?? d.created_at,
-        href: `#/decision/${d.id}`,
+        href: `/decision/${d.id}`,
         linkedIds: [`decision:${d.id}`],
         linkDemonstrated: true,
       });
@@ -87,7 +87,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
         title: `Confirmed: ${b.statement}`,
         description: 'You confirmed this twin-suggested pattern as true of you.',
         occurredAt: b.last_reviewed ?? b.last_reflected_at,
-        href: '#/beliefs',
+        href: '/beliefs',
         linkedIds: [],
         linkDemonstrated: false,
       });
@@ -103,7 +103,7 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
           title: `${last.strength > first.strength ? 'Strengthened' : 'Weakened'}: ${b.statement}`,
           description: `Confidence moved from ${first.strength} to ${last.strength}. Latest note: ${last.note}`,
           occurredAt: last.recorded_at,
-          href: '#/beliefs',
+          href: '/beliefs',
           linkedIds: [],
           linkDemonstrated: false,
         });

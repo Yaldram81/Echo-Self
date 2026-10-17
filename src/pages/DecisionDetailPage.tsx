@@ -26,6 +26,7 @@ import {
   findAffectedBeliefs,
 } from '@/lib/decisionAnalysis';
 import { LoadingState, ErrorState, Badge } from '@/components/ui';
+import { navigateTo } from '@/lib/router';
 
 type Report = ReturnType<typeof analyzeDecision>;
 
@@ -184,7 +185,7 @@ export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
     setActionError(null);
     try {
       await decisionsService.remove(d.id);
-      window.location.hash = '/decisions';
+      navigateTo('decisions');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not delete the decision.');
       setConfirmDelete(false);
@@ -260,7 +261,7 @@ function MirrorView({
 
 function BackLink() {
   return (
-    <a href="#/decisions" className="inline-flex items-center gap-1.5 text-sm text-slateink hover:text-charcoal transition-colors">
+    <a href="/decisions" className="inline-flex items-center gap-1.5 text-sm text-slateink hover:text-charcoal transition-colors">
       <ArrowLeft className="w-4 h-4" aria-hidden />
       Decision Mirror
     </a>
@@ -528,7 +529,7 @@ function GeneratedReport({
                 <span className="font-medium text-charcoal">{ce.optionLabel}</span>
                 {' '}-{' '}
                 {ce.memoryId ? (
-                  <a href={`#/memory/${ce.memoryId}`} className="text-terracotta-deep hover:underline underline-offset-2">{ce.memoryTitle}</a>
+                  <a href={`/memory/${ce.memoryId}`} className="text-terracotta-deep hover:underline underline-offset-2">{ce.memoryTitle}</a>
                 ) : (
                   <span className="text-charcoal-soft italic">your own con: "{ce.memoryTitle}"</span>
                 )}
@@ -846,7 +847,7 @@ function ClassificationReview({
                   {c.memoryId.startsWith('explicit:') ? (
                     <span className="text-charcoal-soft">{c.memoryTitle}</span>
                   ) : (
-                    <a href={`#/memory/${c.memoryId}`} className="text-charcoal hover:text-terracotta-deep">{c.memoryTitle}</a>
+                    <a href={`/memory/${c.memoryId}`} className="text-charcoal hover:text-terracotta-deep">{c.memoryTitle}</a>
                   )}
                 </div>
                 <p className="mt-0.5 text-slateink">{c.rationale}</p>
@@ -925,7 +926,7 @@ function EvidencePanel({
         <ul className="space-y-3">
           {report.relevantMemories.map((r) => (
             <li key={r.memory.id} className="rounded-xl border border-linen-dark bg-white/70 px-4 py-3">
-              <a href={`#/memory/${r.memory.id}`} className="font-serif text-sm text-charcoal hover:text-terracotta-deep">
+              <a href={`/memory/${r.memory.id}`} className="font-serif text-sm text-charcoal hover:text-terracotta-deep">
                 {r.memory.title}
               </a>
               <p className="text-[11px] text-slateink-light mt-0.5">

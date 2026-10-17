@@ -2,12 +2,13 @@ import { useState, type FormEvent } from 'react';
 import { Feather, LogIn, UserPlus, LoaderCircle } from 'lucide-react';
 import { Card, SectionHeading } from '@/components/ui';
 import { supabase } from '@/lib/supabaseClient';
-import { authErrorMessage } from '@/lib/auth';
+import { authErrorMessage } from '@/lib/authMessages';
+import { navigateTo } from '@/lib/router';
 
 type Mode = 'signin' | 'signup';
 
-export function AuthPage() {
-  const [mode, setMode] = useState<Mode>('signin');
+export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
+  const [mode, setMode] = useState<Mode>(initialMode ?? 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,6 +31,7 @@ export function AuthPage() {
         }
         if (data.session) {
           setNotice('Account created. Your personal workspace is ready.');
+          navigateTo('home');
         } else {
           setNotice(
             'Account created, but this project requires email confirmation before signing in. Check your inbox for the confirmation link.'
@@ -44,6 +46,7 @@ export function AuthPage() {
         return;
       }
       setNotice('Signed in. Redirecting to your workspace…');
+      navigateTo('home');
     } catch {
       setError('Could not reach the account service. Check your connection and try again.');
     } finally {
@@ -142,6 +145,7 @@ export function AuthPage() {
                   setMode('signup');
                   setError(null);
                   setNotice(null);
+                  navigateTo('signup', { replace: true });
                 }}
                 className="font-medium text-terracotta-deep hover:underline"
               >
@@ -156,6 +160,7 @@ export function AuthPage() {
                   setMode('signin');
                   setError(null);
                   setNotice(null);
+                  navigateTo('signin', { replace: true });
                 }}
                 className="font-medium text-terracotta-deep hover:underline"
               >

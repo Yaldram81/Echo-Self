@@ -25,7 +25,7 @@ import {
   type GraphEdge,
 } from '@/lib/evidenceGraph';
 import { Card, SectionHeading, LoadingState, ErrorState, EmptyState, Badge } from '@/components/ui';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/useAuth';
 
 const TYPE_ORDER: GraphNodeType[] = ['memory', 'belief', 'value', 'decision', 'reflection'];
 

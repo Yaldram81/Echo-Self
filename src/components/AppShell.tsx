@@ -1,55 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Menu, X, Feather, LogOut, UserCircle2 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
+import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
 
-export type PageId =
-  | 'home'
-  | 'memories'
-  | 'chat'
-  | 'decisions'
-  | 'beliefs'
-  | 'timeline'
-  | 'graph'
-  | 'settings';
-
-export const NAV_ITEMS: { id: PageId; label: string }[] = [
-  { id: 'home', label: 'Overview' },
-  { id: 'memories', label: 'Memories' },
-  { id: 'chat', label: 'Twin Chat' },
-  { id: 'decisions', label: 'Decision Mirror' },
-  { id: 'beliefs', label: 'Beliefs & Values' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'graph', label: 'Evidence Graph' },
-  { id: 'settings', label: 'Settings & Privacy' },
-];
-
-/** Pages that show a user's own records; visitors are sent to sign-in instead. */
-export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings'];
-
-export function AppShell({
-  page,
-  onNavigate,
-  children,
-}: {
-  page: PageId;
-  onNavigate: (p: PageId) => void;
-  children: ReactNode;
-}) {
+export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { user, loading } = useAuth();
   const signedIn = !loading && !!user;
 
-  const navigate = useCallback(
-    (p: PageId) => {
-      onNavigate(p);
-      setMenuOpen(false);
-      setAccountOpen(false);
-    },
-    [onNavigate]
-  );
+  const page: PageId = route.kind === 'app' ? route.page : 'signin';
+
+  const go = (p: PageId) => {
+    navigateTo(p);
+    setMenuOpen(false);
+    setAccountOpen(false);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,10 +34,17 @@ export function AppShell({
     setAccountOpen(false);
     setMenuOpen(false);
     await supabase.auth.signOut();
-    onNavigate('home');
+    // Personal pages need an account; land signed-out users somewhere valid.
+    const current = window.location.pathname;
+    const isPersonal = PROTECTED_PAGES.some((p) => current.startsWith(`/${p}`));
+    if (isPersonal || current.startsWith('/memory') || current.startsWith('/decision')) {
+      navigateTo('home');
+    } else {
+      navigateTo(current === '/' ? 'home' : (current.slice(1) as PageId), { replace: true });
+    }
   }
 
-  const navButtonClass = (active: boolean) =>
+  const navLinkClass = (active: boolean) =>
     `px-3 py-2 rounded-full text-sm transition-colors duration-150 ${
       active
         ? 'bg-charcoal text-paper font-medium'
@@ -77,7 +52,7 @@ export function AppShell({
     }`;
 
   const navMobileClass = (active: boolean) =>
-    `text-left px-3 py-2.5 rounded-lg text-sm ${
+    `block px-3 py-2.5 rounded-lg text-sm ${
       active ? 'bg-charcoal text-paper font-medium' : 'text-slateink-dark hover:bg-linen'
     }`;
 
@@ -93,7 +68,7 @@ export function AppShell({
       <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur border-b border-linen-dark/60">
         <div className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-4">
           <button
-            onClick={() => navigate('home')}
+            onClick={() => go('home')}
             className="flex items-center gap-2.5 rounded-lg"
             aria-label="EchoSelf home"
           >
@@ -106,15 +81,20 @@ export function AppShell({
           </button>
 
           <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                aria-current={page === item.id ? 'page' : undefined}
-                className={navButtonClass(page === item.id)}
+            {NAV_PAGES.map((item) => (
+              <a
+                key={item}
+                href={hrefFor(item)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  e.preventDefault();
+                  go(item);
+                }}
+                aria-current={page === item ? 'page' : undefined}
+                className={navLinkClass(page === item)}
               >
-                {item.label}
-              </button>
+                {labelFor(item)}
+              </a>
             ))}
           </nav>
 
@@ -152,11 +132,19 @@ export function AppShell({
                       </button>
                     </>
                   ) : (
-                    <p className="px-4 py-2.5 text-xs text-slateink leading-relaxed">
-                      {loading
-                        ? 'Checking your session…'
-                        : 'You are browsing the shared sample. Sign in for a private workspace.'}
-                    </p>
+                    <div className="px-4 py-2.5 text-xs text-slateink leading-relaxed">
+                      {loading ? (
+                        'Checking your session…'
+                      ) : (
+                        <>
+                          You are browsing the shared sample.{' '}
+                          <a href="/signin" onClick={(e) => { e.preventDefault(); go('signin'); }} className="font-medium text-terracotta-deep hover:underline">
+                            Sign in
+                          </a>{' '}
+                          for a private workspace.
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -178,15 +166,20 @@ export function AppShell({
             className="lg:hidden border-t border-linen-dark/60 bg-paper px-5 py-3 flex flex-col"
             aria-label="Mobile"
           >
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                aria-current={page === item.id ? 'page' : undefined}
-                className={navMobileClass(page === item.id)}
+            {NAV_PAGES.map((item) => (
+              <a
+                key={item}
+                href={hrefFor(item)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  e.preventDefault();
+                  go(item);
+                }}
+                aria-current={page === item ? 'page' : undefined}
+                className={navMobileClass(page === item)}
               >
-                {item.label}
-              </button>
+                {labelFor(item)}
+              </a>
             ))}
             {signedIn && (
               <button onClick={handleSignOut} className="text-left px-3 py-2.5 rounded-lg text-sm text-clayred-DEFAULT">
@@ -214,4 +207,18 @@ export function AppShell({
       </footer>
     </div>
   );
+}
+
+function labelFor(p: PageId): string {
+  const labels: Record<string, string> = {
+    home: 'Overview',
+    memories: 'Memories',
+    chat: 'Twin Chat',
+    decisions: 'Decision Mirror',
+    beliefs: 'Beliefs & Values',
+    timeline: 'Timeline',
+    graph: 'Evidence Graph',
+    settings: 'Settings & Privacy',
+  };
+  return labels[p] ?? p;
 }

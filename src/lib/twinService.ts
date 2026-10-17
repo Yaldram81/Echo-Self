@@ -21,8 +21,12 @@ import {
 
 export type TwinMode = 'live' | 'demo' | 'unconfigured';
 
+/** Demo mode unless the env var is present and explicitly 'false'. */
 export function twinMode(): TwinMode {
-  return import.meta.env.VITE_TWIN_DEMO_MODE === 'true' ? 'demo' : 'live';
+  const flag = typeof import.meta.env?.VITE_TWIN_DEMO_MODE === 'string'
+    ? import.meta.env.VITE_TWIN_DEMO_MODE
+    : 'true';
+  return flag === 'false' ? 'live' : 'demo';
 }
 
 export class TwinUnavailableError extends Error {
@@ -48,6 +52,9 @@ async function askLive(question: string): Promise<TwinReply> {
   const { supabase } = await import('./supabaseClient');
   const { data: sessionData } = await supabase.auth.getSession();
   let response: Response;
+  const controller = new AbortController();
+  // A hung provider must not leave the user staring at a spinner forever.
+  const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
     response = await fetch(url, {
       method: 'POST',
@@ -58,9 +65,15 @@ async function askLive(question: string): Promise<TwinReply> {
           : {}),
       },
       body: JSON.stringify({ question }),
+      signal: controller.signal,
     });
   } catch {
+    if (controller.signal.aborted) {
+      throw new TwinUnavailableError('service-error', 'The twin service took too long to respond. Please try again in a moment.');
+    }
     throw new TwinUnavailableError('service-error', 'Could not reach the twin service. Check your connection and try again.');
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (response.status === 503) {

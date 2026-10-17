@@ -7,7 +7,7 @@ import type { ChatMessage, Memory, TwinReply } from '@/lib/types';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { SectionHeading, LoadingState, ErrorState, DemoModeBanner } from '@/components/ui';
 import { formatMemoryForContext } from '@/lib/retrieval';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/useAuth';
 import type { InterpretationFlag } from '@/lib/types';
 
 const SUGGESTED_QUESTIONS = [
@@ -374,7 +374,7 @@ function TwinMessage({
                   {[c.a, c.b].map((side) => (
                     <a
                       key={side.memoryId}
-                      href={`#/memory/${side.memoryId}`}
+                      href={`/memory/${side.memoryId}`}
                       className="block rounded-lg bg-white/80 border border-linen-dark px-3 py-2 hover:border-terracotta transition-colors"
                     >
                       <p className="font-serif text-xs text-charcoal">{side.title}</p>
@@ -399,7 +399,7 @@ function TwinMessage({
               <div key={i} className="rounded-xl bg-sage-light/40 border border-sage-dark/25 px-3.5 py-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <a
-                    href={`#/memory/${corr.memoryId}`}
+                    href={`/memory/${corr.memoryId}`}
                     className="block rounded-lg bg-white/80 border border-linen-dark px-3 py-2 hover:border-terracotta transition-colors"
                   >
                     <p className="text-[9px] uppercase tracking-[0.12em] text-slateink-light mb-1">Recorded</p>
@@ -443,7 +443,7 @@ function TwinMessage({
                     <ul className="mt-1.5 space-y-1 border-l-2 border-terracotta/30 pl-2.5">
                       {c.evidence.map((ev) => (
                         <li key={ev.memoryId}>
-                          <a href={`#/memory/${ev.memoryId}`} className="text-[11px] font-medium text-terracotta-deep hover:underline underline-offset-2">
+                          <a href={`/memory/${ev.memoryId}`} className="text-[11px] font-medium text-terracotta-deep hover:underline underline-offset-2">
                             {ev.title}
                           </a>
                           {ev.excerpt && (
@@ -522,7 +522,7 @@ function TwinMessage({
                 {reply.sources.map((s) => (
                   <li key={s.memoryId}>
                     <a
-                      href={`#/memory/${s.memoryId}`}
+                      href={`/memory/${s.memoryId}`}
                       className="inline-flex items-center gap-1.5 text-xs text-terracotta-deep hover:text-terracotta-dark hover:underline underline-offset-2"
                     >
                       <Quote className="w-3 h-3 shrink-0" aria-hidden />
@@ -550,7 +550,7 @@ function TwinMessage({
                     <div key={s.memoryId} className="rounded-xl bg-white/80 border border-linen-dark px-3.5 py-3">
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <a
-                          href={`#/memory/${s.memoryId}`}
+                          href={`/memory/${s.memoryId}`}
                           className="font-serif text-sm text-charcoal hover:text-terracotta-deep"
                         >
                           {mem.title}
@@ -566,7 +566,7 @@ function TwinMessage({
                             </button>
                           )}
                           <a
-                            href={`#/memory/${s.memoryId}`}
+                            href={`/memory/${s.memoryId}`}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-slateink hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
                             aria-label={`Open and edit ${mem.title}`}
                           >

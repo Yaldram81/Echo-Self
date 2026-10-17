@@ -6,6 +6,7 @@ import type { Memory } from '@/lib/types';
 import { MemoryForm } from '@/components/MemoryForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LoadingState, ErrorState, Badge, ConfidenceBar } from '@/components/ui';
+import { navigateTo } from '@/lib/router';
 
 const MOOD_TONES: Record<Memory['mood'], 'sage' | 'neutral' | 'amber' | 'clay'> = {
   positive: 'sage',
@@ -47,7 +48,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
     setActionError(null);
     try {
       await memoriesService.remove(memory.id);
-      window.location.hash = '/memories';
+      navigateTo('memories');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not delete the memory.');
       setConfirmDelete(false);
@@ -177,7 +178,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
 function BackLink() {
   return (
     <a
-      href="#/memories"
+      href="/memories"
       className="inline-flex items-center gap-1.5 text-sm text-slateink hover:text-charcoal transition-colors"
     >
       <ArrowLeft className="w-4 h-4" aria-hidden />

@@ -255,14 +255,14 @@ function MemoryCard({
     <Card className="flex flex-col">
       <div className="flex items-start justify-between gap-3 mb-2">
         <a
-          href={`#/memory/${memory.id}`}
+          href={`/memory/${memory.id}`}
           className="font-serif text-lg leading-snug text-charcoal hover:text-terracotta-deep transition-colors"
         >
           {memory.title}
         </a>
         <div className="flex shrink-0 items-center gap-1">
           <a
-            href={`#/memory/${memory.id}`}
+            href={`/memory/${memory.id}`}
             aria-label={`Open memory: ${memory.title}`}
             className="rounded-full p-1.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
