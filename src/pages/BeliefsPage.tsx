@@ -8,13 +8,12 @@ import {
   Check,
   X,
   Edit3,
-  Scale,
   Quote,
 } from 'lucide-react';
-import { beliefsService } from '@/lib/services';
+import { beliefsService, memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
-import { findBeliefContradictions } from '@/lib/beliefContradictions';
 import type { Belief, BeliefKind } from '@/lib/types';
+import { RelationshipsPanel } from '@/components/RelationshipsPanel';
 import { BeliefForm } from '@/components/BeliefForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
@@ -30,6 +29,7 @@ import {
 
 export function BeliefsPage() {
   const { data, loading, error, reload } = useAsyncData(() => beliefsService.listWithHistory(), []);
+  const { data: memories } = useAsyncData(() => memoriesService.list(), []);
   const [filter, setFilter] = useState<'all' | 'user' | 'suggestions'>('all');
   const [kindFilter, setKindFilter] = useState<'all' | BeliefKind>('all');
   const [showForm, setShowForm] = useState(false);
@@ -44,12 +44,6 @@ export function BeliefsPage() {
     [data]
   );
   const suggestions = useMemo(() => (data ?? []).filter((b) => b.origin === 'suggestion'), [data]);
-
-  const contradictions = useMemo(() => {
-    // Note: memories are not loaded here to keep the page light; contradictions
-    // use beliefs only. Source-memory links appear where records exist.
-    return findBeliefContradictions(confirmed, []);
-  }, [confirmed]);
 
   const visible = useMemo(() => {
     let pool: Belief[];
@@ -146,37 +140,7 @@ export function BeliefsPage() {
         </section>
       )}
 
-      {contradictions.length > 0 && (
-        <section aria-label="Contradictions" className="space-y-3">
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-clayred-DEFAULT font-medium">
-            <Scale className="w-4 h-4" aria-hidden />
-            Tensions between your statements
-          </h2>
-          <p className="text-xs text-slateink-light">
-            These records pull in opposite directions. You decide which holds; neither is
-            overwritten.
-          </p>
-          {contradictions.map((c, i) => (
-            <Card key={i} className="border-clayred-light">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[c.a, c.b].map((belief) => (
-                  <div key={belief.id} className="rounded-xl bg-linen-light/60 border border-linen-dark/60 p-4">
-                    <p className="text-[11px] text-slateink-light mb-1.5">
-                      {new Date(belief.formed_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                      {' · '}strength {belief.strength}/100
-                    </p>
-                    <p className="font-serif text-[1rem] leading-snug text-charcoal">“{belief.statement}”</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] text-slateink-light">
-                Theme: {c.theme}. Both statements remain active; resolving this is your call, not
-                the twin's.
-              </p>
-            </Card>
-          ))}
-        </section>
-      )}
+      <RelationshipsPanel beliefs={confirmed} memories={memories ?? []} />
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-wrap">
         <div className="flex flex-wrap gap-2">

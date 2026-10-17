@@ -182,6 +182,7 @@ npm run decision-tests        # decision engine (57)
 npm run graph-tests           # evidence graph (26)
 npm run workspace-tests       # two-account security (37)
 npm run twin-eval             # evidence inspector eval (26)
+npm run relationship-tests    # relationship analysis eval (25)
 npm run robustness-tests      # malformed-input behavior
 npm run claim-integrity-tests # citation integrity
 npm run journey-tests         # live end-to-end visitor journey (23)
@@ -239,9 +240,28 @@ Live-mode retrieval fuses the keyword engine above with vector similarity search
 
 **Correction loop.** A misread interpretation is flagged with a correction note stored as a separate row (`interpretation_flags`) beside the memory — the original is never rewritten. Corrections follow a lifecycle: *proposed* → *confirmed* / *amended* / *superseded* / *dismissed*, with `reviewed_at` stamped on every change. Only confirmed, non-empty corrections influence future answers — and only for their record and topic: they boost retrieval, appear beside the original text (both sides, no winner), and downgrade touched claims to *partial*. When a correction conflicts with a newer record, both are shown and the tension is named. Correction text is treated as user data, never instructions. The twin does not "learn" between answers: each answer is recomposed from stored rows.
 
+### Context-aware statement relationships (Upgrade 3)
+
+Counterevidence detection now has two layers, both of which surface *candidates* — never established facts:
+
+- **Deterministic pattern layer (baseline, unchanged).** The original cue-based detector (`beliefContradictions.ts`) runs first on every analysis: cheap, deterministic, no provider cost, and preserved as-is. Its coverage is narrow and honestly reported: five hand-written themes, no date awareness, and a known limitation — it flags a genuine change of mind ("I no longer think rest is lazy") as a tension because it cannot distinguish change from contradiction.
+- **Model-assisted comparison layer.** A lexical pre-filter (`relationshipCandidates.ts`) selects at most **24 statement pairs** (cap enforced; pairs must share real vocabulary; duplicates dropped; deterministically ordered) worth comparing — never every memory against every other. One batched call goes to the `relate-check` edge function (server-side provider key, per-user quota, 30s timeout + bounded retry), which classifies each pair into exactly one of six categories with a concise explanation:
+  - `direct_contradiction` — cannot both be true in the same scope (explicit, unqualified opposition only)
+  - `possible_contradiction` — looks opposed; missing detail or an unstated condition could resolve it
+  - `change_over_time` — clearly different dates; the person changed their mind, which is not inconsistency
+  - `context_dependent` — both true in different situations or scopes
+  - `compatible` — different topics; no tension manufactured
+  - `insufficient_evidence` — too vague or short to judge
+- **Anti-false-positive rules in the prompt.** Two different statements are not automatically contradictory; the least dramatic defensible category wins when in doubt; a general stance is only compared against another general statement for direct contradiction; a specific single event rarely refutes a general stance; and the model is never permitted to judge the person — no dishonesty, inconsistency, or instability language about the user.
+- **Untrusted data boundary.** Statement text is quoted as data inside the prompt; instructions hidden in a record ("ignore previous rules") are never obeyed. Returned relationships are strictly coerced client-side: every pair id must resolve to a statement the caller's own authorized record set contains, or the result is dropped — a fabricated or cross-user id never reaches the UI.
+- **Candidate lifecycle.** Both layers write to one owner-scoped table (`statement_relationships`): `candidate` → `confirmed` (an established relationship, only by explicit user action) or `dismissed` (kept as history). Explanations can be corrected by the user; the original is preserved and `reviewed_at` is stamped on every decision. The unique (user, pair) index makes re-analysis idempotent — the same pair is never duplicated, and a user's confirm/dismiss decision on a pair is never silently reset by a later analysis.
+- **Degraded state.** When the provider is unconfigured, unreachable, rate-limited, or fails, the panel says exactly that, keeps the pattern-layer results, and labels them as pattern-only with narrower coverage. A pattern result is never presented as model-verified, and no unreviewed guess is ever shown as established.
+- **Cost bounds.** Candidate pairs capped at 24 per analysis, per-pair statement text truncated at 1,200 chars, output tokens capped at 2,048, one batched provider call per analysis (not one per pair), body-size cap, and the same per-user quota buckets as Twin Chat. Compatible pairs are reported but not persisted as prominent candidates.
+- **What the model leg does not do.** It never writes to beliefs, memories, decisions, or the graph by itself; established relationships exist only as confirmed rows in the relationships table. No claim of complete contradiction detection is made — the model can misclassify, and both the model's explanations and the pattern layer's remain user-reviewable candidates.
+
 ## Data model
 
-Eight tables in the `public` schema; all have row-level security enabled with ownership-aware policies.
+Nine tables in the `public` schema; all have row-level security enabled with ownership-aware policies.
 
 | Table | Purpose | Relationships | Access |
 |---|---|---|---|
@@ -253,6 +273,7 @@ Eight tables in the `public` schema; all have row-level security enabled with ow
 | `interpretation_flags` | User corrections: note, `answer_excerpt` (provenance), topic, lifecycle status | `memory_id` → `memories` | Private to creator; attach requires a visible parent memory |
 | `graph_edge_confirmations` | Per-user confirm/dismiss of suggested graph edges | Keyed by edge signature; endpoints must be visible to the creator | Private to creator |
 | `memory_embeddings` | Derived pgvector embeddings for hybrid retrieval: 768-dim vector, producing model, content hash for idempotent refresh | `memory_id` → `memories` (cascade delete); owner-mirrored `user_id` | Owner-only (no anon policies); demo rows never embedded |
+| `statement_relationships` | Candidate/established relationships between two of the user's own statements: six-category relation, explanation, source (pattern/model), lifecycle status | Both endpoints must belong to the same owner; unique (user, a, b) index | Owner-only (no anon policies); created only by analysis or the user |
 
 `user_id` columns default to `auth.uid()` at insert time, so the browser never supplies ownership — a forged owner id fails the insert check. UPDATE policies carry `auth.uid() = user_id` on both sides, so a row cannot be reassigned.
 
@@ -261,12 +282,12 @@ Eight tables in the `public` schema; all have row-level security enabled with ow
 EchoSelf processes personal reflections, so the security posture is stated precisely, with verification status attached.
 
 - **Authentication.** Supabase email/password; per-account private workspaces; email confirmation off by default (the sign-up flow states this when confirmation is required).
-- **Ownership-aware RLS.** All eight tables. Sample rows (`user_id IS NULL`) are readable by everyone — including signed-out visitors — and **writable by no one**; personal rows are visible and writable only by their owner. `interpretation_flags`, `graph_edge_confirmations`, and `memory_embeddings` have no anon policies at all.
+- **Ownership-aware RLS.** All nine tables. Sample rows (`user_id IS NULL`) are readable by everyone — including signed-out visitors — and **writable by no one**; personal rows are visible and writable only by their owner. `interpretation_flags`, `graph_edge_confirmations`, `memory_embeddings`, and `statement_relationships` have no anon policies at all.
 - **Privilege hardening.** `TRUNCATE` and `REFERENCES` revoked from client roles on all tables; UPDATE narrowed from table-wide to user-content columns (identity, ownership, and timestamp columns are not updatable through the data API; a correction stays attached to its record and excerpt).
 - **Server-side secrets.** The client bundle contains only the publishable anon key and project URL. The Gemini key lives in Edge Function secrets only. Errors returned to clients are generic; details go to server logs.
-- **JWT-gated AI path.** The `twin-chat` and `memory-embed` functions run with `verify_jwt = true` and read/write the caller's data with the caller's own JWT — their access is RLS-scoped exactly like the browser's. The service-role key is used only for the quota RPC and usage-log writes, never for personal-data reads. The embedding provider key never reaches the browser.
+- **JWT-gated AI path.** The `twin-chat`, `memory-embed`, and `relate-check` functions run with `verify_jwt = true`; `relate-check` performs no database reads at all — the client supplies only the caller's own statement text, and returned ids are validated against that authorized set before display. The service-role key is used only for the quota RPC and usage-log writes, never for personal-data reads. Provider keys never reach the browser.
 - **External embedding processing, opt-out by inaction.** When semantic retrieval is enabled (live mode + sign-in), the *text* of a user's own records (title, category, tags, content) is sent to the configured embedding provider to produce vectors. This is documented in the embedding function itself; users who never sign in (demo visitors) never have any text processed externally, and demo records are never embedded at all.
-- **App-enforced AI quotas.** Per-user per-minute and daily budgets enforced atomically server-side before any provider call, with 429 + Retry-After responses, body/context/output caps, provider timeouts, and a fail-closed policy if the quota store is unavailable (see "AI quotas" above for details and verified behavior).
+- **App-enforced AI quotas.** Per-user per-minute and daily budgets enforced atomically server-side before any provider call, with 429 + Retry-After responses, body/context/output caps, provider timeouts, and a fail-closed policy if the quota store is unavailable (see "AI quotas" above for details and verified behavior). The `relate-check` analysis function shares the same quota mechanism and limits.
 - **Demo isolation.** The public demo uses fictional sample data, labeled on every page. Export and delete-everything act only on the signed-in account's rows; sample data is excluded by both query filter and RLS.
 - **AI input/output validation.** Questions are length-validated server-side; correction text is framed as data, not instructions, in the model prompt (prompt-injection content in a record is quoted as data — tested). Replies are coerced and audited before display.
 
@@ -274,7 +295,7 @@ EchoSelf processes personal reflections, so the security posture is stated preci
 
 ## Testing and evaluation
 
-Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 349 deterministic + 63 live-service checks, 0 failures, plus the 16-check hybrid suite (2026-10-17, against the real database).**
+Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. **Most recent full run: 418 deterministic + 86 live-service checks, 0 failures (2026-10-17, against the real database).**
 
 | Suite | Checks | Covers |
 |---|---|---|
@@ -290,6 +311,7 @@ Thirteen runners, aggregated by `npm run eval:all` into `EVALUATION_REPORT.md`. 
 | `journey-tests` | 23 | Live end-to-end visitor journey: explore → sign-up → save → ask → cite → correct → decide → export → delete → sign-out/in |
 | `quota-tests` | 12 | AI quotas: 429 + Retry-After after the per-minute limit (live), unauthenticated denial, spoofed user ids, oversized bodies, quota-RPC and quota-table privilege denial |
 | `hybrid-tests` | 16 | RRF fusion math, semantic-only discovery, keyword-priority preservation, embedding-failure fallback, mode reporting, cross-user neighbor filtering |
+| `relationship-tests` | 25 | Candidate selection (caps, dedup, shared-term justification), strict model-result coercion (cross-user/fabricated ids dropped), six categories, pattern-baseline limits (verified gaps), provider-failure degradation, sparse evidence |
 
 These are executed checks, not coverage percentages: the deterministic suites run in-process; the live-service suites run against the real database (and, for the journey, the deployed edge function). The evidence inspector eval additionally reports citation validity and abstention accuracy on its 26 cases (100% and 100% on the last run — a property of the case set, not a general benchmark).
 
@@ -303,13 +325,13 @@ Findings are labeled by how they were established — code inspection (a known p
 - **Hand-curated synonyms — bounded by design, not comprehensive.** *Inspection + suite.* The synonym table is a small, manually maintained paraphrase bridge: one level of expansion, hard-capped per query, phrase-gated for ambiguous words, and scored at reduced weight. It can improve a subset of retrieval cases; it **cannot** provide comprehensive semantic understanding, and it is not a substitute for the semantic (embedding) leg. A paraphrase outside the table degrades to plain keyword matching rather than failing. Entries must stay unambiguous and domain-tight: historically, ambiguous triggers ("wind", "raise") manufactured false matches on unrelated records and were removed — adding entries follows the audit rules documented next to the table in `src/lib/retrieval.ts`.
 - **Hybrid retrieval depends on indexing state.** *By design.* Semantic recall only covers records that have been embedded (created/edited after the feature, or backfilled at sign-in). A record not yet indexed is still findable by keywords only; mode reporting makes the gap visible. A paraphrased question retrieves a conceptually related record through the semantic path **only when** that record is indexed and the provider is configured.
 - **Embedding-provider dependency.** *By design.* The semantic leg sends record text to the configured provider; if it is unconfigured, unreachable, or the stored vectors' model/dimension no longer match, retrieval degrades to keyword-only and says so. No semantic result is ever claimed from a failed leg.
-- **Counterevidence detection is pattern-based.** *Inspection.* Opposition signals are regexes tuned to common habit and obligation language; subtler contradictions of wording, tone, or value trade-offs may be missed — and none is claimed where the patterns find none.
-- **No model-based semantic evidence review.** *Inspection.* There is no second AI call that reads the retrieved records and the claims together; the deterministic audit bounds fabrication but cannot verify that a cited record's *meaning* supports a claim.
+- **Counterevidence detection — two layers, honestly bounded.** *Inspection + suite.* The deterministic pattern layer (baseline) is regex-tuned to five themes, has no date awareness, and flags a genuine change of mind ("I no longer think rest is lazy") as a tension rather than a change — verified in the relationship suite. The model-assisted layer adds semantic comparison of a small candidate set with the six-category taxonomy (contradiction / possible / change over time / context-dependent / compatible / insufficient), but it is a candidate generator, not an oracle: it can misclassify, it runs only when the provider is configured, and every result requires explicit user confirmation to become established. No complete contradiction detection is claimed by either layer.
+- **No model-based semantic evidence review.** *Inspection.* There is no second AI call that reads the retrieved records and the claims together in the twin pipeline (the relate-check function compares statement pairs, not claims against records); the deterministic audit bounds fabrication but cannot verify that a cited record's *meaning* supports a claim.
 - **Decision scoring assumes classified evidence.** *Inspection.* Scores rest on the for/against classification of retrieved records; unclassified or sparse evidence produces explicit incompleteness statements, and the score is preference alignment — never a prediction.
 - **No importance field, no embeddings.** *Deliberately deferred.* Both stay deferred unless testing demonstrates memories the current fields cannot rank correctly.
 - **Demo-mode honesty boundary.** *By design.* Sample mode composes answers locally from the sample records with keyword retrieval — it is labeled as sample output and is not a language model. Live mode was not exercised against a real model in this environment.
 - **Demo-mode anonymity.** *Inspection + deployed config.* The demo runs locally in the browser and makes no AI calls, so no per-IP demo enforcement exists; live-mode quotas key on the verified JWT, and anonymous callers reach no AI path at all. If an unauthenticated AI endpoint is ever added, it would need platform-supplied network signals plus global quotas — not yet built.
-- **Platform-dependent protections.** Auth rate limiting and abuse prevention are Supabase platform defaults, not app-enforced. The app-enforced AI quotas (above) cover only the twin-chat endpoint.
+- **Platform-dependent protections.** Auth rate limiting and abuse prevention are Supabase platform defaults, not app-enforced. The app-enforced AI quotas cover the twin-chat and relate-check endpoints.
 
 ## Roadmap
 
@@ -321,6 +343,8 @@ Findings are labeled by how they were established — code inspection (a known p
 - [ ] Live-mode end-to-end verification against a real model as part of the standard suite.
 - [ ] Additional synonym coverage driven by observed retrieval misses from real usage — following the audit rules, not for volume.
 - [ ] A settings control to disable external embedding processing per account (currently implicit: stay signed out, or use demo mode).
+- [ ] Reuse the relate-check provider client for a claim-verification pass (claims re-checked against retrieved records), behind the same audit contract.
+- [ ] Surface established (confirmed) statement relationships in the Evidence Graph as user-confirmed edges.
 
 ## Troubleshooting
 

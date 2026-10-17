@@ -1,6 +1,6 @@
 # EchoSelf Evaluation Report
 
-Generated: 2026-10-17T20:45:30.743Z
+Generated: 2026-10-17T21:24:57.587Z
 
 ## How to read this report
 
@@ -11,10 +11,10 @@ Generated: 2026-10-17T20:45:30.743Z
 
 ## Summary
 
-- Deterministic: **349 passed, 0 failed** across 7 suites.
-- Live-service: **63 passed, 0 failed** across 3 executed suites.
+- Deterministic: **418 passed, 0 failed** across 8 suites.
+- Live-service: **86 passed, 0 failed** across 3 executed suites.
 - Skipped: 0 suite(s).
-- Crashed: 3 suite(s) (Twin Chat eval cases (audit pipeline), Robustness (malformed AI, garbage inputs, credentials), E2E journey).
+- Crashed: 0 suite(s).
 
 ## Suites executed
 
@@ -24,12 +24,13 @@ Generated: 2026-10-17T20:45:30.743Z
 | Claim integrity (evidence audit) | deterministic | `npx tsx scripts/run-claim-integrity-tests.mts` | passed | 68 | 0 |
 | Correction lifecycle | deterministic | `npx tsx scripts/run-correction-tests.mts` | passed | 46 | 0 |
 | Decision engine (fixed-input math) | deterministic | `npx tsx scripts/run-decision-tests.mts` | passed | 57 | 0 |
-| Twin Chat eval cases (audit pipeline) | deterministic | `npx tsx scripts/run-eval.mjs` | crashed | 0 | 0 |
-| Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | crashed | 0 | 0 |
+| Twin Chat eval cases (audit pipeline) | deterministic | `npx tsx scripts/run-eval.mjs` | passed | 26 | 0 |
+| Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | passed | 18 | 0 |
+| Relationship analysis (counterevidence candidates) | deterministic | `npx tsx scripts/run-relationship-tests.mts` | passed | 25 | 0 |
 | Static verification (routes, links, SEO, robots, a11y invariants) | deterministic | `npx tsx scripts/run-static-checks.mts` | passed | 78 | 0 |
 | Evidence graph | live-service | `npx tsx --env-file=.env scripts/run-graph-tests.mts` | passed | 26 | 0 |
 | Workspace isolation (two-account RLS) | live-service | `npx tsx --env-file=.env scripts/run-workspace-tests.mts` | passed | 37 | 0 |
-| E2E journey | live-service | `npx tsx --env-file=.env scripts/run-e2e-journey.mts` | crashed | 0 | 0 |
+| E2E journey | live-service | `npx tsx --env-file=.env scripts/run-e2e-journey.mts` | passed | 23 | 0 |
 
 ## What each suite measures
 
@@ -39,57 +40,11 @@ Generated: 2026-10-17T20:45:30.743Z
 - **Decision engine**: exact expected outputs for weight normalization, missing ratings, zero weights, ties, contradictions, constraints, sensitivity, snapshots.
 - **Twin Chat eval cases**: 26 end-to-end cases through the full audit pipeline (retrieval → composition → citation validation → claim audit → uncertainty → corrections), with abstention accuracy and citation validity measured per case.
 - **Robustness**: malformed AI replies (non-array sources, junk claims, null fields, missing gaps) through the full pipeline must degrade safely, never throw or fabricate; cross-user source injection must be rejected; retrieval must survive null fields and invalid dates; demo mode must not require credentials.
+- **Relationship analysis**: candidate pair selection (lexical pre-filter, caps, dedup), strict coercion of model results (foreign/fabricated ids dropped), the six detection categories, pattern-baseline limits (verified gaps and near-misses), and typed provider-failure degradation. The live model leg is exercised only when the provider is configured; deterministic checks never call it.
 - **Static verification**: the routing table, internal link literals, per-route metadata, index.html tags, JSON-LD, sitemap URLs, robots directives, and static accessibility invariants are checked against the real source files. Browser-rendered behavior (visual layout, live contrast) is outside its scope.
 - **Evidence graph**: graph construction and edge suggestions against the live database, including confirmations and inaccessible-record handling.
 - **Workspace isolation**: two real throwaway accounts prove cross-account read/write/delete/insert denial, forged-owner rejection, and demo read-onlyness through real RLS.
 - **E2E journey**: full user path through the live app (records, decisions, corrections, export) preserving the public demo.
-
-## Failures and reproduction
-
-### Twin Chat eval cases (audit pipeline) (crashed)
-```
-/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-                                    ^
-
-TypeError: Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')
-    at <anonymous> (/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3:37)
-    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
-    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
-    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
-
-Node.js v22.23.3
-```
-
-### Robustness (malformed AI, garbage inputs, credentials) (crashed)
-```
-/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-                                    ^
-
-TypeError: Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')
-    at <anonymous> (/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3:37)
-    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
-    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
-    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
-
-Node.js v22.23.3
-```
-
-### E2E journey (crashed)
-```
-/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-                                    ^
-
-TypeError: Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')
-    at <anonymous> (/tmp/cc-agent/72109458/project/src/lib/supabaseClient.ts:3:37)
-    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
-    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
-    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
-
-Node.js v22.23.3
-```
 
 ## Mocks and real components
 

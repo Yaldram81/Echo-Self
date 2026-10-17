@@ -19,7 +19,8 @@
     "twin-eval": "tsx scripts/run-eval.mjs",
     "robustness-tests": "tsx scripts/run-robustness-tests.mts",
     "eval:all": "tsx --env-file=.env scripts/run-all-eval.mts",
-    "hybrid-tests": "tsx scripts/run-hybrid-tests.mts"
+    "hybrid-tests": "tsx scripts/run-hybrid-tests.mts",
+    "relationship-tests": "tsx scripts/run-relationship-tests.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

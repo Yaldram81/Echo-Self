@@ -336,6 +336,72 @@ export const timelineService = {
   },
 };
 
+export type StatementRelationshipRow = {
+  id: string;
+  a_type: 'belief' | 'memory';
+  b_type: 'belief' | 'memory';
+  a_id: string;
+  b_id: string;
+  relation: 'direct_contradiction' | 'possible_contradiction' | 'change_over_time' | 'context_dependent' | 'compatible' | 'insufficient_evidence';
+  explanation: string;
+  source: 'pattern' | 'model';
+  status: 'candidate' | 'confirmed' | 'dismissed';
+  created_at: string;
+  reviewed_at: string | null;
+};
+
+/**
+ * Persistence for statement relationship candidates (Upgrade 3). Candidates
+ * come from the pattern detector or the model-assisted analyzer; a candidate
+ * becomes an established relationship only through an explicit user confirm.
+ * The unique (user, a, b) index makes saving idempotent per pair — re-analysis
+ * never duplicates rows; it upserts the latest candidate judgment.
+ */
+export const relationshipsService = {
+  async list(): Promise<StatementRelationshipRow[]> {
+    return unwrap(
+      supabase.from('statement_relationships').select('*').order('created_at', { ascending: false })
+    ) as Promise<StatementRelationshipRow[]>;
+  },
+  async saveCandidate(input: {
+    a_type: 'belief' | 'memory';
+    b_type: 'belief' | 'memory';
+    a_id: string;
+    b_id: string;
+    relation: StatementRelationshipRow['relation'];
+    explanation: string;
+    source: 'pattern' | 'model';
+  }): Promise<StatementRelationshipRow> {
+    // Keep user decisions on an existing pair: overwrite only the judgment
+    // fields, never flip a dismissed/confirmed row back to candidate.
+    const { data, error } = await supabase
+      .from('statement_relationships')
+      .upsert(input, { onConflict: 'user_id,a_id,b_id' })
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as StatementRelationshipRow;
+  },
+  async setStatus(id: string, status: 'confirmed' | 'dismissed' | 'candidate'): Promise<void> {
+    const { error } = await supabase
+      .from('statement_relationships')
+      .update({ status, reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async amendExplanation(id: string, explanation: string): Promise<void> {
+    const { error } = await supabase
+      .from('statement_relationships')
+      .update({ explanation, reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('statement_relationships').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+};
+
 export const dataManagementService = {
   /**
    * Export every record the persistence layer holds for this user. Covers all
@@ -343,7 +409,7 @@ export const dataManagementService = {
    * graph edge confirmations. Sample rows are excluded.
    */
   async exportAll(): Promise<Record<string, unknown[]>> {
-    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations'] as const;
+    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships'] as const;
     const out: Record<string, unknown[]> = {};
     for (const table of tables) {
       // Personal workspaces only: the public sample rows (user_id IS NULL)
