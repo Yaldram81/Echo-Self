@@ -174,47 +174,42 @@ export function MobileBottomBar({ route }: { route: Route }) {
 
         {tray === 'more' && (
           <div className="absolute inset-x-0 bottom-full pb-2 px-4 flex justify-center pointer-events-none">
-            <ul
+            <div
               role="menu"
               aria-label="More navigation"
-              className="pointer-events-auto w-full max-w-xs grid gap-1.5 animate-[fadeIn_120ms_ease-out]"
+              className="pointer-events-auto w-full max-w-xs rounded-2xl bg-white/95 backdrop-blur border border-linen-dark shadow-lifted p-2 animate-[fadeIn_120ms_ease-out]"
             >
-              {MORE_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const active = currentPage === tab.page;
-                return (
-                  <li key={tab.page}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => goPage(tab.page)}
-                      aria-current={active ? 'page' : undefined}
-                      className={`w-full flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur border shadow-lifted px-4 py-3 text-left transition-colors ${
-                        active ? 'border-terracotta' : 'border-linen-dark hover:border-terracotta'
-                      }`}
-                    >
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                          active ? 'bg-terracotta/10 text-terracotta-deep' : 'bg-linen text-slateink-dark'
+              <ul className="grid grid-cols-2 gap-1.5">
+                {MORE_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const active = currentPage === tab.page;
+                  return (
+                    <li key={tab.page}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => goPage(tab.page)}
+                        aria-current={active ? 'page' : undefined}
+                        className={`w-full flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-center transition-colors ${
+                          active ? 'bg-terracotta/10 border border-terracotta' : 'border border-transparent hover:bg-linen/60'
                         }`}
                       >
-                        <Icon className="w-4.5 h-4.5" aria-hidden />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className={`block text-sm font-medium ${active ? 'text-terracotta-deep' : 'text-charcoal'}`}>
+                        <span
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                            active ? 'bg-terracotta/15 text-terracotta-deep' : 'bg-linen text-slateink-dark'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" aria-hidden />
+                        </span>
+                        <span className={`block text-xs font-medium leading-tight ${active ? 'text-terracotta-deep' : 'text-charcoal'}`}>
                           {tab.label}
                         </span>
-                      </span>
-                      {active && (
-                        <span className="text-[10px] uppercase tracking-wider text-terracotta-deep font-medium">
-                          here
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         )}
 
@@ -271,11 +266,11 @@ export function MobileBottomBar({ route }: { route: Route }) {
             aria-haspopup="menu"
             aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
             aria-current={moreActive ? 'page' : undefined}
-            className={`flex shrink-0 items-center justify-center px-1.5 min-h-[48px] rounded-lg transition-colors ${
+            className={`flex shrink-0 items-center justify-center w-8 min-h-[48px] rounded-lg transition-colors ${
               moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
             }`}
           >
-            <MoreVertical className="w-5 h-5" aria-hidden />
+            <MoreVertical className="w-4 h-4" aria-hidden />
           </button>
         </nav>
       </div>
