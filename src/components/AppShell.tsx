@@ -394,7 +394,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                 className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2"
                 aria-label="Workspace Navigation"
               >
-                {PRIMARY_WORKSPACE_NAV.map((item) => {
+                {(signedIn ? PRIMARY_WORKSPACE_NAV : PRIMARY_WORKSPACE_NAV.filter((item) => item.id !== 'inbox')).map((item) => {
                   const Icon = item.icon;
                   const isActive = page === item.id;
                   return (
@@ -444,25 +444,27 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   </a>
                 )}
 
-                {/* Quick Capture Fast Action */}
-                <a
-                  href={hrefFor('inbox')}
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                    e.preventDefault();
-                    go('inbox');
-                  }}
-                  aria-current={page === 'inbox' ? 'page' : undefined}
-                  className={`hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                    page === 'inbox'
-                      ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
-                      : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                  }`}
-                  title="Capture Inbox"
-                >
-                  <Feather className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                  <span>Capture</span>
-                </a>
+                {/* Quick Capture Fast Action (Only visible when signed in) */}
+                {signedIn && (
+                  <a
+                    href={hrefFor('inbox')}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      go('inbox');
+                    }}
+                    aria-current={page === 'inbox' ? 'page' : undefined}
+                    className={`hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
+                      page === 'inbox'
+                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
+                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
+                    }`}
+                    title="Capture Inbox"
+                  >
+                    <Feather className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
+                    <span>Capture</span>
+                  </a>
+                )}
 
                 {/* Twin Chat Primary Action */}
                 <a

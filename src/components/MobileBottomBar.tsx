@@ -145,50 +145,55 @@ export function MobileBottomBar({ route }: { route: Route }) {
             </div>
           </div>
 
-          {/* Quick Record Action Banner */}
-          <div className="p-2.5 rounded-2xl bg-linen/50 border border-linen-dark/60 space-y-1.5">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light pl-1">
-              Quick create
-            </span>
-            <div className="grid grid-cols-4 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickAdd('capture')}
-                className="py-1.5 px-1.5 rounded-xl bg-linen border border-terracotta/40 text-xs font-semibold text-terracotta-deep hover:bg-terracotta/10 transition-colors flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5 text-terracotta" />
-                <span>Capture</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickAdd('memory')}
-                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-terracotta hover:text-terracotta-deep transition-colors flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5 text-terracotta" />
-                <span>Memory</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickAdd('decision')}
-                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-amberclay-DEFAULT hover:text-amberclay-DEFAULT transition-colors flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5 text-amberclay-DEFAULT" />
-                <span>Decision</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickAdd('belief')}
-                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-sage-dark hover:text-sage-dark transition-colors flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5 text-sage-dark" />
-                <span>Belief</span>
-              </button>
+          {/* Quick Record Action Banner (Only visible when logged in) */}
+          {signedIn && (
+            <div className="p-2.5 rounded-2xl bg-linen/50 border border-linen-dark/60 space-y-1.5">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light pl-1">
+                Quick create
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd('capture')}
+                  className="py-1.5 px-1.5 rounded-xl bg-linen border border-terracotta/40 text-xs font-semibold text-terracotta-deep hover:bg-terracotta/10 transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-terracotta" />
+                  <span>Capture</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd('memory')}
+                  className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-terracotta hover:text-terracotta-deep transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-terracotta" />
+                  <span>Memory</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd('decision')}
+                  className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-amberclay-DEFAULT hover:text-amberclay-DEFAULT transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-amberclay-DEFAULT" />
+                  <span>Decision</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd('belief')}
+                  className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-sage-dark hover:text-sage-dark transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-sage-dark" />
+                  <span>Belief</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Secondary Destinations List */}
           <div className="space-y-1">
-            {SECONDARY_DESTINATIONS.map((item) => {
+            {(signedIn
+              ? SECONDARY_DESTINATIONS
+              : SECONDARY_DESTINATIONS.filter((item) => item.page !== 'inbox' && item.page !== 'profile')
+            ).map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.page;
               return (

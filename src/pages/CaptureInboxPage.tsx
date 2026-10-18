@@ -31,6 +31,7 @@ import { navigateTo } from '@/lib/router';
 import { onQuickAddRequest } from '@/lib/quickAdd';
 import { SectionHeading, Card, Badge, LoadingState } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useAuth } from '@/lib/useAuth';
 import {
   MEMORY_CATEGORIES,
   MEMORY_MOODS,
@@ -45,6 +46,7 @@ import {
 const DRAFT_STORAGE_KEY = 'echoself:capture_inbox_draft';
 
 export function CaptureInboxPage() {
+  const { user, loading: authLoading } = useAuth();
   const [captures, setCaptures] = useState<CaptureItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'inbox' | 'all' | 'promoted' | 'archived'>('inbox');
@@ -113,8 +115,12 @@ export function CaptureInboxPage() {
   }
 
   useEffect(() => {
-    reloadCaptures();
-  }, []);
+    if (user) {
+      reloadCaptures();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   // Listen to QuickAdd intents from AppShell or MobileBottomBar
   useEffect(() => {
@@ -344,6 +350,64 @@ export function CaptureInboxPage() {
       return true;
     });
   }, [captures, statusFilter, categoryFilter, searchQuery]);
+
+  if (authLoading) {
+    return <LoadingState label="Checking session…" />;
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-6 animate-[fadeIn_150ms_ease-out]">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-linen flex items-center justify-center border border-linen-dark text-terracotta shadow-xs">
+          <Inbox className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <SectionHeading
+            eyebrow="Personal Workspace"
+            title="Capture Inbox"
+            as="h1"
+          />
+          <p className="text-xs sm:text-sm text-slateink max-w-md mx-auto leading-relaxed">
+            The Capture Inbox lets you record quick thoughts, fleeting observations, and reflection drafts before curating them into permanent memories.
+          </p>
+        </div>
+
+        <Card className="p-6 rounded-2xl sm:rounded-3xl border border-linen-dark bg-white shadow-xs space-y-4">
+          <div className="space-y-1">
+            <h2 className="font-serif text-base font-bold text-charcoal">Sign in to your account</h2>
+            <p className="text-xs text-slateink-light">
+              Personal captures are securely isolated to your authenticated account.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <a
+              href="/signin"
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                navigateTo('signin');
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-xl bg-charcoal text-paper text-xs font-semibold hover:bg-slateink-dark transition-colors shadow-2xs cursor-pointer"
+            >
+              <span>Sign in</span>
+              <ArrowRight className="w-3.5 h-3.5 text-terracotta-light" />
+            </a>
+            <a
+              href="/signup"
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                navigateTo('signup');
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center h-10 px-5 rounded-xl bg-linen hover:bg-linen-dark/60 border border-linen-dark text-charcoal text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            >
+              Create account
+            </a>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-24 md:pb-16 animate-[fadeIn_150ms_ease-out]">
