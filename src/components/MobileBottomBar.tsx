@@ -218,45 +218,49 @@ export function MobileBottomBar({ route }: { route: Route }) {
           </div>
         )}
 
-        {/* The bar itself: 4 nav tabs + raised center add + 3-dots, one row. */}
+        {/* The bar itself: classic 5-slot row with the plus centered; the
+            3-dots sit in a narrow slot at the far right so they never shift
+            the five main items. */}
         <nav
           aria-label="Mobile navigation"
           className="relative bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1"
         >
-          <div className="grid grid-cols-6 items-end gap-0.5 px-1">
-            {NAV_TABS.slice(0, 2).map((tab) => (
-              <TabButton
-                key={tab.page}
-                tab={tab}
-                active={currentPage === tab.page}
-                onClick={() => goPage(tab.page)}
-              />
-            ))}
+          <div className="flex items-end">
+            <div className="flex-1 grid grid-cols-5 items-end gap-0.5 px-1 min-w-0">
+              {NAV_TABS.slice(0, 2).map((tab) => (
+                <TabButton
+                  key={tab.page}
+                  tab={tab}
+                  active={currentPage === tab.page}
+                  onClick={() => goPage(tab.page)}
+                />
+              ))}
 
-            {/* Center add button, raised above the bar. */}
-            <div className="relative flex justify-center">
-              <button
-                type="button"
-                onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
-                aria-expanded={tray === 'add'}
-                aria-haspopup="menu"
-                aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
-                className={`flex h-14 w-14 -mt-7 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
-                  tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
-                }`}
-              >
-                {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
-              </button>
+              {/* Center add button, raised above the bar. */}
+              <div className="relative flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
+                  aria-expanded={tray === 'add'}
+                  aria-haspopup="menu"
+                  aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
+                  className={`flex h-14 w-14 -mt-7 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
+                    tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
+                  }`}
+                >
+                  {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
+                </button>
+              </div>
+
+              {NAV_TABS.slice(2).map((tab) => (
+                <TabButton
+                  key={tab.page}
+                  tab={tab}
+                  active={currentPage === tab.page}
+                  onClick={() => goPage(tab.page)}
+                />
+              ))}
             </div>
-
-            {NAV_TABS.slice(2).map((tab) => (
-              <TabButton
-                key={tab.page}
-                tab={tab}
-                active={currentPage === tab.page}
-                onClick={() => goPage(tab.page)}
-              />
-            ))}
 
             {/* 3-dots: opens an inline tray of secondary destinations. */}
             <button
@@ -266,7 +270,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
               aria-haspopup="menu"
               aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
               aria-current={moreActive ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[48px] rounded-lg transition-colors ${
+              className={`flex shrink-0 w-12 items-center justify-center min-h-[48px] rounded-lg transition-colors ${
                 moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
               }`}
             >
