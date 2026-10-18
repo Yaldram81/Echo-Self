@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { decisionsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
+import { navigateTo } from '@/lib/router';
 import type { Decision, DecisionStatus } from '@/lib/types';
-import { DecisionForm } from '@/components/DecisionForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { onQuickAddRequest } from '@/lib/quickAdd';
 import {
@@ -30,16 +30,13 @@ export function DecisionMirrorPage() {
   const { data, loading, error, reload } = useAsyncData(() => decisionsService.list(), []);
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Decision | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Decision | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Quick add request from mobile bottom bar or global shortcut
   useEffect(() => onQuickAddRequest((kind) => {
     if (kind !== 'decision') return;
-    setEditing(null);
-    setShowForm(true);
+    navigateTo({ page: 'decision', action: 'new' });
   }), []);
 
   const totalUnresolved = useMemo(() => (data ?? []).filter((d) => d.status === 'unresolved').length, [data]);
@@ -91,16 +88,13 @@ export function DecisionMirrorPage() {
           <h1 className="font-serif text-xl sm:text-3xl font-bold text-charcoal">Decision Mirror</h1>
         </div>
 
-        <button
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
+        <a
+          href="/decision/new"
           className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-4 sm:px-5 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all shadow-xs shrink-0 self-start sm:self-auto active:scale-98"
         >
           <Plus className="w-4 h-4" aria-hidden />
           <span>New decision</span>
-        </button>
+        </a>
       </div>
 
       {/* Editorial Lead Context */}
@@ -208,27 +202,10 @@ export function DecisionMirrorPage() {
             <DecisionCard
               key={d.id}
               decision={d}
-              onEdit={() => setEditing(d)}
               onDelete={() => setPendingDelete(d)}
             />
           ))}
         </div>
-      )}
-
-      {/* Decision Form Modal */}
-      {(showForm || editing) && (
-        <DecisionForm
-          existing={editing ?? undefined}
-          onSaved={() => {
-            setShowForm(false);
-            setEditing(null);
-            reload();
-          }}
-          onCancel={() => {
-            setShowForm(false);
-            setEditing(null);
-          }}
-        />
       )}
 
       {/* Confirmation Dialog */}
@@ -249,11 +226,9 @@ export function DecisionMirrorPage() {
 
 function DecisionCard({
   decision,
-  onEdit,
   onDelete,
 }: {
   decision: Decision;
-  onEdit: () => void;
   onDelete: () => void;
 }) {
   const isDecided = decision.status === 'decided';
@@ -285,13 +260,13 @@ function DecisionCard({
 
           {/* Action buttons */}
           <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={onEdit}
+            <a
+              href={`/decision/${decision.id}/edit`}
               aria-label={`Edit ${decision.title}`}
-              className="p-1.5 rounded-lg text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
-            </button>
+            </a>
             <button
               onClick={onDelete}
               aria-label={`Delete ${decision.title}`}

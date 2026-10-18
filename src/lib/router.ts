@@ -25,35 +25,60 @@ export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 't
 export type Route =
   | { kind: 'auth'; mode: 'signin' | 'signup' }
   | { kind: 'notFound' }
-  | { kind: 'app'; page: PageId; detailKind: 'memory' | 'decision' | null; detailId: string | null };
+  | {
+      kind: 'app';
+      page: PageId;
+      detailKind: 'memory' | 'decision' | null;
+      detailId: string | null;
+      action?: 'new' | 'edit' | null;
+    };
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function routeFromPath(pathname: string): Route {
   const p = pathname.replace(/\/+$/, '') || '/';
   if (p === '/signin' || p === '/signup') return { kind: 'auth', mode: p === '/signin' ? 'signin' : 'signup' };
+
+  if (p === '/decision/new' || p === '/decisions/new') {
+    return { kind: 'app', page: 'decisions', detailKind: 'decision', detailId: null, action: 'new' };
+  }
+  const decisionEditMatch = p.match(/^\/decision\/([^/]+)\/edit$/) || p.match(/^\/decisions\/([^/]+)\/edit$/);
+  if (decisionEditMatch) {
+    return UUID_RE.test(decisionEditMatch[1])
+      ? { kind: 'app', page: 'decisions', detailKind: 'decision', detailId: decisionEditMatch[1], action: 'edit' }
+      : { kind: 'notFound' };
+  }
+  const decisionMatch = p.match(/^\/decision\/([^/]+)$/) || p.match(/^\/decisions\/([^/]+)$/);
+  if (decisionMatch) {
+    return UUID_RE.test(decisionMatch[1])
+      ? { kind: 'app', page: 'decisions', detailKind: 'decision', detailId: decisionMatch[1], action: null }
+      : { kind: 'notFound' };
+  }
+
   const memoryMatch = p.match(/^\/memory\/([^/]+)$/);
   if (memoryMatch) {
     return UUID_RE.test(memoryMatch[1])
-      ? { kind: 'app', page: 'memories', detailKind: 'memory', detailId: memoryMatch[1] }
+      ? { kind: 'app', page: 'memories', detailKind: 'memory', detailId: memoryMatch[1], action: null }
       : { kind: 'notFound' };
   }
-  const decisionMatch = p.match(/^\/decision\/([^/]+)$/);
-  if (decisionMatch) {
-    return UUID_RE.test(decisionMatch[1])
-      ? { kind: 'app', page: 'decisions', detailKind: 'decision', detailId: decisionMatch[1] }
-      : { kind: 'notFound' };
-  }
+
   const raw = p.replace(/^\//, '') || 'home';
   if (NAV_PAGES.includes(raw as PageId)) {
-    return { kind: 'app', page: raw as PageId, detailKind: null, detailId: null };
+    return { kind: 'app', page: raw as PageId, detailKind: null, detailId: null, action: null };
   }
   return { kind: 'notFound' };
 }
 
-export function hrefFor(target: PageId | { page: 'memory' | 'decision'; id: string }): string {
+export function hrefFor(
+  target:
+    | PageId
+    | { page: 'memory' | 'decision'; id?: string; action?: 'new' | 'edit' }
+): string {
   if (typeof target === 'string') return `/${target}`;
-  return `/${target.page}/${target.id}`;
+  if (target.action === 'new') return `/${target.page}/new`;
+  if (target.action === 'edit' && target.id) return `/${target.page}/${target.id}/edit`;
+  if (target.id) return `/${target.page}/${target.id}`;
+  return `/${target.page}`;
 }
 
 /** Per-route document titles and descriptions (also used for og/twitter). */
@@ -76,12 +101,16 @@ export function metaFor(route: Route) {
   if (route.kind === 'auth') return ROUTE_META[route.mode];
   if (route.kind === 'notFound') return ROUTE_META.notFound;
   if (route.detailKind === 'memory') return { title: 'Memory — EchoSelf', description: ROUTE_META.memories.description };
-  if (route.detailKind === 'decision') return { title: 'Decision — EchoSelf', description: ROUTE_META.decisions.description };
+  if (route.detailKind === 'decision') {
+    if (route.action === 'new') return { title: 'New Decision — EchoSelf', description: 'Open a new deliberation in EchoSelf' };
+    if (route.action === 'edit') return { title: 'Edit Decision — EchoSelf', description: 'Refine decision parameters and options' };
+    return { title: 'Decision — EchoSelf', description: ROUTE_META.decisions.description };
+  }
   return ROUTE_META[route.page] ?? ROUTE_META.home;
 }
 
 export function navigateTo(
-  target: PageId | { page: 'memory' | 'decision'; id: string },
+  target: PageId | { page: 'memory' | 'decision'; id?: string; action?: 'new' | 'edit' },
   { replace = false } = {}
 ) {
   const href = hrefFor(target);

@@ -21,6 +21,7 @@ const TwinChatPage = lazy(() => import('@/pages/TwinChatPage').then((m) => ({ de
 const MemoryDetailPage = lazy(() => import('@/pages/MemoryDetailPage').then((m) => ({ default: m.MemoryDetailPage })));
 const DecisionMirrorPage = lazy(() => import('@/pages/DecisionMirrorPage').then((m) => ({ default: m.DecisionMirrorPage })));
 const DecisionDetailPage = lazy(() => import('@/pages/DecisionDetailPage').then((m) => ({ default: m.DecisionDetailPage })));
+const DecisionEditorPage = lazy(() => import('@/pages/DecisionEditorPage').then((m) => ({ default: m.DecisionEditorPage })));
 const BeliefsPage = lazy(() => import('@/pages/BeliefsPage').then((m) => ({ default: m.BeliefsPage })));
 const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ default: m.TimelinePage })));
 const EvidenceGraphPage = lazy(() => import('@/pages/EvidenceGraphPage').then((m) => ({ default: m.EvidenceGraphPage })));
@@ -90,7 +91,11 @@ function Shell({ route }: { route: Route }) {
   }
   return (
     <PageSuspense>
-      {route.detailId && route.detailKind === 'decision' ? (
+      {route.detailKind === 'decision' && route.action === 'new' ? (
+        <DecisionEditorPage mode="new" />
+      ) : route.detailKind === 'decision' && route.action === 'edit' && route.detailId ? (
+        <DecisionEditorPage mode="edit" decisionId={route.detailId} />
+      ) : route.detailId && route.detailKind === 'decision' ? (
         <DecisionDetailPage decisionId={route.detailId} />
       ) : route.detailId && route.detailKind === 'memory' ? (
         <MemoryDetailPage memoryId={route.detailId} />

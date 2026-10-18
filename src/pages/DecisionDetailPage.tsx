@@ -16,7 +16,6 @@ import {
 import { decisionsService, memoriesService, beliefsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import type { Belief, Decision, DecisionAnalysis, Memory } from '@/lib/types';
-import { DecisionForm } from '@/components/DecisionForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
   analysisToEditableText,
@@ -162,7 +161,6 @@ export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
   const loading = decision.loading || memories.loading;
   const error = decision.error || memories.error || beliefs.error;
 
-  const [showEdit, setShowEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -198,25 +196,14 @@ export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
     <div className="space-y-8">
       <BackLink />
 
-      {showEdit ? (
-        <DecisionForm
-          existing={d}
-          onSaved={() => {
-            setShowEdit(false);
-            decision.reload();
-          }}
-          onCancel={() => setShowEdit(false)}
-        />
-      ) : (
-        <MirrorView
-          decision={d}
-          memories={memories.data ?? []}
-          beliefs={beliefs.data ?? []}
-          onEdit={() => setShowEdit(true)}
-          onDelete={() => setConfirmDelete(true)}
-          onChanged={() => decision.reload()}
-        />
-      )}
+      <MirrorView
+        decision={d}
+        memories={memories.data ?? []}
+        beliefs={beliefs.data ?? []}
+        onEdit={() => navigateTo({ page: 'decision', id: d.id, action: 'edit' })}
+        onDelete={() => setConfirmDelete(true)}
+        onChanged={() => decision.reload()}
+      />
 
       {actionError && (
         <p role="alert" className="rounded-lg bg-clayred-light px-4 py-2.5 text-sm text-clayred-DEFAULT">
