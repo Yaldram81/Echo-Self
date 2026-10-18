@@ -76,15 +76,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   }
 
   const navLinkClass = (active: boolean) =>
-    `px-3 py-2 rounded-full text-sm transition-colors duration-150 ${
+    `shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium leading-none transition-colors duration-150 ${
       active
-        ? 'bg-charcoal text-paper font-medium'
+        ? 'bg-terracotta/10 text-terracotta-deep'
         : 'text-slateink-dark hover:text-charcoal hover:bg-linen/70'
     }`;
 
   const navMobileClass = (active: boolean) =>
     `block px-3 py-2.5 rounded-lg text-sm ${
-      active ? 'bg-charcoal text-paper font-medium' : 'text-slateink-dark hover:bg-linen'
+      active
+        ? 'bg-terracotta/10 text-terracotta-deep font-medium'
+        : 'text-slateink-dark hover:bg-linen'
     }`;
 
   return (
@@ -100,7 +102,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         <div className="max-w-6xl mx-auto shell-pad h-16 flex items-center justify-between gap-3">
           <button
             onClick={() => go('home')}
-            className="flex items-center gap-2.5 rounded-lg"
+            className="shrink-0 flex items-center gap-2.5 rounded-lg"
             aria-label="EchoSelf home"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-terracotta text-paper">
@@ -111,7 +113,10 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             </span>
           </button>
 
-          <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
+          <nav
+            className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1.5"
+            aria-label="Main"
+          >
             {NAV_PAGES.map((item) => (
               <a
                 key={item}
@@ -129,7 +134,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {signedIn ? (
               <div className="relative" data-account-menu>
                 <button
@@ -167,7 +172,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               <button
                 onClick={() => go('signin')}
                 aria-label="Sign in or create an account"
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-terracotta text-paper text-sm font-medium hover:bg-terracotta-dark transition-colors"
+                className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-terracotta text-paper text-sm font-medium hover:bg-terracotta-dark active:bg-terracotta-dark/90 transition-colors"
               >
                 <UserCircle2 className="w-5 h-5" aria-hidden />
                 <span className="hidden sm:inline">Sign in</span>
@@ -176,7 +181,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
             <button
               ref={menuButtonRef}
-              className="lg:hidden inline-flex items-center justify-center h-11 w-11 rounded-full text-charcoal hover:bg-linen"
+              className="xl:hidden inline-flex items-center justify-center h-11 w-11 rounded-full text-charcoal hover:bg-linen"
               onClick={() => setMenuOpen((o) => !o)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -190,12 +195,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           <>
             {/* Scrim: tap outside or Escape to dismiss; click-through blocked. */}
             <div
-              className="lg:hidden fixed inset-0 top-16 z-30 bg-charcoal/20"
+              className="xl:hidden fixed inset-0 top-16 z-30 bg-charcoal/20"
               aria-hidden
               onClick={() => setMenuOpen(false)}
             />
             <nav
-              className="lg:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto scroll-elegant bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              className="xl:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto scroll-elegant bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
               aria-label="Mobile"
             >
               <ul className="flex flex-col gap-1">
