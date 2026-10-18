@@ -8,8 +8,14 @@ import {
   Trash2,
   FileJson,
   FileSpreadsheet,
+  Sparkles,
+  Key,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from 'lucide-react';
 import { dataManagementService } from '@/lib/services';
+import { geminiService } from '@/lib/geminiService';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeading, Card } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -116,9 +122,126 @@ export function SettingsPage() {
     }
   }
 
+  // Gemini API Key management
+  const [geminiKeyInput, setGeminiKeyInput] = useState(() => geminiService.getApiKey());
+  const [hasSavedKey, setHasSavedKey] = useState(() => Boolean(geminiService.getApiKey()));
+  const [showKeyText, setShowKeyText] = useState(false);
+  const [keyNotice, setKeyNotice] = useState<string | null>(null);
+
+  function handleSaveGeminiKey(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = geminiKeyInput.trim();
+    geminiService.setApiKey(clean);
+    setHasSavedKey(Boolean(clean));
+    setKeyNotice(clean ? 'Gemini API key saved! AI Deliberation Assistant is now enabled.' : 'Key cleared.');
+    setTimeout(() => setKeyNotice(null), 4000);
+  }
+
+  function handleClearGeminiKey() {
+    geminiService.setApiKey('');
+    setGeminiKeyInput('');
+    setHasSavedKey(false);
+    setKeyNotice('Gemini API key removed.');
+    setTimeout(() => setKeyNotice(null), 3000);
+  }
+
   return (
     <div className="space-y-8">
       <SectionHeading eyebrow="Trust" title="Settings & Privacy" as="h1" />
+
+      {/* Gemini AI Configuration Card */}
+      <Card>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-serif text-lg font-bold text-charcoal">Gemini AI Configuration</h3>
+              <p className="text-xs text-slateink">Connect your Google AI Studio key for the AI Deliberation Assistant.</p>
+            </div>
+          </div>
+          {hasSavedKey ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sage/15 border border-sage/30 px-2.5 py-0.5 text-[11px] font-semibold text-sage-dark">
+              <CheckCircle2 className="w-3.5 h-3.5 text-sage-dark" />
+              Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-linen px-2.5 py-0.5 text-[11px] font-medium text-slateink-light">
+              Not configured
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs sm:text-sm text-slateink leading-relaxed mb-4">
+          Your key enables the Gemini Deliberation Assistant to analyze raw decision thoughts, extract competing options, and identify trade-offs. The key is securely stored in your browser's private local storage and sent only to Google's official Gemini API.
+        </p>
+
+        <form onSubmit={handleSaveGeminiKey} className="space-y-3">
+          <div>
+            <label htmlFor="gemini-key" className="block text-xs font-semibold text-charcoal mb-1.5 flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-slateink-light" />
+              <span>Google AI Studio API Key</span>
+            </label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  id="gemini-key"
+                  type={showKeyText ? 'text' : 'password'}
+                  value={geminiKeyInput}
+                  onChange={(e) => setGeminiKeyInput(e.target.value)}
+                  placeholder="Enter your key: AIzaSy..."
+                  className="w-full h-10 rounded-xl border border-linen-dark bg-white px-3.5 pr-10 text-xs sm:text-sm font-mono text-charcoal focus:border-terracotta focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKeyText((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slateink-light hover:text-charcoal p-1"
+                  aria-label={showKeyText ? 'Hide API key' : 'Show API key'}
+                >
+                  {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center justify-center px-5 rounded-full bg-terracotta text-paper text-xs sm:text-sm font-semibold hover:bg-terracotta-dark transition-all shadow-xs cursor-pointer"
+              >
+                Save key
+              </button>
+
+              {hasSavedKey && (
+                <button
+                  type="button"
+                  onClick={handleClearGeminiKey}
+                  className="inline-flex h-10 items-center justify-center px-4 rounded-full border border-clayred-light text-clayred-DEFAULT text-xs sm:text-sm font-medium hover:bg-clayred-light/40 transition-all cursor-pointer"
+                >
+                  Clear key
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slateink-light pt-1">
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="text-terracotta hover:underline font-medium inline-flex items-center gap-1"
+            >
+              <span>Get a free Gemini API key from Google AI Studio</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            {keyNotice && (
+              <span className="text-sage-dark font-medium flex items-center gap-1 animate-[fadeIn_150ms_ease-out]">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{keyNotice}</span>
+              </span>
+            )}
+          </div>
+        </form>
+      </Card>
 
       <Card>
         <div className="flex items-center gap-3 mb-2">

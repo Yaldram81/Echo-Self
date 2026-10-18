@@ -18,7 +18,6 @@ import {
   Briefcase,
   Users,
   Compass,
-  Key,
   ChevronDown,
   ChevronUp,
   RotateCcw,
@@ -270,16 +269,18 @@ export function DecisionEditorPage({
   // AI Structure with Gemini
   async function handleAiStructure() {
     if (!aiPrompt.trim()) return;
+    const key = geminiService.getApiKey();
+    if (!key) {
+      setAiError('Gemini API key is not configured. Please add your key in Settings to use the AI Deliberation Assistant.');
+      return;
+    }
+
     setAiLoading(true);
     setAiError(null);
     setAiSuccessMessage(null);
 
     try {
-      if (geminiApiKey.trim()) {
-        geminiService.setApiKey(geminiApiKey.trim());
-      }
-
-      const draft: GeminiDecisionDraft = await geminiService.structureDecision(aiPrompt, geminiApiKey);
+      const draft: GeminiDecisionDraft = await geminiService.structureDecision(aiPrompt);
 
       // Populate form fields
       if (draft.title) setTitle(draft.title);
@@ -374,7 +375,7 @@ export function DecisionEditorPage({
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 pb-32 sm:pb-24">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 pb-20">
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-linen-dark/60 pb-4">
         <div className="flex items-center gap-3">
@@ -404,24 +405,6 @@ export function DecisionEditorPage({
           >
             <Sparkles className="w-4 h-4" />
             <span>AI Deliberation Assistant</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubmit()}
-            disabled={!valid || saving}
-            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-5 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Saving…</span>
-              </>
-            ) : mode === 'edit' ? (
-              'Save changes'
-            ) : (
-              'Open decision'
-            )}
           </button>
         </div>
       </div>
@@ -494,48 +477,22 @@ export function DecisionEditorPage({
             </div>
           </div>
 
-          {/* Optional Gemini API Key field toggle */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowKeyConfig((v) => !v)}
-              className="inline-flex items-center gap-1.5 text-xs text-slateink hover:text-charcoal"
-            >
-              <Key className="w-3.5 h-3.5 text-slateink-light" />
-              <span>{showKeyConfig ? 'Hide Gemini API Key settings' : 'Configure Gemini API Key'}</span>
-              {showKeyConfig ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-
-            {showKeyConfig && (
-              <div className="mt-2.5 p-3 rounded-xl bg-linen/30 border border-linen-dark/60 space-y-2 animate-[fadeIn_120ms_ease-out]">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <input
-                    type="password"
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="Enter Google AI Studio Key (AIzaSy...)"
-                    className="flex-1 h-8 rounded-lg border border-linen-dark bg-white px-2.5 text-xs font-mono text-charcoal focus:border-terracotta focus:outline-none"
-                  />
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-terracotta hover:underline shrink-0"
-                  >
-                    Get free Gemini key ↗
-                  </a>
-                </div>
-                <p className="text-[10px] text-slateink-light">
-                  Your key is saved locally in your browser. It is sent only to Google's official Gemini endpoint.
-                </p>
-              </div>
-            )}
+          <div className="flex items-center justify-between text-xs text-slateink-light pt-1 border-t border-linen-dark/40">
+            <span>Powered by Google Gemini 2.5</span>
+            <a href="/settings" className="text-terracotta hover:underline font-medium">
+              Manage API key in Settings →
+            </a>
           </div>
 
           {aiError && (
-            <p role="alert" className="p-3 rounded-xl bg-clayred-light text-xs text-clayred-DEFAULT">
-              {aiError}
-            </p>
+            <div className="p-3 rounded-xl bg-clayred-light text-xs text-clayred-DEFAULT flex items-center justify-between gap-2">
+              <span>{aiError}</span>
+              {aiError.includes('Settings') && (
+                <a href="/settings" className="font-semibold underline shrink-0">
+                  Open Settings
+                </a>
+              )}
+            </div>
           )}
 
           <div className="flex items-center justify-end gap-2.5 pt-1">
@@ -550,7 +507,7 @@ export function DecisionEditorPage({
               type="button"
               onClick={handleAiStructure}
               disabled={!aiPrompt.trim() || aiLoading}
-              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark disabled:opacity-50 transition-all shadow-xs"
+              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark disabled:opacity-50 transition-all shadow-xs cursor-pointer"
             >
               {aiLoading ? (
                 <>
@@ -1008,10 +965,10 @@ export function DecisionEditorPage({
         </div>
       </div>
 
-      {/* Sticky Bottom Dock */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-paper/95 backdrop-blur-md border-t border-linen-dark/80 px-4 py-3 sm:py-3.5 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="text-xs text-slateink hidden sm:block">
+      {/* End-of-Form Action Dock (Scrolls into view naturally, never hidden by bottom bar) */}
+      <div className="pt-6 pb-24 sm:pb-12 border-t border-linen-dark/60">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-paper-soft/90 border border-linen-dark/80 shadow-xs">
+          <div className="text-xs text-slateink">
             {!valid ? (
               <span className="text-clayred-DEFAULT font-medium">
                 Requires dilemma title, context, and at least 2 named options.
@@ -1024,10 +981,10 @@ export function DecisionEditorPage({
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 w-full sm:w-auto">
+          <div className="flex items-center justify-end gap-3">
             <a
               href={mode === 'edit' && decisionId ? `/decision/${decisionId}` : '/decisions'}
-              className="rounded-full px-4 py-2 text-xs sm:text-sm font-medium text-slateink-dark hover:bg-linen/70 transition-colors"
+              className="rounded-full px-5 py-2.5 text-xs sm:text-sm font-medium text-slateink-dark hover:bg-linen/70 transition-colors text-center"
             >
               Cancel
             </a>
@@ -1035,7 +992,7 @@ export function DecisionEditorPage({
               type="button"
               onClick={() => handleSubmit()}
               disabled={!valid || saving}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-6 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98"
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-terracotta px-7 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98 cursor-pointer"
             >
               {saving ? (
                 <>
