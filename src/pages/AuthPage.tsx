@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Sparkles,
+  User,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { authErrorMessage } from '@/lib/authMessages';
@@ -23,6 +24,7 @@ type Mode = 'signin' | 'signup';
 
 export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
   const [mode, setMode] = useState<Mode>(initialMode ?? 'signin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,11 +41,25 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
 
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const cleanName = name.trim();
+        if (!cleanName) {
+          setError('Please enter your full or display name.');
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name: cleanName,
+            },
+          },
+        });
         if (error) {
           setError(authErrorMessage(error));
           return;
         }
+        localStorage.setItem('echoself:display_name', cleanName);
         if (data.session) {
           setNotice('Account created. Your personal workspace is ready.');
           navigateTo('home');
@@ -152,6 +168,32 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
           className="space-y-3 sm:space-y-3.5"
           aria-label={mode === 'signin' ? 'Sign in form' : 'Sign up form'}
         >
+          {/* Full / Display Name (Sign Up only) */}
+          {mode === 'signup' && (
+            <div>
+              <label htmlFor="auth-name" className="block text-xs font-semibold text-charcoal mb-1">
+                Your name
+              </label>
+              <div className="relative">
+                <User
+                  className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slateink-light pointer-events-none"
+                  aria-hidden
+                />
+                <input
+                  id="auth-name"
+                  type="text"
+                  required
+                  maxLength={50}
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Jordan Miller"
+                  className="w-full h-10 sm:h-10.5 pl-10 pr-3.5 rounded-xl border border-linen-dark bg-white text-xs sm:text-sm text-charcoal placeholder:text-slateink-light focus:outline-none focus:border-terracotta transition-all shadow-2xs"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Email Field */}
           <div>
             <label htmlFor="auth-email" className="block text-xs font-semibold text-charcoal mb-1">
