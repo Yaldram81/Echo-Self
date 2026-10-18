@@ -2,8 +2,6 @@
   <img src="assets/wordmark.svg" alt="EchoSelf — an evidence-grounded AI twin" width="380" />
 </p>
 
-<h1 align="center" style="border:none">EchoSelf</h1>
-
 <p align="center">
   <em>Your experiences. Your values. Your decisions.<br/>One inspectable, evidence-grounded personal AI twin.</em>
 </p>
