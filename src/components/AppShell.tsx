@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Menu, X, Feather, LogOut, UserCircle2, MessageCircle } from 'lucide-react';
+import { Menu, X, Feather, LogOut, UserCircle2, MessageCircle, Home, BookOpen, Scale, Compass, History, GitBranch, Settings } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -76,7 +77,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   }
 
   const navLinkClass = (active: boolean) =>
-    `shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium leading-none transition-colors duration-150 ${
+    `group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium leading-none transition-colors duration-150 ${
       active
         ? 'bg-terracotta/10 text-terracotta-deep'
         : 'text-slateink-dark hover:text-charcoal hover:bg-linen/70'
@@ -117,21 +118,30 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1.5"
             aria-label="Main"
           >
-            {NAV_PAGES.map((item) => (
-              <a
-                key={item}
-                href={hrefFor(item)}
-                onClick={(e) => {
-                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                  e.preventDefault();
-                  go(item);
-                }}
-                aria-current={page === item ? 'page' : undefined}
-                className={navLinkClass(page === item)}
-              >
-                {labelFor(item)}
-              </a>
-            ))}
+            {NAV_PAGES.map((item) => {
+              const Icon = NAV_ICONS[item];
+              return (
+                <a
+                  key={item}
+                  href={hrefFor(item)}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    e.preventDefault();
+                    go(item);
+                  }}
+                  aria-current={page === item ? 'page' : undefined}
+                  className={navLinkClass(page === item)}
+                >
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      page === item ? '' : 'text-slateink-light group-hover:text-slateink-dark transition-colors'
+                    }`}
+                    aria-hidden
+                  />
+                  {labelFor(item)}
+                </a>
+              );
+            })}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -272,6 +282,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
     </div>
   );
 }
+
+const NAV_ICONS: Record<PageId, LucideIcon> = {
+  home: Home,
+  memories: BookOpen,
+  chat: MessageCircle,
+  decisions: Scale,
+  beliefs: Compass,
+  timeline: History,
+  graph: GitBranch,
+  settings: Settings,
+};
 
 function labelFor(p: PageId): string {
   const labels: Record<string, string> = {
