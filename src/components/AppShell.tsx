@@ -22,6 +22,7 @@ import {
   Lightbulb,
   PenLine,
   ShieldCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -289,28 +290,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                             onClick={() => go('profile')}
                             className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors cursor-pointer"
                           >
-                            <User className="w-4 h-4 text-terracotta" aria-hidden />
-                            <span>My Profile</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => go('insights')}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                          >
-                            <Lightbulb className="w-4 h-4 text-terracotta" aria-hidden />
-                            <span>Insights & Patterns</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => go('reflect')}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                          >
-                            <PenLine className="w-4 h-4 text-terracotta" aria-hidden />
-                            <span>Weekly Review</span>
+                            <LayoutDashboard className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                            <span>My Dashboard</span>
                           </button>
 
                           <button
@@ -319,8 +300,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                             onClick={() => go('settings')}
                             className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors cursor-pointer"
                           >
-                            <Settings className="w-4 h-4 text-slateink-dark" aria-hidden />
-                            <span>Settings & Privacy</span>
+                            <Settings className="w-4 h-4 text-slateink-dark" aria-hidden="true" />
+                            <span>Settings</span>
                           </button>
 
                           <div className="my-1 border-t border-linen-dark/40" />
@@ -537,28 +518,6 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   <span>Twin Chat</span>
                 </a>
 
-                {/* My Profile Action - Opens the Profile Sub-Navbar Shell (Defaults to My Profile) */}
-                {signedIn && (
-                  <a
-                    href={hrefFor('profile')}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      go('profile');
-                    }}
-                    aria-current={isProfileShellActive ? 'page' : undefined}
-                    className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                      isProfileShellActive
-                        ? 'bg-terracotta text-paper border-terracotta shadow-xs font-bold'
-                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                    }`}
-                    title="Open My Profile and Workspace Management Tools"
-                  >
-                    <User className={`w-3.5 h-3.5 ${isProfileShellActive ? 'text-paper' : 'text-terracotta'}`} aria-hidden="true" />
-                    <span>My Profile</span>
-                  </a>
-                )}
-
                 {/* Profile & Account Menu */}
                 {signedIn ? (
                   <div className="relative" data-account-menu>
@@ -594,85 +553,15 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         <button
                           type="button"
                           role="menuitem"
-                          onClick={() => go('inbox')}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'inbox'
-                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
-                              : 'text-charcoal hover:bg-linen/60'
-                          }`}
-                        >
-                          <Inbox className="w-4 h-4 text-terracotta" aria-hidden="true" />
-                          <span>Capture Inbox</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => go('review')}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'review'
-                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
-                              : 'text-charcoal hover:bg-linen/60'
-                          }`}
-                        >
-                          <CheckSquare className="w-4 h-4 text-terracotta" aria-hidden="true" />
-                          <span>Review Center</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => go('insights')}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'insights'
-                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
-                              : 'text-charcoal hover:bg-linen/60'
-                          }`}
-                        >
-                          <Lightbulb className="w-4 h-4 text-terracotta" aria-hidden="true" />
-                          <span>Insights & Patterns</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => go('reflect')}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'reflect'
-                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
-                              : 'text-charcoal hover:bg-linen/60'
-                          }`}
-                        >
-                          <PenLine className="w-4 h-4 text-terracotta" aria-hidden="true" />
-                          <span>Weekly Review</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          role="menuitem"
                           onClick={() => go('profile')}
                           className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'profile'
+                            isProfileShellActive && page === 'profile'
                               ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
                               : 'text-charcoal hover:bg-linen/60'
                           }`}
                         >
-                          <User className="w-4 h-4 text-slateink-dark" aria-hidden="true" />
-                          <span>My Profile</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => go('privacy')}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
-                            page === 'privacy'
-                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
-                              : 'text-charcoal hover:bg-linen/60'
-                          }`}
-                        >
-                          <ShieldCheck className="w-4 h-4 text-terracotta" aria-hidden="true" />
-                          <span>Privacy & Data</span>
+                          <LayoutDashboard className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                          <span>My Dashboard</span>
                         </button>
 
                         <button
@@ -686,7 +575,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                           }`}
                         >
                           <Settings className="w-4 h-4 text-slateink-dark" aria-hidden="true" />
-                          <span>Settings & AI Keys</span>
+                          <span>Settings</span>
                         </button>
 
                         <div className="my-1 border-t border-linen-dark/40" />
@@ -723,7 +612,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           )}
         </div>
 
-        {/* Secondary Sub-Navbar for Profile & Management Shell (Opens when user clicks My Profile) */}
+        {/* Secondary Sub-Navbar for Profile & Dashboard Shell (Opens when user clicks My Dashboard) */}
         {signedIn && isProfileShellActive && (
           <nav
             role="navigation"
@@ -732,7 +621,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           >
             <div className="max-w-7xl mx-auto flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 py-2 overflow-x-auto no-scrollbar">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-slateink-light mr-1 hidden sm:inline-block shrink-0">
-                Profile Tools:
+                Dashboard Tools:
               </span>
               {PROFILE_SHELL_NAV.map((item) => {
                 const Icon = item.icon;
