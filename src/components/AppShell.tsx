@@ -3,18 +3,16 @@ import type { ReactNode } from 'react';
 import {
   Feather,
   LogOut,
+  User,
   UserCircle2,
   MessageCircle,
-  Home,
   BookOpen,
   Scale,
   Compass,
   History,
   GitBranch,
-  Settings,
   ChevronDown,
   Sparkles,
-  MoreHorizontal,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -29,8 +27,8 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const PRIMARY_NAV: NavItem[] = [
-  { id: 'home', label: 'Overview', icon: Home },
+// Overview is removed per user request (the brand logo navigates to home).
+const CENTERED_NAV: NavItem[] = [
   { id: 'memories', label: 'Memories', icon: BookOpen },
   { id: 'decisions', label: 'Decisions', icon: Scale },
   { id: 'beliefs', label: 'Beliefs', icon: Compass },
@@ -40,7 +38,6 @@ const PRIMARY_NAV: NavItem[] = [
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
-  const [tabletMoreOpen, setTabletMoreOpen] = useState(false);
   const { user, loading } = useAuth();
   const signedIn = !loading && !!user;
 
@@ -49,28 +46,22 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   const go = (p: PageId) => {
     navigateTo(p);
     setAccountOpen(false);
-    setTabletMoreOpen(false);
   };
 
   useEffect(() => {
     setAccountOpen(false);
-    setTabletMoreOpen(false);
   }, [route]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setAccountOpen(false);
-        setTabletMoreOpen(false);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Element | null;
       if (accountOpen && target && !target.closest('[data-account-menu]')) {
         setAccountOpen(false);
-      }
-      if (tabletMoreOpen && target && !target.closest('[data-tablet-more]')) {
-        setTabletMoreOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -79,7 +70,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [accountOpen, tabletMoreOpen]);
+  }, [accountOpen]);
 
   async function handleSignOut() {
     setAccountOpen(false);
@@ -106,35 +97,32 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         Skip to content
       </a>
 
-      {/* Top Header - Spacious, breathable, and elegant */}
+      {/* Top Navbar - Spacious, centered links, rightmost chat and profile */}
       <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-xl border-b border-linen-dark/40 transition-all duration-200">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 h-16 md:h-20 flex items-center justify-between gap-4">
           
-          {/* Brand Logo & Editorial Title */}
-          <button
-            onClick={() => go('home')}
-            className="group shrink-0 flex items-center gap-3 rounded-xl py-1 px-1 -ml-1 transition-transform active:scale-98"
-            aria-label="EchoSelf home"
-          >
-            <span className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-terracotta to-terracotta-dark text-paper shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all duration-200">
-              <Feather className="w-5 h-5" aria-hidden />
-            </span>
-            <div className="flex items-center gap-3">
+          {/* Left: Brand Logo (clean wordmark and emblem, no extra badges) */}
+          <div className="flex items-center min-w-max">
+            <button
+              onClick={() => go('home')}
+              className="group shrink-0 flex items-center gap-3 rounded-xl py-1 px-1 -ml-1 transition-transform active:scale-98"
+              aria-label="EchoSelf home"
+            >
+              <span className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-terracotta to-terracotta-dark text-paper shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all duration-200">
+                <Feather className="w-5 h-5" aria-hidden />
+              </span>
               <span className="font-serif text-2xl font-bold tracking-tight text-charcoal group-hover:text-terracotta transition-colors">
                 EchoSelf
               </span>
-              <span className="hidden xl:inline-block pl-3 border-l border-linen-dark/70 text-[11px] font-sans tracking-widest uppercase text-slateink-light/80 font-medium">
-                Personal Model
-              </span>
-            </div>
-          </button>
+            </button>
+          </div>
 
-          {/* Desktop Navigation (Wide screens >= 1024px) */}
+          {/* Center: Navigation Links - Genuinely Centered */}
           <nav
-            className="hidden lg:flex items-center gap-1.5"
+            className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2.5"
             aria-label="Main Navigation"
           >
-            {PRIMARY_NAV.map((item) => {
+            {CENTERED_NAV.map((item) => {
               const Icon = item.icon;
               const isActive = page === item.id;
               return (
@@ -165,82 +153,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             })}
           </nav>
 
-          {/* Tablet Navigation (768px - 1023px) - Clean 4 items + More dropdown */}
-          <nav
-            className="hidden md:flex lg:hidden items-center gap-1"
-            aria-label="Tablet Navigation"
-          >
-            {PRIMARY_NAV.slice(0, 4).map((item) => {
-              const Icon = item.icon;
-              const isActive = page === item.id;
-              return (
-                <a
-                  key={item.id}
-                  href={hrefFor(item.id)}
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                    e.preventDefault();
-                    go(item.id);
-                  }}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-linen/80 text-charcoal font-semibold'
-                      : 'text-slateink-dark hover:text-charcoal hover:bg-linen/40'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-terracotta-deep' : 'text-slateink'}`} />
-                  <span>{item.label}</span>
-                </a>
-              );
-            })}
-
-            {/* Tablet More dropdown for Graph & Timeline */}
-            <div className="relative" data-tablet-more>
-              <button
-                onClick={() => setTabletMoreOpen((o) => !o)}
-                aria-expanded={tabletMoreOpen}
-                aria-label="More views"
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  page === 'graph' || page === 'timeline'
-                    ? 'bg-linen/80 text-charcoal font-semibold'
-                    : 'text-slateink-dark hover:text-charcoal hover:bg-linen/40'
-                }`}
-              >
-                <span>More</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${tabletMoreOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {tabletMoreOpen && (
-                <div className="absolute left-0 top-9 w-44 rounded-xl border border-linen-dark/80 bg-white shadow-lifted p-1 z-50 animate-[fadeIn_100ms_ease-out]">
-                  {PRIMARY_NAV.slice(4).map((item) => {
-                    const Icon = item.icon;
-                    const isActive = page === item.id;
-                    return (
-                      <a
-                        key={item.id}
-                        href={hrefFor(item.id)}
-                        onClick={(e) => {
-                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                          e.preventDefault();
-                          go(item.id);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          isActive ? 'bg-linen text-charcoal font-semibold' : 'text-slateink-dark hover:bg-linen/50'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5 text-slateink" />
-                        <span>{item.label}</span>
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Right Action Area */}
-          <div className="flex items-center gap-3">
+          {/* Right Most: Twin Chat & User Profile / Sign In */}
+          <div className="flex items-center justify-end gap-3 min-w-max">
             {/* Desktop Twin Chat Button */}
             <a
               href={hrefFor('chat')}
@@ -260,20 +174,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               <span>Twin Chat</span>
             </a>
 
-            {/* Account / User Menu */}
+            {/* Profile Icon / Dropdown when signed in */}
             {signedIn ? (
               <div className="relative" data-account-menu>
                 <button
                   onClick={() => setAccountOpen((o) => !o)}
                   aria-expanded={accountOpen}
-                  aria-label="Account menu"
-                  className="inline-flex items-center gap-2 h-9 md:h-10 pl-2 pr-3 rounded-full border border-linen-dark/70 bg-white/70 hover:bg-white hover:border-linen-darker text-charcoal text-xs font-medium transition-all shadow-xs"
+                  aria-label="Profile menu"
+                  className="inline-flex items-center gap-2 h-10 pl-2 pr-2.5 rounded-full border border-linen-dark/80 bg-white/80 hover:bg-white hover:border-linen-darker text-charcoal transition-all shadow-xs"
                 >
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-terracotta to-terracotta-dark text-paper font-semibold text-xs uppercase shadow-xs">
+                  <span className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-gradient-to-br from-terracotta to-terracotta-dark text-paper font-semibold text-xs uppercase shadow-xs">
                     {userDisplayName.charAt(0)}
-                  </span>
-                  <span className="hidden sm:inline max-w-28 truncate font-medium">
-                    {userDisplayName}
                   </span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 text-slateink-light transition-transform duration-200 ${
@@ -285,39 +196,42 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
                 {accountOpen && (
                   <div
-                    className="absolute right-0 top-12 w-64 rounded-2xl border border-linen-dark/80 bg-white shadow-lifted p-2 z-50 animate-[fadeIn_120ms_ease-out]"
+                    className="absolute right-0 top-12 w-56 rounded-2xl border border-linen-dark/80 bg-white shadow-lifted p-2 z-50 animate-[fadeIn_120ms_ease-out]"
                     role="menu"
                   >
-                    <div className="px-3 py-2.5 border-b border-linen-dark/40 mb-1">
+                    <div className="px-3 py-2 border-b border-linen-dark/40 mb-1">
                       <p className="text-xs font-semibold text-charcoal truncate">
                         {user!.email}
                       </p>
-                      <p className="text-[11px] text-slateink-light mt-0.5">
-                        Private workspace
+                      <p className="text-[10px] text-slateink-light mt-0.5">
+                        Personal Workspace
                       </p>
                     </div>
 
-                    <a
-                      href={hrefFor('settings')}
-                      onClick={(e) => {
-                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                        e.preventDefault();
-                        go('settings');
-                      }}
+                    {/* My Profile */}
+                    <button
                       role="menuitem"
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors"
+                      onClick={() => go('profile')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors ${
+                        page === 'profile'
+                          ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
+                          : 'text-charcoal hover:bg-linen/60'
+                      }`}
                     >
-                      <Settings className="w-4 h-4 text-slateink-light" aria-hidden />
-                      <span>Settings & Privacy</span>
-                    </a>
+                      <User className="w-4 h-4 text-terracotta" aria-hidden />
+                      <span>My Profile</span>
+                    </button>
 
+                    <div className="my-1 border-t border-linen-dark/40" />
+
+                    {/* Logout */}
                     <button
                       role="menuitem"
                       onClick={handleSignOut}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light/30 flex items-center gap-2.5 transition-colors mt-0.5"
+                      className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light/30 flex items-center gap-2.5 transition-colors"
                     >
                       <LogOut className="w-4 h-4 text-clayred-DEFAULT" aria-hidden />
-                      <span>Sign out</span>
+                      <span>Logout</span>
                     </button>
                   </div>
                 )}
@@ -326,9 +240,9 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               <button
                 onClick={() => go('signin')}
                 aria-label="Sign in"
-                className="inline-flex items-center gap-1.5 h-9 md:h-10 px-4 md:px-5 rounded-full border border-linen-dark/80 bg-white/70 hover:bg-white hover:border-linen-darker text-charcoal text-xs font-semibold transition-all shadow-xs active:scale-95 whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 h-10 px-4.5 rounded-full border border-linen-dark/80 bg-white/80 hover:bg-white hover:border-linen-darker text-charcoal text-xs font-semibold transition-all shadow-xs active:scale-95 whitespace-nowrap"
               >
-                <UserCircle2 className="w-4 h-4 text-slateink-light" aria-hidden />
+                <UserCircle2 className="w-4 h-4 text-slateink-light" />
                 <span>Sign in</span>
               </button>
             )}
@@ -336,7 +250,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
       </header>
 
-      {/* Main Content Area with Generous Bottom Clearance for Mobile Dock */}
+      {/* Main Content Area */}
       <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12 pb-32 md:pb-16">
         {children}
       </main>
@@ -354,7 +268,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
       </footer>
 
-      {/* Luxury Mobile Navigation Dock (Hidden on >= md) */}
+      {/* Mobile Navigation Dock */}
       <MobileBottomBar route={route} />
 
       {/* Floating Sample Data Notice for Visitors */}

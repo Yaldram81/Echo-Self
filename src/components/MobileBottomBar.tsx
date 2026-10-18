@@ -12,227 +12,165 @@ import {
   Settings,
   LayoutGrid,
   LogOut,
-  UserCircle2,
-  Sparkles,
+  User,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { navigateTo, type PageId, type Route } from '@/lib/router';
-import { requestQuickAdd, QUICK_ADD_PAGE, type QuickAddKind } from '@/lib/quickAdd';
+import { requestQuickAdd, type QuickAddKind } from '@/lib/quickAdd';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 
-type AddOption = {
-  kind: QuickAddKind;
+interface GridToolItem {
+  page: PageId;
   label: string;
-  hint: string;
   icon: LucideIcon;
-};
+  badge?: string;
+}
 
-const OPTIONS: AddOption[] = [
-  { kind: 'memory', label: 'Record a Memory', hint: 'An experience, reflection, or moment', icon: BookOpen },
-  { kind: 'belief', label: 'State a Belief or Value', hint: 'A core principle you hold to be true', icon: Compass },
-  { kind: 'decision', label: 'Frame a Decision', hint: 'Weigh choices and examine outcomes', icon: Scale },
+const MORE_GRID_ITEMS: GridToolItem[] = [
+  { page: 'decisions', label: 'Decisions', icon: Scale },
+  { page: 'beliefs', label: 'Beliefs', icon: Compass },
+  { page: 'graph', label: 'Graph', icon: GitBranch },
+  { page: 'timeline', label: 'Timeline', icon: History },
+  { page: 'profile', label: 'Profile', icon: User },
+  { page: 'settings', label: 'Settings', icon: Settings },
 ];
-
-const MORE_TOOLS: { page: PageId; label: string; desc: string; icon: LucideIcon }[] = [
-  { page: 'decisions', label: 'Decision Mirror', desc: 'Weigh options & arithmetic', icon: Scale },
-  { page: 'beliefs', label: 'Beliefs & Values', desc: 'Track principles & changes', icon: Compass },
-  { page: 'graph', label: 'Evidence Graph', desc: 'Interactive connection map', icon: GitBranch },
-  { page: 'timeline', label: 'Timeline', desc: 'Chronological memory stream', icon: History },
-  { page: 'settings', label: 'Settings & Privacy', desc: 'Data export & preferences', icon: Settings },
-];
-
-type SheetType = 'add' | 'more' | null;
 
 export function MobileBottomBar({ route }: { route: Route }) {
   const { user, loading } = useAuth();
-  const [sheet, setSheet] = useState<SheetType>(null);
-  const [burstKind, setBurstKind] = useState<QuickAddKind | null>(null);
-  const sheetContentRef = useRef<HTMLDivElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   const showBar = !loading && route.kind === 'app';
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
 
-  const isMorePageActive =
-    currentPage === 'decisions' ||
-    currentPage === 'beliefs' ||
-    currentPage === 'timeline' ||
-    currentPage === 'graph' ||
-    currentPage === 'settings';
+  const isMorePageActive = MORE_GRID_ITEMS.some((item) => item.page === currentPage);
 
   useEffect(() => {
-    setSheet(null);
+    setMoreOpen(false);
   }, [route]);
 
   useEffect(() => {
-    if (!sheet) return;
+    if (!moreOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSheet(null);
+      if (e.key === 'Escape') setMoreOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sheet]);
-
-  useEffect(() => {
-    if (!burstKind) return;
-    if (route.kind !== 'app') {
-      setBurstKind(null);
-      return;
-    }
-    const target = QUICK_ADD_PAGE[burstKind];
-    if (route.page === target) {
-      requestQuickAdd(burstKind);
-      setBurstKind(null);
-    }
-  }, [route, burstKind]);
+  }, [moreOpen]);
 
   if (!showBar) return null;
 
-  const chooseAdd = (opt: AddOption) => {
-    setSheet(null);
-    const current = route.kind === 'app' ? route.page : null;
-    const target: PageId = QUICK_ADD_PAGE[opt.kind];
-    if (current === target && route.kind === 'app' && route.detailId === null) {
-      requestQuickAdd(opt.kind);
+  /**
+   * Direct Action Button for (+):
+   * Instantly triggers the appropriate record creation without any lengthy intermediary trays.
+   */
+  const handleDirectAdd = () => {
+    setMoreOpen(false);
+    if (currentPage === 'beliefs') {
+      requestQuickAdd('belief');
       return;
     }
-    setBurstKind(opt.kind);
-    navigateTo(target);
+    if (currentPage === 'decisions') {
+      requestQuickAdd('decision');
+      return;
+    }
+    // Default primary record is Memory: navigate to memories and immediately open form
+    if (currentPage !== 'memories') {
+      navigateTo('memories');
+      setTimeout(() => requestQuickAdd('memory'), 80);
+    } else {
+      requestQuickAdd('memory');
+    }
   };
 
   const goPage = (p: PageId) => {
-    setSheet(null);
+    setMoreOpen(false);
     if (currentPage === p && route.kind === 'app' && route.detailId === null) return;
     navigateTo(p);
   };
 
   const handleSignOut = async () => {
-    setSheet(null);
+    setMoreOpen(false);
     await supabase.auth.signOut();
     navigateTo('home');
   };
 
   return (
     <>
-      {/* Backdrop overlay for bottom sheets */}
-      {sheet && (
+      {/* Backdrop overlay for More bottom sheet */}
+      {moreOpen && (
         <div
           role="presentation"
           aria-hidden="true"
-          onClick={() => setSheet(null)}
+          onClick={() => setMoreOpen(false)}
           className="md:hidden fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-sm transition-opacity animate-[fadeIn_150ms_ease-out]"
         />
       )}
 
-      {/* Quick Record Bottom Sheet */}
-      {sheet === 'add' && (
+      {/* More Tools Bottom Sheet - Clean Grid View */}
+      {moreOpen && (
         <div
-          ref={sheetContentRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Quick record"
-          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-[28px] border-t border-linen-dark/80 shadow-2xl p-6 pb-[max(2rem,env(safe-area-inset-bottom))] animate-[slideUp_200ms_ease-out]"
-        >
-          <div className="w-12 h-1.5 bg-linen-dark/80 rounded-full mx-auto mb-5" />
-          
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-lg font-serif font-bold text-charcoal">Quick Record</h2>
-              <p className="text-xs text-slateink-light mt-0.5">Capture evidence for your personal model</p>
-            </div>
-            <button
-              onClick={() => setSheet(null)}
-              className="p-2 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {OPTIONS.map((opt) => {
-              const Icon = opt.icon;
-              return (
-                <button
-                  key={opt.kind}
-                  onClick={() => chooseAdd(opt)}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white border border-linen-dark/70 shadow-xs hover:border-terracotta hover:shadow-card active:scale-[0.98] transition-all text-left group"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta-deep group-hover:bg-terracotta group-hover:text-paper transition-colors">
-                    <Icon className="w-5 h-5" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-charcoal">{opt.label}</span>
-                    <span className="block text-xs text-slateink-light mt-0.5">{opt.hint}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Explore & More Tools Bottom Sheet */}
-      {sheet === 'more' && (
-        <div
-          ref={sheetContentRef}
+          ref={sheetRef}
           role="dialog"
           aria-modal="true"
           aria-label="Explore and tools"
-          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-[28px] border-t border-linen-dark/80 shadow-2xl p-6 pb-[max(2rem,env(safe-area-inset-bottom))] animate-[slideUp_200ms_ease-out]"
+          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-[28px] border-t border-linen-dark/80 shadow-2xl p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] animate-[slideUp_200ms_ease-out]"
         >
-          <div className="w-12 h-1.5 bg-linen-dark/80 rounded-full mx-auto mb-5" />
+          {/* Drag Handle */}
+          <div className="w-12 h-1.5 bg-linen-dark/80 rounded-full mx-auto mb-4" />
           
-          <div className="flex items-center justify-between mb-5">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 px-1">
             <div>
-              <h2 className="text-lg font-serif font-bold text-charcoal">Explore & Tools</h2>
-              <p className="text-xs text-slateink-light mt-0.5">Deep inspection of your personal model</p>
+              <h2 className="text-base font-serif font-bold text-charcoal">Explore & Tools</h2>
+              <p className="text-xs text-slateink-light">Inspect models, graph, and profile</p>
             </div>
             <button
-              onClick={() => setSheet(null)}
-              className="p-2 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
+              onClick={() => setMoreOpen(false)}
+              className="p-1.5 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-5">
-            {MORE_TOOLS.map((item) => {
+          {/* Grid View of Items (3 columns) */}
+          <div className="grid grid-cols-3 gap-2.5 mb-4">
+            {MORE_GRID_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.page;
               return (
                 <button
                   key={item.page}
                   onClick={() => goPage(item.page)}
-                  className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
+                  className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all active:scale-95 ${
                     isActive
-                      ? 'bg-terracotta/10 border-terracotta text-terracotta-deep shadow-xs'
+                      ? 'bg-terracotta/12 border-terracotta text-terracotta-deep shadow-xs font-semibold'
                       : 'bg-white border-linen-dark/60 text-charcoal hover:bg-linen/40'
                   }`}
                 >
                   <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                      isActive ? 'bg-terracotta text-paper' : 'bg-linen text-slateink-dark'
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl mb-2 transition-colors ${
+                      isActive ? 'bg-terracotta text-paper shadow-xs' : 'bg-linen/70 text-slateink-dark'
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-5 h-5" aria-hidden="true" />
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-xs font-semibold leading-snug">{item.label}</span>
-                    <span className="block text-[11px] text-slateink-light mt-0.5 truncate">{item.desc}</span>
-                  </div>
+                  <span className="text-xs font-medium leading-tight text-charcoal">
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
           </div>
 
           {/* Account Footer in More Sheet */}
-          <div className="pt-4 border-t border-linen-dark/60 flex items-center justify-between gap-3">
+          <div className="pt-3 border-t border-linen-dark/60 flex items-center justify-between gap-3 px-1">
             {user ? (
               <>
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-terracotta/15 text-terracotta-deep font-semibold text-xs uppercase shrink-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-terracotta to-terracotta-dark text-paper font-semibold text-xs uppercase shrink-0 shadow-xs">
                     {user.email?.charAt(0) ?? 'U'}
                   </div>
                   <div className="min-w-0">
@@ -242,25 +180,25 @@ export function MobileBottomBar({ route }: { route: Route }) {
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-clayred-DEFAULT hover:text-clayred-dark px-3 py-2 rounded-xl hover:bg-clayred-light/30 transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-clayred-DEFAULT hover:text-clayred-dark px-3 py-1.5 rounded-xl hover:bg-clayred-light/30 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign out</span>
+                  <span>Logout</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={() => goPage('signin')}
-                className="w-full text-center py-3 rounded-2xl bg-terracotta text-paper text-xs font-semibold hover:bg-terracotta-dark shadow-sm transition-colors"
+                className="w-full text-center py-2.5 rounded-xl bg-terracotta text-paper text-xs font-semibold hover:bg-terracotta-dark shadow-xs transition-colors"
               >
-                Sign in to save your private workspace
+                Sign in to save your workspace
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Floating Luxury Mobile Navigation Dock */}
+      {/* Floating Mobile Navigation Dock */}
       <nav
         aria-label="Mobile Navigation Dock"
         className="md:hidden fixed bottom-4 inset-x-4 max-w-sm sm:max-w-md mx-auto z-40 bg-paper/95 backdrop-blur-2xl border border-linen-dark/80 rounded-2xl shadow-[0_10px_35px_rgba(32,35,33,0.12)] h-16 px-1.5"
@@ -282,16 +220,13 @@ export function MobileBottomBar({ route }: { route: Route }) {
             onClick={() => goPage('memories')}
           />
 
-          {/* Tab 3: Center Elevated Action (+) Button */}
+          {/* Tab 3: Direct Action (+) Button - Direct, no lengthy tray */}
           <div className="relative flex items-center justify-center h-full">
             <button
               type="button"
-              onClick={() => setSheet((s) => (s === 'add' ? null : 'add'))}
-              aria-expanded={sheet === 'add'}
-              aria-label={sheet === 'add' ? 'Close quick record' : 'Quick record'}
-              className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-terracotta-deep via-terracotta to-terracotta-light text-paper shadow-lifted ring-4 ring-paper -translate-y-2.5 transition-all duration-200 active:scale-95 ${
-                sheet === 'add' ? 'rotate-45 bg-charcoal' : 'hover:scale-105'
-              }`}
+              onClick={handleDirectAdd}
+              aria-label="Create record directly"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-terracotta-deep via-terracotta to-terracotta-light text-paper shadow-lifted ring-4 ring-paper -translate-y-2.5 hover:scale-105 active:scale-95 transition-all duration-150"
             >
               <Plus className="w-6 h-6 stroke-[2.5]" aria-hidden="true" />
             </button>
@@ -305,12 +240,12 @@ export function MobileBottomBar({ route }: { route: Route }) {
             onClick={() => goPage('chat')}
           />
 
-          {/* Tab 5: More Tools */}
+          {/* Tab 5: More Tools - Opens Grid View Tray */}
           <DockTabButton
             label="More"
             icon={LayoutGrid}
-            active={isMorePageActive || sheet === 'more'}
-            onClick={() => setSheet((s) => (s === 'more' ? null : 'more'))}
+            active={isMorePageActive || moreOpen}
+            onClick={() => setMoreOpen((o) => !o)}
           />
         </div>
       </nav>

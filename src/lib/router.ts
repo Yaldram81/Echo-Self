@@ -13,13 +13,14 @@ export type PageId =
   | 'timeline'
   | 'graph'
   | 'settings'
+  | 'profile'
   | 'signin'
   | 'signup';
 
-export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings'];
+export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile'];
 
 /** Pages that show a user's own records; signed-out visitors are sent to sign-in. */
-export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings'];
+export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile'];
 
 export type Route =
   | { kind: 'auth'; mode: 'signin' | 'signup' }
@@ -65,6 +66,7 @@ export const ROUTE_META: Record<string, { title: string; description: string }> 
   timeline: { title: 'Timeline: EchoSelf', description: 'Your recorded life in chronological order, cross-linked with beliefs and decisions.' },
   graph: { title: 'Evidence Graph: EchoSelf', description: 'See how memories, beliefs, and decisions connect; every line traced to a record.' },
   settings: { title: 'Settings & Privacy: EchoSelf', description: 'Export or delete your records; review what the app stores and what it never does.' },
+  profile: { title: 'My Profile: EchoSelf', description: 'Your personal model identity, activity statistics, and workspace settings.' },
   signin: { title: 'Sign in: EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
   signup: { title: 'Create account: EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
   notFound: { title: 'Page not found: EchoSelf', description: 'This address does not match any page in EchoSelf.' },

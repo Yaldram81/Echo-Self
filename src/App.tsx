@@ -25,6 +25,7 @@ const BeliefsPage = lazy(() => import('@/pages/BeliefsPage').then((m) => ({ defa
 const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ default: m.TimelinePage })));
 const EvidenceGraphPage = lazy(() => import('@/pages/EvidenceGraphPage').then((m) => ({ default: m.EvidenceGraphPage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -109,6 +110,7 @@ function SwitchPage({ page }: { page: PageId }) {
     case 'timeline': return <TimelinePage />;
     case 'graph': return <EvidenceGraphPage />;
     case 'settings': return <SettingsPage />;
+    case 'profile': return <ProfilePage />;
     default: return <HomePage />;
   }
 }
