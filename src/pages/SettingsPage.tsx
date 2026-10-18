@@ -13,6 +13,8 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  Plus,
+  RotateCcw,
 } from 'lucide-react';
 import { dataManagementService } from '@/lib/services';
 import { geminiService } from '@/lib/geminiService';
@@ -122,81 +124,202 @@ export function SettingsPage() {
     }
   }
 
-  // Gemini API Key management
-  const [geminiKeyInput, setGeminiKeyInput] = useState(() => geminiService.getApiKey());
-  const [hasSavedKey, setHasSavedKey] = useState(() => Boolean(geminiService.getApiKey()));
+  // Gemini API Key management (multi-key pool + auto-failover rotation)
+  const [apiKeys, setApiKeys] = useState<string[]>(() => geminiService.getApiKeys());
+  const [activeKeyIdx, setActiveKeyIdx] = useState<number>(() => geminiService.getActiveKeyIndex());
+  const [newKeyInput, setNewKeyInput] = useState('');
   const [showKeyText, setShowKeyText] = useState(false);
+  const [revealedKeyIdxs, setRevealedKeyIdxs] = useState<Record<number, boolean>>({});
   const [keyNotice, setKeyNotice] = useState<string | null>(null);
 
-  function handleSaveGeminiKey(e: React.FormEvent) {
+  function handleAddKey(e: React.FormEvent) {
     e.preventDefault();
-    const clean = geminiKeyInput.trim();
-    geminiService.setApiKey(clean);
-    setHasSavedKey(Boolean(clean));
-    setKeyNotice(clean ? 'Gemini API key saved! AI Deliberation Assistant is now enabled.' : 'Key cleared.');
+    const clean = newKeyInput.trim();
+    if (!clean) return;
+    const added = geminiService.addApiKey(clean);
+    if (added) {
+      const updated = geminiService.getApiKeys();
+      setApiKeys(updated);
+      setNewKeyInput('');
+      setKeyNotice(`Key added! You have ${updated.length} key${updated.length > 1 ? 's' : ''} in the auto-rotation pool.`);
+    } else {
+      setKeyNotice('This key is already in your rotation pool.');
+    }
     setTimeout(() => setKeyNotice(null), 4000);
   }
 
-  function handleClearGeminiKey() {
-    geminiService.setApiKey('');
-    setGeminiKeyInput('');
-    setHasSavedKey(false);
-    setKeyNotice('Gemini API key removed.');
+  function handleRemoveKey(idx: number) {
+    geminiService.removeApiKey(idx);
+    const updated = geminiService.getApiKeys();
+    setApiKeys(updated);
+    setActiveKeyIdx(geminiService.getActiveKeyIndex());
+    setKeyNotice('API key removed from rotation.');
     setTimeout(() => setKeyNotice(null), 3000);
+  }
+
+  function handleSetActive(idx: number) {
+    geminiService.setActiveKeyIndex(idx);
+    setActiveKeyIdx(idx);
+    setKeyNotice(`Key #${idx + 1} set as active.`);
+    setTimeout(() => setKeyNotice(null), 3000);
+  }
+
+  function handleClearAllKeys() {
+    geminiService.setApiKeys([]);
+    setApiKeys([]);
+    setActiveKeyIdx(0);
+    setKeyNotice('All Gemini API keys removed.');
+    setTimeout(() => setKeyNotice(null), 3000);
+  }
+
+  function toggleRevealKey(idx: number) {
+    setRevealedKeyIdxs((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  }
+
+  function maskKey(key: string): string {
+    if (key.length <= 10) return '••••••••';
+    return `${key.slice(0, 7)}••••••••${key.slice(-4)}`;
   }
 
   return (
     <div className="space-y-8">
       <SectionHeading eyebrow="Trust" title="Settings & Privacy" as="h1" />
 
-      {/* Gemini AI Configuration Card */}
+      {/* Gemini AI Configuration & Multi-Key Auto-Rotation Card */}
       <Card>
-        <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-serif text-lg font-bold text-charcoal">Gemini AI Configuration</h3>
-              <p className="text-xs text-slateink">Connect your Google AI Studio key for the AI Deliberation Assistant.</p>
+              <h3 className="font-serif text-lg font-bold text-charcoal">Gemini AI Configuration & Key Rotation</h3>
+              <p className="text-xs text-slateink">Add multiple Google AI Studio keys. Automatically rotates keys when quota is exhausted.</p>
             </div>
           </div>
-          {hasSavedKey ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sage/15 border border-sage/30 px-2.5 py-0.5 text-[11px] font-semibold text-sage-dark">
+          {apiKeys.length > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sage/15 border border-sage/30 px-3 py-1 text-[11px] font-semibold text-sage-dark self-start sm:self-auto">
               <CheckCircle2 className="w-3.5 h-3.5 text-sage-dark" />
-              Connected
+              <span>{apiKeys.length} {apiKeys.length === 1 ? 'key configured' : 'keys in rotation'}</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-linen px-2.5 py-0.5 text-[11px] font-medium text-slateink-light">
+            <span className="inline-flex items-center gap-1 rounded-full bg-linen px-2.5 py-0.5 text-[11px] font-medium text-slateink-light self-start sm:self-auto">
               Not configured
             </span>
           )}
         </div>
 
         <p className="text-xs sm:text-sm text-slateink leading-relaxed mb-4">
-          Your key enables the Gemini Deliberation Assistant to analyze raw decision thoughts, extract competing options, and identify trade-offs. The key is securely stored in your browser's private local storage and sent only to Google's official Gemini API.
+          Google AI Studio provides free Gemini access with per-minute and daily rate limits. By adding <strong>multiple API keys</strong> (from the same or different Google accounts), EchoSelf will automatically failover to the next key whenever one reaches its quota limit (HTTP 429), ensuring uninterrupted deliberation.
         </p>
 
-        <form onSubmit={handleSaveGeminiKey} className="space-y-3">
+        {/* Existing Keys Pool List */}
+        {apiKeys.length > 0 && (
+          <div className="space-y-2 mb-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-charcoal uppercase tracking-wider flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 text-terracotta" />
+                <span>Rotation Pool ({apiKeys.length})</span>
+              </p>
+              <button
+                type="button"
+                onClick={handleClearAllKeys}
+                className="text-[11px] text-clayred-DEFAULT hover:underline font-medium cursor-pointer"
+              >
+                Clear all keys
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {apiKeys.map((key, idx) => {
+                const isActive = (activeKeyIdx % apiKeys.length) === idx;
+                const isRevealed = Boolean(revealedKeyIdxs[idx]);
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all ${
+                      isActive
+                        ? 'bg-amberclay-light/20 border-terracotta/40 shadow-2xs'
+                        : 'bg-paper-soft border-linen-dark/80 hover:border-linen-dark'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-linen text-slateink text-xs font-mono font-bold shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-charcoal font-medium truncate">
+                            {isRevealed ? key : maskKey(key)}
+                          </span>
+                          {isActive && (
+                            <span className="rounded-full bg-terracotta/15 px-2 py-0.2 text-[10px] font-bold text-terracotta uppercase tracking-wide shrink-0">
+                              Active primary
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => toggleRevealKey(idx)}
+                        className="p-1.5 rounded-lg text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
+                        title={isRevealed ? 'Mask key' : 'Reveal key'}
+                        aria-label={isRevealed ? 'Mask key' : 'Reveal key'}
+                      >
+                        {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {!isActive && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetActive(idx)}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium text-slateink hover:text-charcoal hover:bg-linen transition-colors cursor-pointer"
+                        >
+                          Use next
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveKey(idx)}
+                        className="p-1.5 rounded-lg text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light/40 transition-colors cursor-pointer"
+                        title="Remove key"
+                        aria-label="Remove key"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Add New Key Input */}
+        <form onSubmit={handleAddKey} className="space-y-3">
           <div>
-            <label htmlFor="gemini-key" className="block text-xs font-semibold text-charcoal mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="new-gemini-key" className="block text-xs font-semibold text-charcoal mb-1.5 flex items-center gap-1.5">
               <Key className="w-3.5 h-3.5 text-slateink-light" />
-              <span>Google AI Studio API Key</span>
+              <span>{apiKeys.length === 0 ? 'Add Google AI Studio API Key' : 'Add Another Key for Failover Rotation'}</span>
             </label>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <div className="relative flex-1">
                 <input
-                  id="gemini-key"
+                  id="new-gemini-key"
                   type={showKeyText ? 'text' : 'password'}
-                  value={geminiKeyInput}
-                  onChange={(e) => setGeminiKeyInput(e.target.value)}
-                  placeholder="Enter your key: AIzaSy..."
+                  value={newKeyInput}
+                  onChange={(e) => setNewKeyInput(e.target.value)}
+                  placeholder="Paste key: AIzaSy..."
                   className="w-full h-10 rounded-xl border border-linen-dark bg-white px-3.5 pr-10 text-xs sm:text-sm font-mono text-charcoal focus:border-terracotta focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowKeyText((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slateink-light hover:text-charcoal p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slateink-light hover:text-charcoal p-1 cursor-pointer"
                   aria-label={showKeyText ? 'Hide API key' : 'Show API key'}
                 >
                   {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -205,20 +328,12 @@ export function SettingsPage() {
 
               <button
                 type="submit"
-                className="inline-flex h-10 items-center justify-center px-5 rounded-full bg-terracotta text-paper text-xs sm:text-sm font-semibold hover:bg-terracotta-dark transition-all shadow-xs cursor-pointer"
+                disabled={!newKeyInput.trim()}
+                className="inline-flex h-10 items-center justify-center gap-1.5 px-5 rounded-full bg-terracotta text-paper text-xs sm:text-sm font-semibold hover:bg-terracotta-dark disabled:opacity-50 transition-all shadow-xs cursor-pointer"
               >
-                Save key
+                <Plus className="w-4 h-4" />
+                <span>Add key</span>
               </button>
-
-              {hasSavedKey && (
-                <button
-                  type="button"
-                  onClick={handleClearGeminiKey}
-                  className="inline-flex h-10 items-center justify-center px-4 rounded-full border border-clayred-light text-clayred-DEFAULT text-xs sm:text-sm font-medium hover:bg-clayred-light/40 transition-all cursor-pointer"
-                >
-                  Clear key
-                </button>
-              )}
             </div>
           </div>
 
@@ -229,7 +344,7 @@ export function SettingsPage() {
               rel="noreferrer"
               className="text-terracotta hover:underline font-medium inline-flex items-center gap-1"
             >
-              <span>Get a free Gemini API key from Google AI Studio</span>
+              <span>Get free Gemini API keys from Google AI Studio</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
 

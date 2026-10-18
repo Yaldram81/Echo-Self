@@ -1,7 +1,6 @@
 /**
  * Service to call Google Gemini API for AI-assisted deliberation structuring.
- * Supports environment variable VITE_GEMINI_API_KEY, localStorage key custody,
- * or direct user input.
+ * Supports multiple API keys with automatic failover rotation on quota exhaustion (HTTP 429 / resource exhausted).
  */
 
 export interface GeminiDecisionDraft {
@@ -20,35 +19,164 @@ export interface GeminiDecisionDraft {
   success_definition: string;
 }
 
-const STORAGE_KEY = 'echoself_gemini_api_key';
+const STORAGE_KEYS_LIST = 'echoself_gemini_api_keys';
+const LEGACY_STORAGE_KEY = 'echoself_gemini_api_key';
+const ACTIVE_INDEX_KEY = 'echoself_gemini_active_key_index';
+
+function isQuotaOrExhaustionError(status: number, message: string): boolean {
+  if (status === 429) return true;
+  const lower = message.toLowerCase();
+  return (
+    status === 403 ||
+    lower.includes('quota') ||
+    lower.includes('rate limit') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('exhausted') ||
+    lower.includes('too many requests')
+  );
+}
 
 export const geminiService = {
-  getApiKey(): string {
+  /**
+   * Retrieves all unique, non-empty Gemini API keys configured.
+   */
+  getApiKeys(): string[] {
+    const list: string[] = [];
+
+    // Environment variable key
     const fromEnv = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)?.trim();
-    if (fromEnv) return fromEnv;
+    if (fromEnv) list.push(fromEnv);
+
+    // Multi-key local storage list
     try {
-      return (localStorage.getItem(STORAGE_KEY) ?? '').trim();
+      const raw = localStorage.getItem(STORAGE_KEYS_LIST);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const k of parsed) {
+            if (typeof k === 'string' && k.trim() && !list.includes(k.trim())) {
+              list.push(k.trim());
+            }
+          }
+        }
+      }
+      // Single key backwards-compatibility
+      const single = (localStorage.getItem(LEGACY_STORAGE_KEY) ?? '').trim();
+      if (single && !list.includes(single)) {
+        list.push(single);
+      }
     } catch {
-      return '';
+      // Ignore localStorage errors
     }
+
+    return list;
   },
 
-  setApiKey(key: string): void {
+  /**
+   * Overwrite the entire pool of keys.
+   */
+  setApiKeys(keys: string[]): void {
+    const cleaned = Array.from(new Set(keys.map((k) => k.trim()).filter(Boolean)));
     try {
-      if (key.trim()) {
-        localStorage.setItem(STORAGE_KEY, key.trim());
+      localStorage.setItem(STORAGE_KEYS_LIST, JSON.stringify(cleaned));
+      if (cleaned.length > 0) {
+        localStorage.setItem(LEGACY_STORAGE_KEY, cleaned[0]);
       } else {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
       }
     } catch {
       // Ignore localStorage errors
     }
   },
 
+  /**
+   * Add a single new key to the pool.
+   * Returns true if added, false if already exists or invalid.
+   */
+  addApiKey(key: string): boolean {
+    const trimmed = key.trim();
+    if (!trimmed) return false;
+    const current = this.getApiKeys();
+    if (current.includes(trimmed)) return false;
+    current.push(trimmed);
+    this.setApiKeys(current);
+    return true;
+  },
+
+  /**
+   * Remove a key by index or value.
+   */
+  removeApiKey(target: number | string): void {
+    let current = this.getApiKeys();
+    if (typeof target === 'number') {
+      current = current.filter((_, idx) => idx !== target);
+    } else {
+      current = current.filter((k) => k !== target.trim());
+    }
+    this.setApiKeys(current);
+
+    // Ensure active index remains in valid range
+    const activeIdx = this.getActiveKeyIndex();
+    if (activeIdx >= current.length) {
+      this.setActiveKeyIndex(Math.max(0, current.length - 1));
+    }
+  },
+
+  /**
+   * Index of the currently active primary key.
+   */
+  getActiveKeyIndex(): number {
+    try {
+      const raw = localStorage.getItem(ACTIVE_INDEX_KEY);
+      const idx = raw ? parseInt(raw, 10) : 0;
+      return Number.isNaN(idx) ? 0 : idx;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Set which key in the pool is primary.
+   */
+  setActiveKeyIndex(index: number): void {
+    try {
+      localStorage.setItem(ACTIVE_INDEX_KEY, String(Math.max(0, index)));
+    } catch {
+      // Ignore localStorage errors
+    }
+  },
+
+  /**
+   * Convenience getter for primary key.
+   */
+  getApiKey(): string {
+    const keys = this.getApiKeys();
+    if (keys.length === 0) return '';
+    const idx = this.getActiveKeyIndex() % keys.length;
+    return keys[idx] ?? keys[0] ?? '';
+  },
+
+  /**
+   * Convenience setter for backward compatibility.
+   */
+  setApiKey(key: string): void {
+    const trimmed = key.trim();
+    if (trimmed) {
+      this.addApiKey(trimmed);
+    } else {
+      this.setApiKeys([]);
+    }
+  },
+
+  /**
+   * Structure a decision dilemma using Gemini.
+   * Rotates through all configured keys automatically if a key is exhausted or rate limited (HTTP 429).
+   */
   async structureDecision(prompt: string, customApiKey?: string): Promise<GeminiDecisionDraft> {
-    const key = (customApiKey ?? this.getApiKey()).trim();
-    if (!key) {
-      throw new Error('Gemini API key is required. Please provide your Google AI Studio key.');
+    const allKeys = customApiKey?.trim() ? [customApiKey.trim()] : this.getApiKeys();
+
+    if (allKeys.length === 0) {
+      throw new Error('Gemini API key is required. Please configure your key in Settings.');
     }
 
     const systemInstruction = `You are EchoSelf's Deliberation Assistant.
@@ -75,70 +203,115 @@ interface DecisionDraft {
 Be realistic, psychologically nuanced, and objective. Never hallucinate irrelevant facts. Extract what the user actually said and infer natural trade-offs.`;
 
     const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const startIndex = this.getActiveKeyIndex() % allKeys.length;
+
+    // Create an ordered attempt list starting from the active key
+    const attemptOrder: { key: string; index: number }[] = [];
+    for (let i = 0; i < allKeys.length; i++) {
+      const idx = (startIndex + i) % allKeys.length;
+      attemptOrder.push({ key: allKeys[idx], index: idx });
+    }
+
+    let exhaustedKeyCount = 0;
     let lastError: Error | null = null;
 
-    for (const model of models) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': key,
-            },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: {
-                maxOutputTokens: 2048,
-                temperature: 0.2,
-                responseMimeType: 'application/json',
+    // Iterate through keys (automatic rotation on exhaustion)
+    for (let attempt = 0; attempt < attemptOrder.length; attempt++) {
+      const { key: currentKey, index: keyIdx } = attemptOrder[attempt];
+      let keyExhausted = false;
+
+      for (const model of models) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': currentKey,
               },
-            }),
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: {
+                  maxOutputTokens: 2048,
+                  temperature: 0.2,
+                  responseMimeType: 'application/json',
+                },
+              }),
+            }
+          );
+
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+
+            if (isQuotaOrExhaustionError(res.status, errBody)) {
+              keyExhausted = true;
+              exhaustedKeyCount++;
+              lastError = new Error(`Key #${keyIdx + 1} exhausted quota or rate limit (${res.status}).`);
+
+              // If more keys are available, rotate active index to the next key in the pool
+              if (allKeys.length > 1) {
+                const nextIdx = (keyIdx + 1) % allKeys.length;
+                this.setActiveKeyIndex(nextIdx);
+              }
+              break; // Break model loop to advance to next key in attemptOrder
+            }
+
+            if (res.status === 404) {
+              // Model not available on this tier, try next fallback model
+              continue;
+            }
+
+            if (res.status === 400 && errBody.includes('API_KEY_INVALID')) {
+              keyExhausted = true;
+              lastError = new Error(`Key #${keyIdx + 1} is invalid.`);
+              break;
+            }
+
+            throw new Error(`Gemini API error (${res.status}): ${errBody || res.statusText}`);
           }
-        );
 
-        if (!res.ok) {
-          const errBody = await res.text().catch(() => '');
-          if (res.status === 400 || res.status === 403) {
-            throw new Error(`Invalid Gemini API key or request rejected (${res.status}): ${errBody || res.statusText}`);
+          const data = (await res.json()) as {
+            candidates?: { content?: { parts?: { text?: string } } }[];
+          };
+
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) {
+            throw new Error('Gemini returned an empty response.');
           }
-          if (res.status === 404) {
-            // Model not available on this tier, try next fallback model
-            continue;
+
+          const parsed = JSON.parse(rawText) as GeminiDecisionDraft;
+
+          // Ensure minimum 2 options
+          if (!Array.isArray(parsed.options) || parsed.options.length < 2) {
+            parsed.options = [
+              { label: 'Option A', pros: [], cons: [] },
+              { label: 'Option B', pros: [], cons: [] },
+            ];
           }
-          throw new Error(`Gemini API error (${res.status}): ${errBody || res.statusText}`);
-        }
 
-        const data = (await res.json()) as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-        };
-
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-          throw new Error('Gemini returned an empty response.');
-        }
-
-        const parsed = JSON.parse(rawText) as GeminiDecisionDraft;
-
-        // Ensure minimum 2 options
-        if (!Array.isArray(parsed.options) || parsed.options.length < 2) {
-          parsed.options = [
-            { label: 'Option A', pros: [], cons: [] },
-            { label: 'Option B', pros: [], cons: [] },
-          ];
-        }
-
-        return parsed;
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-        if (lastError.message.includes('Invalid Gemini API key')) {
-          throw lastError;
+          // Successfully used this key, ensure it is the active primary key
+          this.setActiveKeyIndex(keyIdx);
+          return parsed;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          if (keyExhausted) {
+            break; // Proceed to rotate to next key
+          }
         }
       }
     }
 
-    throw lastError ?? new Error('Could not connect to Gemini API. Please check your network and API key.');
+    if (exhaustedKeyCount >= allKeys.length) {
+      throw new Error(
+        `All ${allKeys.length} configured Gemini API keys have exhausted their quota or rate limits. Please add an additional key in Settings or try again once your quota window resets.`
+      );
+    }
+
+    throw (
+      lastError ??
+      new Error('Could not connect to Gemini API. Please check your network and API keys in Settings.')
+    );
   },
 };

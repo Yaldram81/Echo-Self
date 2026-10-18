@@ -107,8 +107,6 @@ export function DecisionEditorPage({
   // AI Assistant State
   const [showAiMode, setShowAiMode] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
-  const [geminiApiKey, setGeminiApiKey] = useState(geminiService.getApiKey());
-  const [showKeyConfig, setShowKeyConfig] = useState(!geminiService.getApiKey());
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
@@ -269,8 +267,8 @@ export function DecisionEditorPage({
   // AI Structure with Gemini
   async function handleAiStructure() {
     if (!aiPrompt.trim()) return;
-    const key = geminiService.getApiKey();
-    if (!key) {
+    const keys = geminiService.getApiKeys();
+    if (keys.length === 0) {
       setAiError('Gemini API key is not configured. Please add your key in Settings to use the AI Deliberation Assistant.');
       return;
     }
@@ -477,10 +475,10 @@ export function DecisionEditorPage({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slateink-light pt-1 border-t border-linen-dark/40">
-            <span>Powered by Google Gemini 2.5</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slateink-light pt-1 border-t border-linen-dark/40">
+            <span>Powered by Google Gemini · Auto-rotates keys on quota exhaustion</span>
             <a href="/settings" className="text-terracotta hover:underline font-medium">
-              Manage API key in Settings →
+              Manage keys in Settings ({geminiService.getApiKeys().length} configured) →
             </a>
           </div>
 
