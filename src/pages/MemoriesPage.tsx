@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, ChevronDown, Tag as TagIcon, Calendar, FolderOpen } from 'lucide-react';
+import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, ChevronDown, Tag as TagIcon, Calendar, FolderOpen, SlidersHorizontal } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { MEMORY_CATEGORIES, type Memory, type MemoryCategory } from '@/lib/types';
