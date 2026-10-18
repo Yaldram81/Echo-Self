@@ -188,7 +188,8 @@ EchoSelf combines lexical precision with semantic recall using **Reciprocal Rank
 ### Mathematical Decision Model (`dm-5`)
 For each option $o$ and decision value $v$:
 $$\text{contribution}(o, v) = (\text{supporting}(o, v) - \text{contradicting}(o, v)) \times \text{weight}(v)$$
-$$\text{score}(o) = \operatorname{clamp}\left(\frac{\sum_v \text{contribution}(o, v)}{\sum_v (\text{supporting}(o, v) + \text{contradicting}(o, v)) \times \text{weight}(v)}, -1.0, +1.0\right)$$
+
+$$\text{score}(o) = \text{clamp}\left(\frac{\sum_v \text{contribution}(o, v)}{\sum_v (\text{supporting}(o, v) + \text{contradicting}(o, v)) \times \text{weight}(v)}, -1.0, +1.0\right)$$
 
 - **Strict Evidence Qualification**: Directionless mentions never count as support.
 - **Comparability Invariant**: If option $A$ leads overall but has no directional evidence on values where option $B$ was assessed, the ranking is withheld unless the lead is preserved on commonly assessed values.
