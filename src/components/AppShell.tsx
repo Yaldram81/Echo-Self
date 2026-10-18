@@ -140,10 +140,10 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           {/* Navigation Items */}
           {isLandingPage ? (
             /* Public Landing Page Minimal Navigation */
-            <nav className="flex items-center justify-end gap-3 sm:gap-6 min-w-max">
+            <nav className="flex items-center justify-end gap-2 sm:gap-5">
               <button
                 onClick={scrollToHowItWorks}
-                className="text-xs sm:text-sm font-medium text-slateink hover:text-charcoal transition-colors px-2 py-1"
+                className="hidden sm:inline text-sm font-medium text-slateink hover:text-charcoal transition-colors px-2 py-1"
               >
                 How it works
               </button>
@@ -358,8 +358,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Main Content Area */}
       <main
         id="main-content"
-        className={`flex-1 w-full ${isLandingPage ? 'max-w-6xl' : 'max-w-6xl'} mx-auto shell-pad ${
-          isLandingPage ? 'py-8 md:py-16 pb-16' : 'py-8 md:py-12 pb-32 md:pb-16'
+        className={`flex-1 w-full max-w-6xl mx-auto shell-pad ${
+          isLandingPage ? 'py-4 md:py-8 pb-8' : 'py-8 md:py-12 pb-32 md:pb-16'
         }`}
       >
         {children}

@@ -76,11 +76,11 @@ export function HomePage() {
   ];
 
   return (
-    <div className="space-y-24 md:space-y-36">
+    <div className="space-y-14 md:space-y-20">
       {/* =========================================================================
           1. HERO SECTION
           ========================================================================= */}
-      <section className="pt-4 md:pt-10 max-w-4xl mx-auto text-center space-y-7">
+      <section className="pt-2 md:pt-6 max-w-4xl mx-auto text-center space-y-5">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-linen/70 border border-linen-dark/60 text-xs font-semibold uppercase tracking-wider text-terracotta-deep shadow-xs">
           <Sparkles className="w-3.5 h-3.5 text-terracotta" />
           <span>A more thoughtful kind of AI</span>
@@ -256,8 +256,8 @@ export function HomePage() {
       {/* =========================================================================
           3. THE PROBLEM WITH ORDINARY AI
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto py-6">
-        <div className="p-8 sm:p-12 rounded-3xl bg-charcoal text-paper shadow-card space-y-6 relative overflow-hidden">
+      <section className="max-w-4xl mx-auto">
+        <div className="p-6 sm:p-10 rounded-3xl bg-charcoal text-paper shadow-card space-y-5 relative overflow-hidden">
           <div className="relative z-10 space-y-4">
             <p className="text-xs uppercase tracking-[0.2em] text-amberclay-light font-semibold">
               The Grounding Gap
@@ -265,7 +265,7 @@ export function HomePage() {
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
               An answer can sound personal without being grounded.
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 text-sm leading-relaxed text-linen-light">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3 text-sm leading-relaxed text-linen-light">
               <p>
                 Standard conversational AI produces articulate, empathetic-sounding psychological advice. But behind the screen, you have no way to distinguish what you actually said from what the model invented or generalized from internet stereotypes.
               </p>
@@ -280,7 +280,7 @@ export function HomePage() {
       {/* =========================================================================
           4. HOW ECHOSELF WORKS
           ========================================================================= */}
-      <section id="how-it-works" className="max-w-5xl mx-auto space-y-12">
+      <section id="how-it-works" className="max-w-5xl mx-auto space-y-8">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             One Connected Experience
@@ -355,7 +355,7 @@ export function HomePage() {
       {/* =========================================================================
           5. THE SIGNATURE EXPERIENCE: EVIDENCE INSPECTOR
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-8">
+      <section className="max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Signature Experience
@@ -470,7 +470,7 @@ export function HomePage() {
       {/* =========================================================================
           6. DECISION MIRROR (Interactive Arithmetic Preview)
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-8">
+      <section className="max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Transparent Arithmetic
@@ -483,7 +483,7 @@ export function HomePage() {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-linen-dark/80 bg-white p-6 sm:p-8 shadow-card space-y-8">
+        <div className="rounded-3xl border border-linen-dark/80 bg-white p-6 sm:p-8 shadow-card space-y-6">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slateink-light">
               Active Dilemma
@@ -579,7 +579,7 @@ export function HomePage() {
       {/* =========================================================================
           7. TRUST, UNCERTAINTY, AND PRIVACY
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-8">
+      <section className="max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Architectural Guarantees
@@ -638,7 +638,7 @@ export function HomePage() {
       {/* =========================================================================
           8. FREQUENTLY ASKED QUESTIONS
           ========================================================================= */}
-      <section className="max-w-3xl mx-auto space-y-8">
+      <section className="max-w-3xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <h2 className="font-serif text-3xl font-bold text-charcoal tracking-tight">
             Frequently asked questions
@@ -675,7 +675,7 @@ export function HomePage() {
       {/* =========================================================================
           9. CLEAR CLOSING ACTION
           ========================================================================= */}
-      <section className="max-w-3xl mx-auto text-center space-y-6 pt-6 pb-12">
+      <section className="max-w-3xl mx-auto text-center space-y-5 pt-2 pb-6">
         <h2 className="font-serif text-3xl sm:text-5xl font-bold text-charcoal tracking-tight">
           Meet the self you can examine.
         </h2>
@@ -702,7 +702,7 @@ export function HomePage() {
         </div>
 
         {/* Minimal Restrained Footer */}
-        <div className="pt-16 mt-16 border-t border-linen-dark/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slateink">
+        <div className="pt-10 mt-10 border-t border-linen-dark/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slateink">
           <p>© EchoSelf · An evidence-grounded personal model.</p>
           <div className="flex items-center gap-4 text-slateink-dark">
             <button onClick={() => navigateTo('memories')} className="hover:underline">Demo Persona</button>
