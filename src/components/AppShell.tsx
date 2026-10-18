@@ -252,7 +252,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
       </footer>
 
-      <MobileBottomBar route={route} onOpenMore={() => setMenuOpen(true)} />
+      <MobileBottomBar route={route} />
     </div>
   );
 }

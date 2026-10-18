@@ -6,8 +6,11 @@ import {
   Compass,
   Scale,
   Home,
-  MoreHorizontal,
+  MoreVertical,
   MessageCircle,
+  History,
+  GitBranch,
+  Settings,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { navigateTo, type PageId, type Route } from '@/lib/router';
@@ -34,8 +37,7 @@ type NavTab = {
 };
 
 // Four primary destinations sit alongside the center add button. The rest
-// (Timeline, Graph, Settings) live behind the "More" tab, which opens the
-// same drawer the header hamburger uses.
+// (Beliefs, Timeline, Graph, Settings) live behind the 3-dots tray.
 const NAV_TABS: NavTab[] = [
   { page: 'home', label: 'Home', icon: Home },
   { page: 'memories', label: 'Memories', icon: BookOpen },
@@ -43,34 +45,41 @@ const NAV_TABS: NavTab[] = [
   { page: 'chat', label: 'Twin', icon: MessageCircle },
 ];
 
-export function MobileBottomBar({
-  route,
-  onOpenMore,
-}: {
-  route: Route;
-  onOpenMore: () => void;
-}) {
+const MORE_TABS: NavTab[] = [
+  { page: 'beliefs', label: 'Beliefs & Values', icon: Compass },
+  { page: 'timeline', label: 'Timeline', icon: History },
+  { page: 'graph', label: 'Evidence Graph', icon: GitBranch },
+  { page: 'settings', label: 'Settings', icon: Settings },
+];
+
+type Tray = 'add' | 'more' | null;
+
+export function MobileBottomBar({ route }: { route: Route }) {
   const { loading } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [tray, setTray] = useState<Tray>(null);
   const [burstKind, setBurstKind] = useState<QuickAddKind | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Don't show the bar on auth or not-found screens, or while session is unknown.
   const showBar = !loading && route.kind === 'app';
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
+  const moreActive =
+    currentPage === 'beliefs' ||
+    currentPage === 'timeline' ||
+    currentPage === 'graph' ||
+    currentPage === 'settings';
 
   useEffect(() => {
-    setOpen(false);
+    setTray(null);
   }, [route]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!tray) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') setTray(null);
     };
     const onPointer = (e: PointerEvent) => {
       const target = e.target as Element | null;
-      if (target && rootRef.current && !rootRef.current.contains(target)) setOpen(false);
+      if (target && rootRef.current && !rootRef.current.contains(target)) setTray(null);
     };
     window.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointer);
@@ -78,7 +87,7 @@ export function MobileBottomBar({
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointer);
     };
-  }, [open]);
+  }, [tray]);
 
   // After we navigate to a target page, open its form once the page mounts.
   useEffect(() => {
@@ -97,7 +106,7 @@ export function MobileBottomBar({
   if (!showBar) return null;
 
   const choose = (opt: AddOption) => {
-    setOpen(false);
+    setTray(null);
     const current = route.kind === 'app' ? route.page : null;
     const target: PageId = QUICK_ADD_PAGE[opt.kind];
     if (current === target && route.kind === 'app' && route.detailId === null) {
@@ -109,19 +118,19 @@ export function MobileBottomBar({
   };
 
   const goPage = (p: PageId) => {
-    setOpen(false);
+    setTray(null);
     if (currentPage === p && route.kind === 'app' && route.detailId === null) return;
     navigateTo(p);
   };
 
   return (
     <>
-      {open && (
+      {tray && (
         <button
           type="button"
-          aria-label="Close quick add"
+          aria-label="Close menu"
           tabIndex={-1}
-          onClick={() => setOpen(false)}
+          onClick={() => setTray(null)}
           className="lg:hidden fixed inset-0 z-40 bg-charcoal/30 backdrop-blur-[1px]"
         />
       )}
@@ -130,8 +139,8 @@ export function MobileBottomBar({
         className="lg:hidden fixed inset-x-0 bottom-0 z-50"
         aria-label="Quick actions"
       >
-        {/* Fan menu: sits above the bar. */}
-        {open && (
+        {/* Trays sit above the bar. */}
+        {tray === 'add' && (
           <div className="absolute inset-x-0 bottom-full pb-2 px-4 flex justify-center pointer-events-none">
             <ul
               role="menu"
@@ -163,12 +172,58 @@ export function MobileBottomBar({
           </div>
         )}
 
-        {/* The bar itself: nav tabs with a raised center add button. */}
+        {tray === 'more' && (
+          <div className="absolute inset-x-0 bottom-full pb-2 px-4 flex justify-center pointer-events-none">
+            <ul
+              role="menu"
+              aria-label="More navigation"
+              className="pointer-events-auto w-full max-w-xs grid gap-1.5 animate-[fadeIn_120ms_ease-out]"
+            >
+              {MORE_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = currentPage === tab.page;
+                return (
+                  <li key={tab.page}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => goPage(tab.page)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`w-full flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur border shadow-lifted px-4 py-3 text-left transition-colors ${
+                        active ? 'border-terracotta' : 'border-linen-dark hover:border-terracotta'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                          active ? 'bg-terracotta/10 text-terracotta-deep' : 'bg-linen text-slateink-dark'
+                        }`}
+                      >
+                        <Icon className="w-4.5 h-4.5" aria-hidden />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className={`block text-sm font-medium ${active ? 'text-terracotta-deep' : 'text-charcoal'}`}>
+                          {tab.label}
+                        </span>
+                      </span>
+                      {active && (
+                        <span className="text-[10px] uppercase tracking-wider text-terracotta-deep font-medium">
+                          here
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* The bar itself: 4 nav tabs + raised center add + 3-dots, one row. */}
         <nav
           aria-label="Mobile navigation"
           className="relative bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1"
         >
-          <div className="grid grid-cols-5 items-end gap-0.5 px-1">
+          <div className="grid grid-cols-6 items-end gap-0.5 px-1">
             {NAV_TABS.slice(0, 2).map((tab) => (
               <TabButton
                 key={tab.page}
@@ -182,15 +237,15 @@ export function MobileBottomBar({
             <div className="relative flex justify-center">
               <button
                 type="button"
-                onClick={() => setOpen((o) => !o)}
-                aria-expanded={open}
+                onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
+                aria-expanded={tray === 'add'}
                 aria-haspopup="menu"
-                aria-label={open ? 'Close add menu' : 'Add something'}
+                aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
                 className={`flex h-14 w-14 -mt-7 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
-                  open ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
+                  tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
                 }`}
               >
-                {open ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
+                {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
               </button>
             </div>
 
@@ -203,19 +258,20 @@ export function MobileBottomBar({
               />
             ))}
 
-            <TabButton
-              tab={{ page: 'settings', label: 'More', icon: MoreHorizontal }}
-              active={
-                currentPage === 'timeline' ||
-                currentPage === 'graph' ||
-                currentPage === 'settings' ||
-                currentPage === 'beliefs'
-              }
-              onClick={() => {
-                setOpen(false);
-                onOpenMore();
-              }}
-            />
+            {/* 3-dots: opens an inline tray of secondary destinations. */}
+            <button
+              type="button"
+              onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
+              aria-expanded={tray === 'more'}
+              aria-haspopup="menu"
+              aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
+              aria-current={moreActive ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[48px] rounded-lg transition-colors ${
+                moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
+              }`}
+            >
+              <MoreVertical className="w-5 h-5" aria-hidden />
+            </button>
           </div>
         </nav>
       </div>
