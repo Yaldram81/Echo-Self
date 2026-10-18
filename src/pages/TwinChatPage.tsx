@@ -112,6 +112,15 @@ export function TwinChatPage() {
   const memories = useAsyncData(() => memoriesService.list(), []);
   const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
   const { user, loading: authLoading } = useAuth();
+  const preferredUserName = useMemo(() => {
+    return (
+      user?.user_metadata?.preferred_name ||
+      user?.user_metadata?.display_name ||
+      localStorage.getItem('echoself:preferred_name') ||
+      localStorage.getItem('echoself:display_name') ||
+      ''
+    );
+  }, [user]);
   const flags = useAsyncData(
     async (): Promise<InterpretationFlag[]> => (user ? await flagsService.list() : []),
     [user?.id]
@@ -977,7 +986,9 @@ export function TwinChatPage() {
                   </div>
 
                   <h1 className="font-serif text-xl sm:text-2xl font-bold text-charcoal mb-2">
-                    What would you like to reflect on?
+                    {preferredUserName
+                      ? `What would you like to reflect on, ${preferredUserName}?`
+                      : 'What would you like to reflect on?'}
                   </h1>
                   <p className="text-xs sm:text-sm text-slateink max-w-md mb-8 leading-relaxed">
                     Consult your digital twin. Every response cites verified evidence from your
