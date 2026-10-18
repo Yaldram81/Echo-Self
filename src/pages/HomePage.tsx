@@ -14,18 +14,11 @@ import {
   GitBranch,
   Layers,
   Sliders,
-  ExternalLink,
-  MessageCircle,
-  Lock,
-  Database,
   ArrowUpRight,
   Share2,
-  FileText,
-  Search,
-  Eye,
   Check,
 } from 'lucide-react';
-import { navigateTo, hrefFor } from '@/lib/router';
+import { navigateTo } from '@/lib/router';
 
 export function HomePage() {
   // Section 1: Evidence Inspector Active Tab
@@ -782,66 +775,7 @@ export function HomePage() {
       </section>
 
       {/* =========================================================================
-          6. FOUR ARCHITECTURAL PILLARS OF TRUST (Bento Grid)
-          ========================================================================= */}
-      <section className="space-y-8">
-        <div className="max-w-xl space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
-            Architectural Guarantees
-          </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal tracking-tight">
-            Designed for total data sovereignty.
-          </h2>
-          <p className="text-xs sm:text-sm text-slateink leading-relaxed">
-            Personal AI cannot exist without ironclad boundaries. EchoSelf is built on security-first engineering.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="p-5 sm:p-6 rounded-2xl bg-white border border-linen-dark shadow-xs space-y-3">
-            <div className="w-9 h-9 rounded-xl bg-sage/15 text-sage-dark flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="font-serif font-bold text-base text-charcoal">Postgres RLS Security</h3>
-            <p className="text-xs text-slateink leading-relaxed">
-              Row-Level Security isolates your database rows. Even with full database access, no tenant can read another&apos;s records.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 rounded-2xl bg-white border border-linen-dark shadow-xs space-y-3">
-            <div className="w-9 h-9 rounded-xl bg-terracotta/15 text-terracotta flex items-center justify-center">
-              <Lock className="w-5 h-5" />
-            </div>
-            <h3 className="font-serif font-bold text-base text-charcoal">Zero Global Training</h3>
-            <p className="text-xs text-slateink leading-relaxed">
-              Your journals and memories are strictly used as private prompt context. They are never ingested into foundation training corpuses.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 rounded-2xl bg-white border border-linen-dark shadow-xs space-y-3">
-            <div className="w-9 h-9 rounded-xl bg-amberclay/15 text-amberclay-DEFAULT flex items-center justify-center">
-              <Database className="w-5 h-5" />
-            </div>
-            <h3 className="font-serif font-bold text-base text-charcoal">Instant JSON/CSV Export</h3>
-            <p className="text-xs text-slateink leading-relaxed">
-              Never get locked in. Download your entire history in open standard formats with one click in your account settings.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 rounded-2xl bg-white border border-linen-dark shadow-xs space-y-3">
-            <div className="w-9 h-9 rounded-xl bg-linen text-charcoal flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <h3 className="font-serif font-bold text-base text-charcoal">Authoritative Veto</h3>
-            <p className="text-xs text-slateink leading-relaxed">
-              You maintain final editorial authority. Confirm, edit, or delete any pattern or inference surfaced by your twin.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          7. FREQUENTLY ASKED QUESTIONS (Split 2-Column on Desktop)
+          6. FREQUENTLY ASKED QUESTIONS (Split 2-Column on Desktop)
           ========================================================================= */}
       <section className="pt-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
