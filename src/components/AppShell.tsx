@@ -555,12 +555,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Main Content Area */}
       <main
         id="main-content"
-        className={`flex-1 w-full mx-auto shell-pad ${
+        className={`flex-1 w-full mx-auto ${
           isLandingPage
-            ? 'max-w-7xl py-6 md:py-12 pb-12'
+            ? 'max-w-7xl py-6 md:py-12 pb-12 shell-pad'
             : page === 'chat'
-            ? 'max-w-6xl pt-2 pb-24 md:py-6'
-            : 'max-w-6xl py-6 md:py-10 pb-28 md:pb-16'
+            ? 'max-w-[1600px] h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4.25rem)] p-0 sm:p-2 md:p-3 overflow-hidden flex flex-col'
+            : 'max-w-6xl py-6 md:py-10 pb-28 md:pb-16 shell-pad'
         }`}
       >
         {children}
@@ -569,7 +569,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Site Footer System: Editorial PublicFooter on Public Landing, and Minimal Desktop Footer on In-App Workspace */}
       {isLandingPage ? (
         <PublicFooter />
-      ) : route.kind === 'app' ? (
+      ) : route.kind === 'app' && page !== 'chat' ? (
         <footer className="hidden md:block border-t border-linen-dark/50 mt-auto bg-paper">
           <div className="max-w-6xl mx-auto shell-pad py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slateink">
             <p className="leading-relaxed">
