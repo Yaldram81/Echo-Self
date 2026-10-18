@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   Trash2,
@@ -16,6 +16,7 @@ import type { Belief, BeliefKind } from '@/lib/types';
 import { RelationshipsPanel } from '@/components/RelationshipsPanel';
 import { BeliefForm } from '@/components/BeliefForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { onQuickAddRequest } from '@/lib/quickAdd';
 import {
   Card,
   SectionHeading,
@@ -38,6 +39,14 @@ export function BeliefsPage() {
   const [pendingDelete, setPendingDelete] = useState<Belief | null>(null);
   const [pendingDismiss, setPendingDismiss] = useState<Belief | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // The mobile bottom bar's "Quick add" fires this; open the same form the page
+  // button uses.
+  useEffect(() => onQuickAddRequest((kind) => {
+    if (kind !== 'belief') return;
+    setEditing(null);
+    setShowForm(true);
+  }), []);
 
   const confirmed = useMemo(
     () => (data ?? []).filter((b) => b.origin === 'user' || b.origin === 'confirmed_suggestion'),

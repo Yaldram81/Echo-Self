@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { MEMORY_CATEGORIES, type Memory, type MemoryCategory } from '@/lib/types';
 import { MemoryForm } from '@/components/MemoryForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { onQuickAddRequest } from '@/lib/quickAdd';
 import {
   Card,
   SectionHeading,
@@ -48,6 +49,14 @@ export function MemoriesPage() {
   const [editing, setEditing] = useState<Memory | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // The mobile bottom bar's "Quick add" fires this; open the same form the page
+  // button uses.
+  useEffect(() => onQuickAddRequest((kind) => {
+    if (kind !== 'memory') return;
+    setEditing(null);
+    setShowForm(true);
+  }), []);
 
   const allTags = useMemo(() => {
     const counts = new Map<string, number>();

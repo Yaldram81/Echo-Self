@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Scale, ChevronRight, RotateCcw } from 'lucide-react';
 import { decisionsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import type { Decision, DecisionStatus } from '@/lib/types';
 import { DecisionForm } from '@/components/DecisionForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { onQuickAddRequest } from '@/lib/quickAdd';
 import {
   Card,
   SectionHeading,
@@ -27,6 +28,14 @@ export function DecisionMirrorPage() {
   const [editing, setEditing] = useState<Decision | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Decision | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // The mobile bottom bar's "Quick add" fires this; open the same form the page
+  // button uses.
+  useEffect(() => onQuickAddRequest((kind) => {
+    if (kind !== 'decision') return;
+    setEditing(null);
+    setShowForm(true);
+  }), []);
 
   const unresolved = useMemo(() => (data ?? []).filter((d) => d.status === 'unresolved'), [data]);
   const decided = useMemo(() => (data ?? []).filter((d) => d.status === 'decided'), [data]);

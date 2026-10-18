@@ -4,6 +4,7 @@ import { Menu, X, Feather, LogOut, UserCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
+import { MobileBottomBar } from '@/components/MobileBottomBar';
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -235,11 +236,11 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         )}
       </header>
 
-      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12">
+      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12 pb-28 lg:pb-12">
         {children}
       </main>
 
-      <footer className="border-t border-linen-dark/60 mt-8">
+      <footer className="hidden lg:block border-t border-linen-dark/60 mt-8">
         <div className="max-w-6xl mx-auto shell-pad py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-slateink">
             EchoSelf: a personal knowledge and decision-support tool. Claims about you trace
@@ -250,6 +251,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           </p>
         </div>
       </footer>
+
+      <MobileBottomBar route={route} />
     </div>
   );
 }
