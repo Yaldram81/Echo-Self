@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Trash2,
@@ -13,9 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Scale,
-  Calendar,
-  Layers,
-  Filter,
+  Tag,
 } from 'lucide-react';
 import { beliefsService, memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
@@ -39,6 +37,8 @@ export function BeliefsPage() {
   const [filter, setFilter] = useState<'all' | 'user' | 'suggestions'>('all');
   const [kindFilter, setKindFilter] = useState<'all' | BeliefKind>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Belief | null>(null);
@@ -56,19 +56,40 @@ export function BeliefsPage() {
     setShowForm(true);
   }), []);
 
+  // Click outside listener for custom category dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    }
+    if (categoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [categoryDropdownOpen]);
+
   const confirmed = useMemo(
     () => (data ?? []).filter((b) => b.origin === 'user' || b.origin === 'confirmed_suggestion'),
     [data]
   );
   const suggestions = useMemo(() => (data ?? []).filter((b) => b.origin === 'suggestion'), [data]);
 
-  // Derive unique categories from existing data
-  const availableCategories = useMemo(() => {
+  // Derive unique categories and counts from existing data
+  const { availableCategories, categoryCounts } = useMemo(() => {
+    const counts: Record<string, number> = {};
     const set = new Set<string>();
     for (const b of data ?? []) {
-      if (b.category) set.add(b.category.toLowerCase().trim());
+      if (b.category) {
+        const cat = b.category.toLowerCase().trim();
+        set.add(cat);
+        counts[cat] = (counts[cat] ?? 0) + 1;
+      }
     }
-    return Array.from(set).sort();
+    return {
+      availableCategories: Array.from(set).sort(),
+      categoryCounts: counts,
+    };
   }, [data]);
 
   // Filtered dataset
@@ -162,61 +183,58 @@ export function BeliefsPage() {
         Statements you write or explicitly confirm are preserved as your core principles. Patterns noticed by your twin stay labeled as suggestions until you deliberate—nothing is confirmed or overwritten automatically.
       </p>
 
-      {/* Twin Suggestions Card (Shown when pending AI suggestions exist) */}
+      {/* Twin Suggestions in a compact Grid of 3 */}
       {suggestions.length > 0 && filter !== 'user' && (
-        <section aria-label="AI-suggested patterns" className="space-y-3">
+        <section aria-label="AI-suggested patterns" className="space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-amberclay-DEFAULT font-bold">
-              <Sparkles className="w-4 h-4" aria-hidden />
-              <span>Twin Suggestions ({suggestions.length} pending review)</span>
+            <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-amberclay-DEFAULT font-bold">
+              <Sparkles className="w-3.5 h-3.5" aria-hidden />
+              <span>Twin Suggestions ({suggestions.length})</span>
             </h2>
             <span className="text-[11px] text-slateink-light hidden sm:inline">
-              Confirming records as yours · Dismissing removes
+              Grounded in memory patterns
             </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {suggestions.map((s) => (
               <div
                 key={s.id}
-                className="rounded-2xl border border-amberclay-DEFAULT/40 bg-amberclay-light/25 p-4 sm:p-5 shadow-xs transition-all space-y-3"
+                className="flex flex-col justify-between rounded-2xl border border-amberclay-DEFAULT/35 bg-amberclay-light/20 p-3.5 sm:p-4 shadow-2xs hover:bg-amberclay-light/30 transition-all space-y-2.5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amberclay-DEFAULT/15 text-amberclay-DEFAULT border border-amberclay-DEFAULT/30">
-                      <Sparkles className="w-3 h-3" />
-                      AI Suggestion
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amberclay-DEFAULT/15 text-amberclay-DEFAULT">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>{s.kind}</span>
                     </span>
-                    <span className="text-xs font-semibold capitalize text-charcoal">
-                      {s.kind} · #{s.category}
-                    </span>
+                    <span className="text-[11px] font-medium text-slateink-light">#{s.category}</span>
                   </div>
-                  <span className="text-[11px] text-slateink-light">Pending review</span>
+
+                  <p className="font-serif text-xs sm:text-sm font-semibold text-charcoal leading-snug">
+                    “{s.statement}”
+                  </p>
+
+                  {s.description && (
+                    <p className="text-[11px] text-slateink leading-relaxed line-clamp-2" title={s.description}>
+                      {s.description}
+                    </p>
+                  )}
                 </div>
 
-                <p className="font-serif text-sm sm:text-base font-semibold text-charcoal leading-snug">
-                  “{s.statement}”
-                </p>
-
-                {s.description && (
-                  <p className="text-xs text-slateink leading-relaxed bg-white/60 p-2.5 rounded-xl border border-linen-dark/40">
-                    {s.description}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amberclay-DEFAULT/20">
+                <div className="flex items-center gap-2 pt-2 border-t border-amberclay-DEFAULT/25">
                   <button
                     onClick={() => handleConfirmSuggestion(s.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-sage-light border border-sage/40 px-3.5 py-1.5 text-xs font-semibold text-sage-dark hover:bg-sage hover:text-paper transition-all cursor-pointer shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-full bg-sage-light border border-sage/40 py-1.5 px-2 text-[11px] font-semibold text-sage-dark hover:bg-sage hover:text-paper transition-all cursor-pointer shadow-2xs"
                   >
-                    <Check className="w-3.5 h-3.5" aria-hidden />
-                    <span>Confirm as mine</span>
+                    <Check className="w-3 h-3" />
+                    <span>Confirm</span>
                   </button>
                   <button
                     onClick={() => setPendingDismiss(s)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark bg-white px-3.5 py-1.5 text-xs font-medium text-slateink-dark hover:border-clayred-DEFAULT hover:text-clayred-DEFAULT transition-all cursor-pointer shadow-2xs"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-linen-dark bg-white py-1.5 px-2.5 text-[11px] font-medium text-slateink hover:border-clayred-DEFAULT hover:text-clayred-DEFAULT transition-all cursor-pointer shadow-2xs"
                   >
-                    <X className="w-3.5 h-3.5" aria-hidden />
+                    <X className="w-3 h-3" />
                     <span>Dismiss</span>
                   </button>
                 </div>
@@ -315,7 +333,7 @@ export function BeliefsPage() {
           </div>
         </div>
 
-        {/* Secondary Filter Row: Source Tabs & Category Dropdown */}
+        {/* Secondary Filter Row: Source Tabs & Custom Category Dropdown */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
             <button
@@ -356,19 +374,82 @@ export function BeliefsPage() {
             )}
           </div>
 
-          {availableCategories.length > 1 && (
-            <div className="flex items-center gap-1.5 text-xs text-slateink-light">
-              <span className="hidden sm:inline">Category:</span>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="h-7 rounded-full border border-linen-dark bg-white/90 px-2.5 text-xs text-charcoal focus:border-terracotta focus:outline-none"
+          {/* Refined Custom Category Dropdown */}
+          {availableCategories.length > 0 && (
+            <div className="relative" ref={categoryDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setCategoryDropdownOpen((v) => !v)}
+                className={`inline-flex items-center gap-1.5 h-8 rounded-full border px-3 text-xs font-medium transition-all cursor-pointer shadow-2xs ${
+                  categoryFilter !== 'all'
+                    ? 'bg-terracotta/10 border-terracotta/40 text-terracotta-deep font-semibold'
+                    : 'bg-white/90 border-linen-dark text-slateink hover:text-charcoal hover:border-slateink-light'
+                }`}
+                aria-haspopup="listbox"
+                aria-expanded={categoryDropdownOpen}
               >
-                <option value="all">All categories</option>
-                {availableCategories.map((c) => (
-                  <option key={c} value={c}>#{c}</option>
-                ))}
-              </select>
+                <Tag className="w-3.5 h-3.5 text-terracotta" />
+                <span>{categoryFilter === 'all' ? 'All categories' : `#${categoryFilter}`}</span>
+                <ChevronDown
+                  className={`w-3 h-3 text-slateink-light transition-transform duration-150 ${
+                    categoryDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {categoryDropdownOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1.5 z-40 min-w-[190px] rounded-2xl border border-linen-dark bg-paper p-1.5 shadow-xl animate-[fadeIn_100ms_ease-out]"
+                  role="listbox"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryFilter('all');
+                      setCategoryDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                      categoryFilter === 'all'
+                        ? 'bg-terracotta text-paper font-semibold'
+                        : 'text-charcoal hover:bg-linen/70'
+                    }`}
+                  >
+                    <span>All categories</span>
+                    <span className="text-[11px] opacity-80 tabular-nums">({data?.length ?? 0})</span>
+                  </button>
+
+                  <div className="my-1 border-t border-linen-dark/60" />
+
+                  <div className="max-h-56 overflow-y-auto space-y-0.5">
+                    {availableCategories.map((cat) => {
+                      const isSelected = categoryFilter === cat;
+                      const count = categoryCounts[cat] ?? 0;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(cat);
+                            setCategoryDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-terracotta text-paper font-semibold'
+                              : 'text-charcoal hover:bg-linen/70'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                            <span className="truncate">#{cat}</span>
+                          </div>
+                          <span className="text-[10px] opacity-75 tabular-nums ml-2">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -462,20 +543,24 @@ export function BeliefsPage() {
         </div>
       )}
 
-      {/* Confirmation Dialogs */}
+      {/* Refined Confirmation Dialogs */}
       <ConfirmDialog
         open={pendingDismiss !== null}
         title="Dismiss this suggestion?"
         description="The suggested pattern will be removed and will not be re-suggested from the same records."
-        confirmLabel="Dismiss"
+        confirmLabel="Dismiss suggestion"
+        tone="warning"
+        previewText={pendingDismiss?.statement}
         onConfirm={handleDismissSuggestion}
         onCancel={() => setPendingDismiss(null)}
       />
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Delete this statement?"
-        description={`"${pendingDelete?.statement}" will be permanently removed. This cannot be undone.`}
-        confirmLabel="Delete"
+        description="This statement and all of its reflection history records will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete statement"
+        tone="danger"
+        previewText={pendingDelete?.statement}
         onConfirm={handleDelete}
         onCancel={() => setPendingDelete(null)}
       />

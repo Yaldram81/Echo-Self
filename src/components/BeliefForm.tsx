@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, X, Check, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { beliefsService } from '@/lib/services';
 import type { Belief, BeliefInput } from '@/lib/types';
 
@@ -29,7 +29,7 @@ export function BeliefForm({
 
   const valid = statement.trim().length > 0;
 
-  // Handle escape key to cancel
+  // Handle escape key to cancel and Cmd/Ctrl+Enter to submit
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
@@ -70,17 +70,20 @@ export function BeliefForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-charcoal/40 backdrop-blur-xs overflow-y-auto animate-[fadeIn_150ms_ease-out]">
-      <div className="relative w-full max-w-xl rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl p-5 sm:p-7 space-y-4 my-auto">
-        {/* Form Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-linen-dark/60 pb-3">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-charcoal/50 backdrop-blur-xs animate-[fadeIn_150ms_ease-out]"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl overflow-hidden">
+        {/* Fixed Header */}
+        <div className="px-5 py-4 border-b border-linen-dark/60 flex items-center justify-between shrink-0 bg-paper">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-terracotta-deep">
-                {existing ? 'Edit Principle' : 'Record Principle'}
-              </span>
-            </div>
-            <h3 className="font-serif text-lg sm:text-xl font-bold text-charcoal">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-terracotta-deep">
+              {existing ? 'Recalibrate' : 'New Principle'}
+            </span>
+            <h3 className="font-serif text-lg sm:text-xl font-bold text-charcoal leading-tight">
               {existing ? 'Edit statement' : 'Add a belief or value'}
             </h3>
           </div>
@@ -94,171 +97,169 @@ export function BeliefForm({
           </button>
         </div>
 
-        <p className="text-xs text-slateink leading-relaxed">
-          This record is grounded in your own identity. You can evolve or recalibrate its strength anytime.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Kind Toggle (Belief vs Value) */}
-          <div>
-            <label className="block text-xs font-semibold text-charcoal mb-1.5">Statement Type</label>
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-linen/60 border border-linen-dark/60">
-              <button
-                type="button"
-                onClick={() => setKind('belief')}
-                className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                  kind === 'belief'
-                    ? 'bg-paper text-charcoal shadow-2xs'
-                    : 'text-slateink hover:text-charcoal'
-                }`}
-              >
-                <span>💡</span>
-                <span>Belief (I believe…)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setKind('value')}
-                className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                  kind === 'value'
-                    ? 'bg-terracotta text-paper shadow-2xs'
-                    : 'text-slateink hover:text-charcoal'
-                }`}
-              >
-                <span>🧭</span>
-                <span>Value (I prize…)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Statement Input */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <label htmlFor="b-statement" className="text-xs font-semibold text-charcoal">
-                Statement <span className="text-clayred-DEFAULT">*</span>
-              </label>
-              <span className="text-[11px] text-slateink-light tabular-nums">{statement.length}/280</span>
-            </div>
-            <textarea
-              id="b-statement"
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              required
-              rows={2}
-              maxLength={280}
-              className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
-              placeholder={kind === 'belief' ? 'e.g. Long-term craft matters more than temporary acclaim.' : 'e.g. Intellectual honesty in relationships.'}
-              autoFocus
-            />
-          </div>
-
-          {/* Description Input */}
-          <div>
-            <label htmlFor="b-description" className="block text-xs font-semibold text-charcoal mb-1.5">
-              Context or Provenance <span className="text-[11px] font-normal text-slateink-light">(optional)</span>
-            </label>
-            <textarea
-              id="b-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
-              placeholder="Where did this conviction originate? What does it look like when tested?"
-            />
-          </div>
-
-          {/* Category & Suggested Tags */}
-          <div>
-            <label htmlFor="b-category" className="block text-xs font-semibold text-charcoal mb-1.5">
-              Category
-            </label>
-            <input
-              id="b-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full h-10 rounded-xl border border-linen-dark bg-white/95 px-3.5 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none mb-2"
-              placeholder="e.g. personal, career, creative…"
-            />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-slateink-light mr-1">Suggestions:</span>
-              {POPULAR_CATEGORIES.map((cat) => (
+        {/* Form Container with Scrollable Body */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="px-5 py-4 overflow-y-auto space-y-3.5 flex-1 overscroll-contain">
+            {/* Kind Toggle (Belief vs Value) */}
+            <div>
+              <label className="block text-xs font-semibold text-charcoal mb-1">Statement Type</label>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-linen/60 border border-linen-dark/60">
                 <button
-                  key={cat}
                   type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-2 py-0.5 rounded-full text-[11px] transition-all ${
-                    category.toLowerCase() === cat
-                      ? 'bg-terracotta/15 text-terracotta-deep font-semibold border border-terracotta/30'
-                      : 'bg-linen/60 text-slateink hover:bg-linen hover:text-charcoal'
+                  onClick={() => setKind('belief')}
+                  className={`py-1.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    kind === 'belief'
+                      ? 'bg-paper text-charcoal shadow-2xs'
+                      : 'text-slateink hover:text-charcoal'
                   }`}
                 >
-                  #{cat}
+                  <span>💡</span>
+                  <span>Belief (I believe…)</span>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setKind('value')}
+                  className={`py-1.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    kind === 'value'
+                      ? 'bg-terracotta text-paper shadow-2xs'
+                      : 'text-slateink hover:text-charcoal'
+                  }`}
+                >
+                  <span>🧭</span>
+                  <span>Value (I prize…)</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Strength Slider & Reviewed Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="p-3 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="b-strength" className="text-xs font-semibold text-charcoal">
-                  Conviction Strength
+            {/* Statement Input */}
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label htmlFor="b-statement" className="text-xs font-semibold text-charcoal">
+                  Statement <span className="text-clayred-DEFAULT">*</span>
                 </label>
-                <span className="text-xs font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-2 py-0.5 rounded-full">
-                  {strength}/100
-                </span>
+                <span className="text-[10px] text-slateink-light tabular-nums">{statement.length}/280</span>
               </div>
-              <input
-                id="b-strength"
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={strength}
-                onChange={(e) => setStrength(Number(e.target.value))}
-                className="w-full accent-terracotta cursor-pointer"
+              <textarea
+                id="b-statement"
+                value={statement}
+                onChange={(e) => setStatement(e.target.value)}
+                required
+                rows={2}
+                maxLength={280}
+                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
+                placeholder={kind === 'belief' ? 'e.g. Long-term craft matters more than temporary acclaim.' : 'e.g. Intellectual honesty in relationships.'}
+                autoFocus
               />
-              <div className="flex justify-between text-[10px] text-slateink-light">
-                <span>Emerging</span>
-                <span>Moderate</span>
-                <span>Core Pillar</span>
-              </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1.5">
-              <label htmlFor="b-reviewed" className="block text-xs font-semibold text-charcoal">
-                Date Grounded / Reviewed
+            {/* Context / Provenance */}
+            <div>
+              <label htmlFor="b-description" className="block text-xs font-semibold text-charcoal mb-1">
+                Context / Provenance <span className="text-[10px] font-normal text-slateink-light">(optional)</span>
+              </label>
+              <textarea
+                id="b-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
+                placeholder="Where did this originate? What does it look like in practice?"
+              />
+            </div>
+
+            {/* Category with Quick Tag Chips */}
+            <div>
+              <label htmlFor="b-category" className="block text-xs font-semibold text-charcoal mb-1">
+                Category
               </label>
               <input
-                id="b-reviewed"
-                type="date"
-                value={reviewed}
-                onChange={(e) => setReviewed(e.target.value)}
-                className="w-full h-9 rounded-xl border border-linen-dark bg-white px-3 text-xs text-charcoal focus:border-terracotta focus:outline-none"
+                id="b-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full h-9 rounded-xl border border-linen-dark bg-white/95 px-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none mb-1.5"
+                placeholder="e.g. personal, career, creative…"
               />
-              <p className="text-[10px] text-slateink-light">Marks your latest reflection point.</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {POPULAR_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`px-2 py-0.5 rounded-full text-[11px] transition-all cursor-pointer ${
+                      category.toLowerCase() === cat
+                        ? 'bg-terracotta/15 text-terracotta-deep font-semibold border border-terracotta/30'
+                        : 'bg-linen/60 text-slateink hover:bg-linen hover:text-charcoal'
+                    }`}
+                  >
+                    #{cat}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Strength Slider & Reviewed Date in 2 columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+              <div className="p-2.5 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="b-strength" className="text-[11px] font-semibold text-charcoal">
+                    Conviction Strength
+                  </label>
+                  <span className="text-xs font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-2 py-0.2 rounded-full">
+                    {strength}/100
+                  </span>
+                </div>
+                <input
+                  id="b-strength"
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={5}
+                  value={strength}
+                  onChange={(e) => setStrength(Number(e.target.value))}
+                  className="w-full accent-terracotta cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-slateink-light">
+                  <span>Emerging</span>
+                  <span>Moderate</span>
+                  <span>Core Pillar</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1">
+                <label htmlFor="b-reviewed" className="block text-[11px] font-semibold text-charcoal">
+                  Date Grounded / Reviewed
+                </label>
+                <input
+                  id="b-reviewed"
+                  type="date"
+                  value={reviewed}
+                  onChange={(e) => setReviewed(e.target.value)}
+                  className="w-full h-8 rounded-xl border border-linen-dark bg-white px-2.5 text-xs text-charcoal focus:border-terracotta focus:outline-none"
+                />
+                <p className="text-[9px] text-slateink-light">Marks your latest reflection point.</p>
+              </div>
+            </div>
+
+            {formError && (
+              <p role="alert" className="rounded-xl bg-clayred-light px-3.5 py-2 text-xs text-clayred-DEFAULT">
+                {formError}
+              </p>
+            )}
           </div>
 
-          {formError && (
-            <p role="alert" className="rounded-xl bg-clayred-light px-3.5 py-2 text-xs text-clayred-DEFAULT">
-              {formError}
-            </p>
-          )}
-
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-linen-dark/60">
+          {/* Fixed Footer */}
+          <div className="px-5 py-3.5 border-t border-linen-dark/60 bg-paper-soft/80 flex items-center justify-end gap-2.5 shrink-0">
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full px-4 py-2 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal hover:bg-linen/60 transition-colors"
+              className="rounded-full px-4 py-2 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!valid || saving}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-6 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98 cursor-pointer"
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-5 sm:px-6 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98 cursor-pointer"
             >
               {saving ? (
                 <>
