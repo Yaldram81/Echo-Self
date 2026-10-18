@@ -134,17 +134,29 @@ export function TwinChatPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <SectionHeading eyebrow="Dialogue" title="Twin Chat" as="h1" />
+    <div className="space-y-2 sm:space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-terracotta-deep font-semibold">Dialogue</p>
+          <h1 className="font-serif text-lg sm:text-3xl font-bold text-charcoal">Twin Chat</h1>
+        </div>
+        {!!user && (
+          <button
+            onClick={() => setShowCorrections((v) => !v)}
+            className="text-xs text-slateink hover:text-charcoal underline"
+          >
+            {showCorrections ? 'Hide corrections' : 'Show corrections'}
+          </button>
+        )}
+      </div>
 
       {notConfigured && (
-        <div className="card-surface border-clayred-light p-5 flex items-start gap-3">
+        <div className="card-surface border-clayred-light p-3 sm:p-5 flex items-start gap-3">
           <Settings2 className="w-5 h-5 text-clayred-DEFAULT shrink-0 mt-0.5" aria-hidden />
           <div>
             <p className="text-sm font-medium text-charcoal mb-1">AI provider not configured</p>
-            <p className="text-sm text-slateink leading-relaxed">
-              The twin runs server-side and needs an AI provider key before it can answer. Until
-              it's set up, you'll see a setup message here rather than a fabricated reply.
+            <p className="text-xs sm:text-sm text-slateink leading-relaxed">
+              The twin runs server-side and needs an AI provider key before it can answer.
             </p>
           </div>
         </div>
@@ -155,8 +167,8 @@ export function TwinChatPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={() => { memories.reload(); beliefs.reload(); }} />
       ) : (
-        <div className="card-surface flex flex-col h-[calc(100dvh-13rem)] min-h-[420px] lg:h-[70vh] lg:min-h-[460px]">
-          <div className="flex-1 overflow-y-auto scroll-elegant p-5 md:p-6 space-y-5">
+        <div className="card-surface flex flex-col h-[calc(100dvh-15.5rem)] md:h-[calc(100dvh-13.5rem)] lg:h-[72vh]">
+          <div className="flex-1 overflow-y-auto scroll-elegant p-3.5 sm:p-6 space-y-3.5 sm:space-y-5">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-4">
                 <Sparkles className="w-7 h-7 text-terracotta/70 mb-3" aria-hidden />
@@ -237,7 +249,7 @@ export function TwinChatPage() {
               e.preventDefault();
               send(input);
             }}
-            className="border-t border-linen-dark/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-end gap-3"
+            className="border-t border-linen-dark/60 p-2 sm:p-3.5 bg-white/70 backdrop-blur-xs flex items-center gap-2 sm:gap-3"
           >
             <label htmlFor="chat-input" className="sr-only">
               Ask your twin
@@ -249,15 +261,15 @@ export function TwinChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about priorities, conflicts, changes over time…"
-              className="flex-1 resize-none rounded-xl border border-linen-dark bg-white/80 px-4 py-3 text-sm leading-relaxed focus:border-terracotta max-h-32"
+              className="flex-1 resize-none rounded-xl border border-linen-dark bg-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm leading-relaxed focus:border-terracotta max-h-24 shadow-xs"
             />
             <button
               type="submit"
               disabled={!input.trim() || thinking}
               aria-label="Send message"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-terracotta text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-terracotta text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
             >
-              <Send className="w-4 h-4" aria-hidden />
+              <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden />
             </button>
           </form>
         </div>

@@ -359,7 +359,11 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       <main
         id="main-content"
         className={`flex-1 w-full max-w-6xl mx-auto shell-pad ${
-          isLandingPage ? 'py-4 md:py-8 pb-8' : 'py-8 md:py-12 pb-32 md:pb-16'
+          isLandingPage
+            ? 'py-4 md:py-8 pb-8'
+            : page === 'chat'
+            ? 'pt-2 pb-20 md:py-6'
+            : 'py-8 md:py-12 pb-32 md:pb-16'
         }`}
       >
         {children}

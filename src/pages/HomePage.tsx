@@ -137,7 +137,7 @@ export function HomePage() {
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-8 space-y-4 sm:space-y-6">
+          <div className="p-3 sm:p-7 space-y-3.5 sm:space-y-5">
             {/* User Query */}
             <div className="flex items-start gap-2 sm:gap-3 justify-end">
               <div className="bg-charcoal text-paper rounded-2xl rounded-tr-xs px-3.5 sm:px-5 py-2.5 sm:py-3 max-w-lg text-xs sm:text-sm font-medium shadow-xs">
@@ -151,8 +151,8 @@ export function HomePage() {
                 E
               </div>
 
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-paper-soft border border-linen-dark/70 rounded-2xl rounded-tl-xs p-3.5 sm:p-6 text-xs sm:text-base text-charcoal leading-relaxed space-y-2 sm:space-y-3">
+              <div className="flex-1 min-w-0 space-y-3 sm:space-y-4">
+                <div className="bg-paper-soft border border-linen-dark/70 rounded-2xl rounded-tl-xs p-3 sm:p-5 text-xs sm:text-base text-charcoal leading-relaxed space-y-2 sm:space-y-3">
                   <p>
                     Across your recorded choices, your hesitation isn&apos;t about leadership itself. It stems from an unaddressed tension between <strong>team autonomy</strong> and <strong>protecting your creative craft</strong>.
                   </p>
@@ -162,28 +162,31 @@ export function HomePage() {
                 </div>
 
                 {/* Interactive Citations Tray */}
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-2">
                   <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slateink-light">
-                    Cited Evidence Records:
+                    Cited Evidence Records (tap to inspect):
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
                     {/* Citation 1 */}
                     <button
                       onClick={() => setActiveCitation(activeCitation === 0 ? null : 0)}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
                         activeCitation === 0
                           ? 'bg-terracotta/10 border-terracotta ring-1 ring-terracotta/30 shadow-xs'
                           : 'bg-white border-linen-dark/70 hover:bg-linen/30'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-terracotta-deep flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5" /> Memory #1: Platform Offer
+                      <div className="flex items-center justify-between gap-1.5 text-xs">
+                        <span className="font-semibold text-terracotta-deep flex items-center gap-1.5 min-w-0">
+                          <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Memory #1: Platform Offer</span>
                         </span>
-                        <span className="text-[10px] bg-linen px-2 py-0.5 rounded-full font-medium">92% Match</span>
+                        <span className="shrink-0 text-[10px] bg-linen px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                          92% Match
+                        </span>
                       </div>
-                      <p className="text-xs text-charcoal mt-1 line-clamp-1">
+                      <p className="text-[11px] sm:text-xs text-charcoal mt-1 line-clamp-2 leading-relaxed">
                         &ldquo;He wants a big traditional role; I love building with the small team.&rdquo;
                       </p>
                     </button>
@@ -191,19 +194,22 @@ export function HomePage() {
                     {/* Citation 2 */}
                     <button
                       onClick={() => setActiveCitation(activeCitation === 1 ? null : 1)}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
                         activeCitation === 1
                           ? 'bg-terracotta/10 border-terracotta ring-1 ring-terracotta/30 shadow-xs'
                           : 'bg-white border-linen-dark/70 hover:bg-linen/30'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-terracotta-deep flex items-center gap-1.5">
-                          <Compass className="w-3.5 h-3.5" /> Belief: Direct Craft over Admin
+                      <div className="flex items-center justify-between gap-1.5 text-xs">
+                        <span className="font-semibold text-terracotta-deep flex items-center gap-1.5 min-w-0">
+                          <Compass className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Belief: Direct Craft</span>
                         </span>
-                        <span className="text-[10px] bg-linen px-2 py-0.5 rounded-full font-medium">Core Value</span>
+                        <span className="shrink-0 text-[10px] bg-linen px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                          Core Value
+                        </span>
                       </div>
-                      <p className="text-xs text-charcoal mt-1 line-clamp-1">
+                      <p className="text-[11px] sm:text-xs text-charcoal mt-1 line-clamp-2 leading-relaxed">
                         &ldquo;I do my best thinking with my hands in the code.&rdquo;
                       </p>
                     </button>
@@ -211,29 +217,29 @@ export function HomePage() {
 
                   {/* Expanded Citation Preview */}
                   {activeCitation === 0 && (
-                    <div className="p-4 rounded-xl bg-white border border-linen-dark shadow-sm text-xs space-y-2 animate-[fadeIn_120ms_ease-out]">
-                      <div className="flex items-center justify-between text-slateink-light">
-                        <span>Source: Personal Journal · Recorded Oct 14, 2026</span>
-                        <span className="text-terracotta-deep font-semibold">Reliability: 92%</span>
+                    <div className="p-3 sm:p-4 rounded-xl bg-white border border-linen-dark shadow-xs text-xs space-y-1.5 animate-[fadeIn_120ms_ease-out]">
+                      <div className="flex items-center justify-between text-slateink-light gap-2">
+                        <span className="truncate text-[11px] sm:text-xs">Personal Journal · Oct 14, 2026</span>
+                        <span className="shrink-0 text-terracotta-deep font-semibold text-[11px]">Reliability: 92%</span>
                       </div>
-                      <p className="text-charcoal leading-relaxed font-serif italic">
+                      <p className="text-charcoal leading-relaxed font-serif italic text-xs">
                         &ldquo;Two offers inside the company: a director role on a large org, or staying with the four-person platform team I helped build. Different kinds of leverage. What actually bothered me was the assumption that bigger org equals better work.&rdquo;
                       </p>
-                      <div className="flex items-center gap-1 text-[11px] text-slateink">
-                        <span className="px-2 py-0.5 rounded bg-linen">#career</span>
-                        <span className="px-2 py-0.5 rounded bg-linen">#decision</span>
-                        <span className="px-2 py-0.5 rounded bg-linen">#autonomy</span>
+                      <div className="flex items-center gap-1 pt-0.5 text-[10px] sm:text-[11px] text-slateink">
+                        <span className="px-1.5 py-0.5 rounded bg-linen">#career</span>
+                        <span className="px-1.5 py-0.5 rounded bg-linen">#decision</span>
+                        <span className="px-1.5 py-0.5 rounded bg-linen">#autonomy</span>
                       </div>
                     </div>
                   )}
 
                   {activeCitation === 1 && (
-                    <div className="p-4 rounded-xl bg-white border border-linen-dark shadow-sm text-xs space-y-2 animate-[fadeIn_120ms_ease-out]">
-                      <div className="flex items-center justify-between text-slateink-light">
-                        <span>Source: Confirmed Value Statement · Active</span>
-                        <span className="text-sage-dark font-semibold">Self-Affirmed</span>
+                    <div className="p-3 sm:p-4 rounded-xl bg-white border border-linen-dark shadow-xs text-xs space-y-1.5 animate-[fadeIn_120ms_ease-out]">
+                      <div className="flex items-center justify-between text-slateink-light gap-2">
+                        <span className="truncate text-[11px] sm:text-xs">Confirmed Value Statement · Active</span>
+                        <span className="shrink-0 text-sage-dark font-semibold text-[11px]">Self-Affirmed</span>
                       </div>
-                      <p className="text-charcoal leading-relaxed font-serif italic">
+                      <p className="text-charcoal leading-relaxed font-serif italic text-xs">
                         &ldquo;Craftsmanship and autonomy outrank organizational status. When coordination meetings exceed 15 hours a week, my cognitive clarity plummets.&rdquo;
                       </p>
                     </div>
@@ -246,6 +252,34 @@ export function HomePage() {
                       <strong>Honest Uncertainty:</strong> Zero recorded evidence regarding compensation pressure or family expectations.
                     </span>
                   </div>
+                </div>
+
+                {/* Interactive Chat Input Prompt Bar */}
+                <div className="pt-3 sm:pt-4 border-t border-linen-dark/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value="Ask about priorities, conflicts, changes over time…"
+                      onClick={() => navigateTo('chat')}
+                      className="w-full pl-3.5 pr-10 py-2 sm:py-2.5 rounded-full bg-linen-light/80 border border-linen-dark/80 text-xs text-slateink cursor-pointer hover:bg-white hover:border-terracotta/50 transition-colors shadow-xs"
+                    />
+                    <button
+                      onClick={() => navigateTo('chat')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-charcoal text-paper flex items-center justify-center hover:bg-charcoal/80 transition-colors"
+                      aria-label="Send query"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => navigateTo('chat')}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-2.5 rounded-full bg-terracotta text-paper text-xs font-semibold hover:bg-terracotta-dark transition-all shadow-xs shrink-0 active:scale-98"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Open Twin Chat</span>
+                  </button>
                 </div>
               </div>
             </div>
