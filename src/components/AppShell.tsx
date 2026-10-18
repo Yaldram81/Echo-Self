@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Menu, X, Feather, LogOut, UserCircle2 } from 'lucide-react';
+import { Menu, X, Feather, LogOut, UserCircle2, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -129,56 +129,49 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           </nav>
 
           <div className="flex items-center gap-2">
-            <div className="relative" data-account-menu>
+            {signedIn ? (
+              <div className="relative" data-account-menu>
+                <button
+                  onClick={() => setAccountOpen((o) => !o)}
+                  aria-expanded={accountOpen}
+                  aria-label="Account menu"
+                  className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-charcoal hover:bg-linen text-sm"
+                >
+                  <UserCircle2 className="w-5 h-5" aria-hidden />
+                  <span className="hidden md:inline max-w-32 truncate">
+                    {user!.email}
+                  </span>
+                </button>
+
+                {accountOpen && (
+                  <div
+                    className="absolute right-0 top-12 w-64 rounded-xl border border-linen-dark bg-white shadow-card py-2 z-50"
+                    role="menu"
+                  >
+                    <p className="px-4 py-2 text-xs text-slateink-light border-b border-linen-dark/60 truncate">
+                      Signed in as {user!.email}
+                    </p>
+                    <button
+                      role="menuitem"
+                      onClick={handleSignOut}
+                      className="w-full text-left px-4 py-2.5 text-sm text-charcoal hover:bg-linen inline-flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" aria-hidden />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
               <button
-                onClick={() => setAccountOpen((o) => !o)}
-                aria-expanded={accountOpen}
-                aria-label={signedIn ? 'Account menu' : 'Sign in or create an account'}
-                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-charcoal hover:bg-linen text-sm"
+                onClick={() => go('signin')}
+                aria-label="Sign in or create an account"
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-terracotta text-paper text-sm font-medium hover:bg-terracotta-dark transition-colors"
               >
                 <UserCircle2 className="w-5 h-5" aria-hidden />
-                <span className="hidden md:inline max-w-32 truncate">
-                  {signedIn ? user!.email : 'Sign in'}
-                </span>
+                <span className="hidden sm:inline">Sign in</span>
               </button>
-
-              {accountOpen && (
-                <div
-                  className="absolute right-0 top-12 w-64 rounded-xl border border-linen-dark bg-white shadow-card py-2 z-50"
-                  role="menu"
-                >
-                  {signedIn ? (
-                    <>
-                      <p className="px-4 py-2 text-xs text-slateink-light border-b border-linen-dark/60 truncate">
-                        Signed in as {user!.email}
-                      </p>
-                      <button
-                        role="menuitem"
-                        onClick={handleSignOut}
-                        className="w-full text-left px-4 py-2.5 text-sm text-charcoal hover:bg-linen inline-flex items-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" aria-hidden />
-                        Sign out
-                      </button>
-                    </>
-                  ) : (
-                    <div className="px-4 py-2.5 text-xs text-slateink leading-relaxed">
-                      {loading ? (
-                        'Checking your session…'
-                      ) : (
-                        <>
-                          You are browsing the shared sample.{' '}
-                          <a href="/signin" onClick={(e) => { e.preventDefault(); go('signin'); }} className="font-medium text-terracotta-deep hover:underline">
-                            Sign in
-                          </a>{' '}
-                          for a private workspace.
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
 
             <button
               ref={menuButtonRef}
@@ -253,6 +246,19 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       </footer>
 
       <MobileBottomBar route={route} />
+
+      {/* Floating Twin Chat shortcut — sits above the mobile bottom bar on
+          small screens, bottom-right on desktop. Hidden on the chat page and
+          on auth/not-found routes so it never competes with the active view. */}
+      {route.kind === 'app' && route.page !== 'chat' && (
+        <button
+          onClick={() => go('chat')}
+          aria-label="Open Twin Chat"
+          className="fixed z-40 inline-flex items-center justify-center h-14 w-14 rounded-full bg-charcoal text-paper shadow-lifted hover:bg-charcoal/90 hover:scale-105 active:scale-95 transition-all bottom-[5.5rem] right-4 lg:bottom-6 lg:right-6"
+        >
+          <MessageCircle className="w-6 h-6" aria-hidden />
+        </button>
+      )}
     </div>
   );
 }
