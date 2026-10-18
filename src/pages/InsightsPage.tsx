@@ -23,10 +23,11 @@ import {
   ChevronUp,
   Info,
   CheckCircle2,
+  FolderOpen,
 } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { navigateTo } from '@/lib/router';
-import { SectionHeading, Card, Badge, LoadingState } from '@/components/ui';
+import { SectionHeading, Card, Badge, LoadingState, FilterDropdown, type FilterDropdownOption } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { insightService } from '@/lib/insightService';
 import type {
@@ -129,6 +130,26 @@ const QUALITY_META: Record<EvidenceQuality, { label: string; badgeClass: string;
     desc: 'Data is too sparse to substantiate a recurring pattern.',
   },
 };
+
+const INSIGHT_CATEGORY_OPTIONS: FilterDropdownOption<InsightCategory | 'all'>[] = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'recurring_theme', label: 'Recurring Themes' },
+  { value: 'decision_approach', label: 'Decision Approaches' },
+  { value: 'belief_evolution', label: 'Belief Evolution' },
+  { value: 'repeated_obstacle', label: 'Obstacles & Concerns' },
+  { value: 'value_alignment', label: 'Value Alignment' },
+  { value: 'priority_tension', label: 'Priority Tensions' },
+  { value: 'reflection_question', label: 'Reflection Questions' },
+  { value: 'missing_information', label: 'Missing Information' },
+];
+
+const QUALITY_OPTIONS: FilterDropdownOption<EvidenceQuality | 'all'>[] = [
+  { value: 'all', label: 'All Evidence' },
+  { value: 'multiple_examples', label: 'Multiple supporting records' },
+  { value: 'single_example', label: 'Single recorded example' },
+  { value: 'conflicting_evidence', label: 'Conflicting records exist' },
+  { value: 'limited_recent', label: 'Recent evidence is limited' },
+];
 
 export function InsightsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -546,37 +567,27 @@ export function InsightsPage() {
           )}
         </div>
 
-        {/* Category Filter */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-slateink shrink-0" />
-          <select
+        {/* Filters */}
+        <div className="flex items-center gap-2 shrink-0">
+          <FilterDropdown<InsightCategory | 'all'>
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as InsightCategory | 'all')}
-            className="h-9 px-2.5 rounded-xl border border-linen-dark/80 bg-white text-xs text-charcoal focus:outline-none focus:border-terracotta shadow-2xs cursor-pointer"
-          >
-            <option value="all">All Categories</option>
-            <option value="recurring_theme">Recurring Themes</option>
-            <option value="decision_approach">Decision Approaches</option>
-            <option value="belief_evolution">Belief Evolution</option>
-            <option value="repeated_obstacle">Obstacles & Concerns</option>
-            <option value="value_alignment">Value Alignment</option>
-            <option value="priority_tension">Priority Tensions</option>
-            <option value="reflection_question">Reflection Questions</option>
-            <option value="missing_information">Missing Information</option>
-          </select>
+            defaultValue="all"
+            options={INSIGHT_CATEGORY_OPTIONS}
+            onChange={setCategoryFilter}
+            icon={FolderOpen}
+            title="Filter by Category"
+            ariaLabel="Filter by Category"
+          />
 
-          {/* Evidence Quality Filter */}
-          <select
+          <FilterDropdown<EvidenceQuality | 'all'>
             value={qualityFilter}
-            onChange={(e) => setQualityFilter(e.target.value as EvidenceQuality | 'all')}
-            className="h-9 px-2.5 rounded-xl border border-linen-dark/80 bg-white text-xs text-charcoal focus:outline-none focus:border-terracotta shadow-2xs cursor-pointer"
-          >
-            <option value="all">All Evidence Qualities</option>
-            <option value="multiple_examples">Multiple supporting records</option>
-            <option value="single_example">Single recorded example</option>
-            <option value="conflicting_evidence">Conflicting records exist</option>
-            <option value="limited_recent">Recent evidence is limited</option>
-          </select>
+            defaultValue="all"
+            options={QUALITY_OPTIONS}
+            onChange={setQualityFilter}
+            icon={ShieldCheck}
+            title="Filter by Evidence Quality"
+            ariaLabel="Filter by Evidence Quality"
+          />
         </div>
       </div>
 

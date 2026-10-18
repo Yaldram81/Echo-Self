@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Loader2, Info, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Info, X, ChevronDown, Check } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export function Card({
   children,
@@ -182,6 +183,147 @@ export function StrengthMeter({ value }: { value: number }) {
         ))}
       </div>
       <span className="text-[11px] text-slateink tabular-nums">{value}/100</span>
+    </div>
+  );
+}
+
+export interface FilterDropdownOption<T extends string = string> {
+  value: T;
+  label: string;
+  badge?: string | number;
+}
+
+export function FilterDropdown<T extends string = string>({
+  value,
+  defaultValue = 'all' as T,
+  options,
+  onChange,
+  icon: Icon,
+  title,
+  ariaLabel,
+  fullWidth = false,
+  align = 'left',
+  className = '',
+}: {
+  value: T;
+  defaultValue?: T;
+  options: FilterDropdownOption<T>[];
+  onChange: (value: T) => void;
+  icon?: LucideIcon;
+  title?: string;
+  ariaLabel?: string;
+  fullWidth?: boolean;
+  align?: 'left' | 'right';
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [open]);
+
+  const activeOption = options.find((o) => o.value === value) ?? options[0];
+  const activeLabel = activeOption?.label ?? String(value);
+  const isCustomActive = value !== defaultValue;
+
+  return (
+    <div ref={ref} className={`relative ${fullWidth ? 'w-full' : 'inline-block'} ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`h-9 sm:h-10 inline-flex items-center gap-1.5 rounded-full border px-3 text-xs sm:text-sm font-medium transition-all shadow-xs cursor-pointer ${
+          fullWidth ? 'w-full justify-between' : ''
+        } ${
+          isCustomActive
+            ? 'border-terracotta bg-terracotta/10 text-terracotta-deep font-semibold'
+            : 'border-linen-dark bg-white/90 text-slateink-dark hover:border-terracotta hover:bg-white'
+        }`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={ariaLabel || title || 'Filter option'}
+      >
+        <span className="inline-flex items-center gap-1.5 truncate">
+          {Icon && (
+            <Icon
+              className={`w-3.5 h-3.5 shrink-0 ${
+                isCustomActive ? 'text-terracotta' : 'text-slateink-light'
+              }`}
+              aria-hidden="true"
+            />
+          )}
+          <span className="truncate max-w-[130px] sm:max-w-[180px]">{activeLabel}</span>
+          {activeOption?.badge !== undefined && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-linen-dark/60 text-slateink font-bold">
+              {activeOption.badge}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${
+            open ? 'rotate-180' : ''
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 min-w-[170px] sm:min-w-[200px] max-w-[280px] max-h-64 overflow-y-auto rounded-2xl bg-paper-soft/95 backdrop-blur-md border border-linen-dark/80 shadow-xl p-1.5 z-50 space-y-0.5 animate-[fadeIn_120ms_ease-out]`}
+        >
+          {title && (
+            <div className="px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-slateink-light">
+              {title}
+            </div>
+          )}
+          {options.map((opt) => {
+            const isSelected = value === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-terracotta/15 text-terracotta-deep font-semibold'
+                    : 'text-slateink-dark hover:bg-linen/80 hover:text-charcoal'
+                }`}
+              >
+                <span className="truncate pr-2">{opt.label}</span>
+                <span className="flex items-center gap-1 shrink-0">
+                  {opt.badge !== undefined && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-linen-dark/50 text-slateink font-medium">
+                      {opt.badge}
+                    </span>
+                  )}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

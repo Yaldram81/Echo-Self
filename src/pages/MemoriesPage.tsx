@@ -593,8 +593,7 @@ function CategoryDropdown({
       >
         <span className="inline-flex items-center gap-1.5 truncate">
           <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${category !== 'all' ? 'text-terracotta' : 'text-slateink-light'}`} />
-          <span className="text-slateink-light text-[11px] uppercase tracking-wider hidden md:inline">Category:</span>
-          <span className="capitalize truncate max-w-[100px] sm:max-w-none">{activeLabel}</span>
+          <span className="capitalize truncate max-w-[120px] sm:max-w-none">{activeLabel}</span>
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -700,8 +699,7 @@ function TimeDropdown({
       >
         <span className="inline-flex items-center gap-1.5 truncate">
           <Calendar className={`w-3.5 h-3.5 shrink-0 ${dateRange !== 'all' ? 'text-terracotta' : 'text-slateink-light'}`} />
-          <span className="text-slateink-light text-[11px] uppercase tracking-wider hidden md:inline">When:</span>
-          <span className="truncate max-w-[100px] sm:max-w-none">{activeLabel}</span>
+          <span className="truncate max-w-[120px] sm:max-w-none">{activeLabel}</span>
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>

@@ -22,10 +22,11 @@ import {
   Scale,
   RefreshCw,
   Info,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { navigateTo } from '@/lib/router';
-import { SectionHeading, Card, Badge, LoadingState } from '@/components/ui';
+import { SectionHeading, Card, Badge, LoadingState, FilterDropdown } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
   reviewService,
@@ -379,18 +380,19 @@ export function ReviewCenterPage() {
             </button>
           </div>
 
-          {/* Sort Control */}
-          <div className="flex items-center gap-1.5 text-xs text-slateink shrink-0">
-            <span className="hidden sm:inline">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
-              className="text-xs bg-white border border-linen-dark rounded-lg px-2 py-1 text-charcoal focus:outline-none focus:border-terracotta"
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-          </div>
+          {/* Sort Dropdown */}
+          <FilterDropdown<'newest' | 'oldest'>
+            value={sortBy}
+            defaultValue="newest"
+            options={[
+              { value: 'newest', label: 'Newest first' },
+              { value: 'oldest', label: 'Oldest first' },
+            ]}
+            onChange={setSortBy}
+            icon={ArrowUpDown}
+            title="Sort Items"
+            align="right"
+          />
         </div>
 
         {/* Category Pills & Search */}

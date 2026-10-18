@@ -21,15 +21,16 @@ import {
   CheckCircle2,
   ShieldCheck,
   Feather,
-  BookOpen,
   Filter,
   X,
+  BookOpen,
+  FolderOpen,
 } from 'lucide-react';
 import { capturesService, memoriesService } from '@/lib/services';
 import { geminiService } from '@/lib/geminiService';
 import { navigateTo } from '@/lib/router';
 import { onQuickAddRequest } from '@/lib/quickAdd';
-import { SectionHeading, Card, Badge, LoadingState } from '@/components/ui';
+import { SectionHeading, Card, Badge, LoadingState, FilterDropdown } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useAuth } from '@/lib/useAuth';
 import {
@@ -44,6 +45,14 @@ import {
 } from '@/lib/types';
 
 const DRAFT_STORAGE_KEY = 'echoself:capture_inbox_draft';
+
+const CAPTURE_DOMAIN_OPTIONS = [
+  { value: 'all', label: 'All domains' },
+  ...MEMORY_CATEGORIES.map((cat) => ({
+    value: cat,
+    label: cat.replace('_', ' '),
+  })),
+];
 
 export function CaptureInboxPage() {
   const { user, loading: authLoading } = useAuth();
@@ -714,18 +723,15 @@ export function CaptureInboxPage() {
             />
           </div>
 
-          <select
+          <FilterDropdown
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-2.5 py-1 text-xs border border-linen-dark rounded-xl bg-white focus:border-terracotta focus:outline-none"
-          >
-            <option value="all">All domains</option>
-            {MEMORY_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
+            defaultValue="all"
+            options={CAPTURE_DOMAIN_OPTIONS}
+            onChange={setCategoryFilter}
+            icon={FolderOpen}
+            title="Filter by Domain"
+            ariaLabel="Filter by Domain"
+          />
         </div>
       </div>
 

@@ -31,6 +31,7 @@ import {
   Bot,
   SlidersHorizontal,
   RotateCcw,
+  FolderOpen,
 } from 'lucide-react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { memoriesService, beliefsService, flagsService } from '@/lib/services';
@@ -38,7 +39,7 @@ import { askTwin, twinMode, TwinUnavailableError } from '@/lib/twinService';
 import type { TwinMode } from '@/lib/twinService';
 import type { ChatMessage, Memory, TwinReply, InterpretationFlag, MemoryCategory } from '@/lib/types';
 import { useAsyncData } from '@/hooks/useAsyncData';
-import { LoadingState, ErrorState } from '@/components/ui';
+import { LoadingState, ErrorState, FilterDropdown, type FilterDropdownOption } from '@/components/ui';
 import { formatMemoryForContext } from '@/lib/retrieval';
 import { useAuth } from '@/lib/useAuth';
 import { CorrectionsPanel } from '@/components/CorrectionsPanel';
@@ -52,6 +53,15 @@ interface ChatSession {
 }
 
 const STORAGE_KEY = 'echoself_twin_sessions_v2';
+
+const CHAT_DOMAIN_OPTIONS: FilterDropdownOption<'all' | MemoryCategory>[] = [
+  { value: 'all', label: 'All records' },
+  { value: 'work', label: 'Work & Career' },
+  { value: 'relationship', label: 'Relationships' },
+  { value: 'personal_growth', label: 'Personal Growth' },
+  { value: 'health', label: 'Health & Habits' },
+  { value: 'other', label: 'Other' },
+];
 
 const SUGGESTED_CARDS = [
   {
@@ -865,22 +875,16 @@ export function TwinChatPage() {
             </div>
 
             {/* Focus Memory Category Dropdown */}
-            <div className="hidden sm:inline-flex items-center gap-1 pl-2">
-              <label htmlFor="cat-filter" className="sr-only">Focus Category</label>
-              <select
-                id="cat-filter"
+            <div className="hidden sm:inline-flex items-center pl-1.5">
+              <FilterDropdown<'all' | MemoryCategory>
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value as 'all' | MemoryCategory)}
-                className="h-7 rounded-full border border-linen-dark bg-white/80 px-2.5 text-[11px] font-medium text-slateink-dark hover:border-terracotta focus:outline-none cursor-pointer"
-                title="Target specific life domain"
-              >
-                <option value="all">Domain: All records</option>
-                <option value="work">Domain: Work & Career</option>
-                <option value="relationship">Domain: Relationships</option>
-                <option value="personal_growth">Domain: Personal Growth</option>
-                <option value="health">Domain: Health & Habits</option>
-                <option value="other">Domain: Other</option>
-              </select>
+                defaultValue="all"
+                options={CHAT_DOMAIN_OPTIONS}
+                onChange={setCategoryFilter}
+                icon={FolderOpen}
+                title="Target Domain"
+                ariaLabel="Focus Domain"
+              />
             </div>
           </div>
 
