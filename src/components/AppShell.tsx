@@ -149,17 +149,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               </span>
             </a>
 
-            {isLandingPage && (
+            {isLandingPage && !signedIn && (
               <span className="hidden xl:inline-block pl-3 border-l border-linen-dark/80 text-xs text-slateink font-medium">
                 Your experiences, understood in context.
               </span>
             )}
           </div>
 
-          {/* Navigation Items */}
-          {isLandingPage ? (
+          {/* Navigation Items: Public Landing Nav when signed-out on home page; Workspace Nav when signed-in or in workspace */}
+          {isLandingPage && !signedIn ? (
             /* =========================================================================
-               1. PUBLIC LANDING NAVBAR
+               1. PUBLIC LANDING NAVBAR (Signed-out on landing page)
                ========================================================================= */
             <div className="flex items-center gap-2 sm:gap-4" data-public-menu>
               {/* Desktop Public Nav Links */}

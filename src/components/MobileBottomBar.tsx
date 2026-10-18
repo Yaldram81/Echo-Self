@@ -41,7 +41,8 @@ export function MobileBottomBar({ route }: { route: Route }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  const showBar = !loading && route.kind === 'app' && route.page !== 'home' && route.page !== 'chat';
+  const signedIn = !loading && !!user;
+  const showBar = !loading && route.kind === 'app' && route.page !== 'chat' && (signedIn || route.page !== 'home');
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
 
   const isMorePageActive = SECONDARY_DESTINATIONS.some((item) => item.page === currentPage);
