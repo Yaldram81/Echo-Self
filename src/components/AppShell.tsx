@@ -114,7 +114,11 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   const userDisplayName = user?.email ? user.email.split('@')[0] : 'Account';
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper text-charcoal">
+    <div
+      className={`flex flex-col bg-paper text-charcoal ${
+        page === 'chat' ? 'h-dvh overflow-hidden' : 'min-h-screen'
+      }`}
+    >
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:shadow-card focus:ring-2 focus:ring-terracotta"
@@ -555,12 +559,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Main Content Area */}
       <main
         id="main-content"
-        className={`flex-1 w-full mx-auto ${
+        className={`w-full mx-auto ${
           isLandingPage
-            ? 'max-w-7xl py-6 md:py-12 pb-12 shell-pad'
+            ? 'flex-1 max-w-7xl py-6 md:py-12 pb-12 shell-pad'
             : page === 'chat'
-            ? 'max-w-[1600px] h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4.25rem)] p-0 sm:p-2 md:p-3 overflow-hidden flex flex-col'
-            : 'max-w-6xl py-6 md:py-10 pb-28 md:pb-16 shell-pad'
+            ? 'flex-1 min-h-0 w-full overflow-hidden flex flex-col p-0'
+            : 'flex-1 max-w-6xl py-6 md:py-10 pb-28 md:pb-16 shell-pad'
         }`}
       >
         {children}

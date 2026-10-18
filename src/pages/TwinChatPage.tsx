@@ -480,7 +480,7 @@ export function TwinChatPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-row bg-paper rounded-2xl md:rounded-3xl border border-linen-dark/80 shadow-xs overflow-hidden relative">
+    <div className="h-full w-full flex flex-row bg-paper overflow-hidden relative">
       {/* =========================================================================
           1. CHATGPT-STYLE COLLAPSIBLE SIDEBAR (Desktop)
           ========================================================================= */}
@@ -719,6 +719,43 @@ export function TwinChatPage() {
               ))}
             </div>
 
+            {/* Quick Workspace Navigation on Mobile */}
+            <div className="px-3 py-2.5 border-t border-linen-dark/60 bg-linen/25">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light mb-1.5 pl-0.5">
+                Workspace
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 text-xs font-medium">
+                <a
+                  href="/memories"
+                  className="px-2.5 py-2 rounded-xl bg-white border border-linen-dark/70 text-charcoal hover:border-terracotta flex items-center gap-1.5 shadow-2xs"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-terracotta" />
+                  <span>Memories</span>
+                </a>
+                <a
+                  href="/decisions"
+                  className="px-2.5 py-2 rounded-xl bg-white border border-linen-dark/70 text-charcoal hover:border-amberclay-DEFAULT flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Scale className="w-3.5 h-3.5 text-amberclay-DEFAULT" />
+                  <span>Decisions</span>
+                </a>
+                <a
+                  href="/beliefs"
+                  className="px-2.5 py-2 rounded-xl bg-white border border-linen-dark/70 text-charcoal hover:border-sage-dark flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Compass className="w-3.5 h-3.5 text-sage-dark" />
+                  <span>Beliefs</span>
+                </a>
+                <a
+                  href="/"
+                  className="px-2.5 py-2 rounded-xl bg-white border border-linen-dark/70 text-charcoal hover:border-charcoal flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-slateink" />
+                  <span>Home</span>
+                </a>
+              </div>
+            </div>
+
             <div className="p-3 border-t border-linen-dark flex items-center justify-between text-xs">
               <button
                 type="button"
@@ -734,7 +771,7 @@ export function TwinChatPage() {
               <button
                 type="button"
                 onClick={clearAllHistory}
-                className="text-clayred-DEFAULT text-xs"
+                className="text-clayred-DEFAULT text-xs hover:underline cursor-pointer"
               >
                 Clear all
               </button>
