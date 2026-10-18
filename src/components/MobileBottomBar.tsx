@@ -223,60 +223,60 @@ export function MobileBottomBar({ route }: { route: Route }) {
             the five main items. */}
         <nav
           aria-label="Mobile navigation"
-          className="relative bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1"
+          className="relative flex items-center bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] h-16 pr-1 pb-[max(0rem,env(safe-area-inset-bottom))]"
         >
-          <div className="flex items-end">
-            <div className="flex-1 grid grid-cols-5 items-end gap-0.5 px-1 min-w-0">
-              {NAV_TABS.slice(0, 2).map((tab) => (
-                <TabButton
-                  key={tab.page}
-                  tab={tab}
-                  active={currentPage === tab.page}
-                  onClick={() => goPage(tab.page)}
-                />
-              ))}
+          {/* 5 evenly-distributed slots; the center slot hosts the
+              absolutely-centered plus button so padding never offsets it. */}
+          <div className="flex-1 grid grid-cols-5 items-center gap-0 min-w-0 h-full">
+            {NAV_TABS.slice(0, 2).map((tab) => (
+              <TabButton
+                key={tab.page}
+                tab={tab}
+                active={currentPage === tab.page}
+                onClick={() => goPage(tab.page)}
+              />
+            ))}
 
-              {/* Center add button, raised above the bar. */}
-              <div className="relative flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
-                  aria-expanded={tray === 'add'}
-                  aria-haspopup="menu"
-                  aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
-                  className={`flex h-14 w-14 -mt-7 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
-                    tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
-                  }`}
-                >
-                  {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
-                </button>
-              </div>
-
-              {NAV_TABS.slice(2).map((tab) => (
-                <TabButton
-                  key={tab.page}
-                  tab={tab}
-                  active={currentPage === tab.page}
-                  onClick={() => goPage(tab.page)}
-                />
-              ))}
+            {/* Center add button, absolutely centered within its slot. */}
+            <div className="relative flex items-center justify-center h-full">
+              <button
+                type="button"
+                onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
+                aria-expanded={tray === 'add'}
+                aria-haspopup="menu"
+                aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
+                className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
+                  tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
+                }`}
+              >
+                {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
+              </button>
             </div>
 
-            {/* 3-dots: opens an inline tray of secondary destinations. */}
-            <button
-              type="button"
-              onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
-              aria-expanded={tray === 'more'}
-              aria-haspopup="menu"
-              aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
-              aria-current={moreActive ? 'page' : undefined}
-              className={`flex shrink-0 w-12 items-center justify-center min-h-[48px] rounded-lg transition-colors ${
-                moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
-              }`}
-            >
-              <MoreVertical className="w-5 h-5" aria-hidden />
-            </button>
+            {NAV_TABS.slice(2).map((tab) => (
+              <TabButton
+                key={tab.page}
+                tab={tab}
+                active={currentPage === tab.page}
+                onClick={() => goPage(tab.page)}
+              />
+            ))}
           </div>
+
+          {/* Far-right 3-dots: narrow, non-stretching, hugs the edge. */}
+          <button
+            type="button"
+            onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
+            aria-expanded={tray === 'more'}
+            aria-haspopup="menu"
+            aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
+            aria-current={moreActive ? 'page' : undefined}
+            className={`flex shrink-0 items-center justify-center px-1.5 min-h-[48px] rounded-lg transition-colors ${
+              moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
+            }`}
+          >
+            <MoreVertical className="w-5 h-5" aria-hidden />
+          </button>
         </nav>
       </div>
     </>
