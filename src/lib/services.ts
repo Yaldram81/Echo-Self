@@ -314,11 +314,38 @@ export const decisionsService = {
     if (nextStrength === null || Number.isNaN(nextStrength)) {
       throw new Error('Proposal does not carry a valid strength change.');
     }
+
+    // Attempt atomic server-side RPC execution
+    try {
+      const { data, error } = await supabase.rpc('apply_decision_proposal', {
+        p_decision_id: decisionId,
+        p_proposal_id: proposal.id,
+        p_belief_id: proposal.beliefId,
+        p_next_strength: nextStrength,
+        p_status: 'approved',
+      });
+      if (!error && data) return;
+    } catch {
+      // Fall through to sequential client write if RPC not present in environment
+    }
+
     const { error } = await supabase
       .from('beliefs')
       .update({ strength: nextStrength, last_reviewed: new Date().toISOString() })
       .eq('id', proposal.beliefId);
     if (error) throw new Error(error.message);
+
+    // Record in beliefs_history
+    try {
+      await supabase.from('beliefs_history').insert({
+        belief_id: proposal.beliefId,
+        strength: nextStrength,
+        note: `Adjusted via Review Center from decision proposal`,
+      });
+    } catch {
+      // Non-blocking
+    }
+
     await this.saveProposal(decisionId, proposal);
   },
 };
@@ -413,7 +440,7 @@ export const dataManagementService = {
    * graph edge confirmations. Sample rows are excluded.
    */
   async exportAll(): Promise<Record<string, unknown[]>> {
-    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships', 'captures'] as const;
+    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships', 'captures', 'review_actions_log'] as const;
     const out: Record<string, unknown[]> = {};
     for (const table of tables) {
       // Personal workspaces only: the public sample rows (user_id IS NULL)

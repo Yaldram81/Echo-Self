@@ -28,6 +28,7 @@ const EvidenceGraphPage = lazy(() => import('@/pages/EvidenceGraphPage').then((m
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const CaptureInboxPage = lazy(() => import('@/pages/CaptureInboxPage').then((m) => ({ default: m.CaptureInboxPage })));
+const ReviewCenterPage = lazy(() => import('@/pages/ReviewCenterPage').then((m) => ({ default: m.ReviewCenterPage })));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -118,6 +119,7 @@ function SwitchPage({ page }: { page: PageId }) {
     case 'settings': return <SettingsPage />;
     case 'profile': return <ProfilePage />;
     case 'inbox': return <CaptureInboxPage />;
+    case 'review': return <ReviewCenterPage />;
     default: return <HomePage />;
   }
 }

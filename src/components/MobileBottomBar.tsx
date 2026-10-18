@@ -15,6 +15,7 @@ import {
   User,
   Sparkles,
   Inbox,
+  CheckSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -31,6 +32,7 @@ interface SecondaryNavItem {
 
 const SECONDARY_DESTINATIONS: SecondaryNavItem[] = [
   { page: 'inbox', label: 'Capture Inbox', description: 'Quick thoughts & reflection drafts', icon: Inbox },
+  { page: 'review', label: 'Review Center', description: 'Inspect & govern pending AI suggestions', icon: CheckSquare },
   { page: 'beliefs', label: 'Beliefs & Values', description: 'Confirmed principles & confidence', icon: Compass },
   { page: 'graph', label: 'Evidence Graph', description: 'Visual map of records & tensions', icon: GitBranch },
   { page: 'timeline', label: 'Timeline', description: 'Chronological history of moments', icon: History },
@@ -192,7 +194,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
           <div className="space-y-1">
             {(signedIn
               ? SECONDARY_DESTINATIONS
-              : SECONDARY_DESTINATIONS.filter((item) => item.page !== 'inbox' && item.page !== 'profile')
+              : SECONDARY_DESTINATIONS.filter((item) => item.page !== 'inbox' && item.page !== 'profile' && item.page !== 'review')
             ).map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.page;

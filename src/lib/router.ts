@@ -15,13 +15,14 @@ export type PageId =
   | 'settings'
   | 'profile'
   | 'inbox'
+  | 'review'
   | 'signin'
   | 'signup';
 
-export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox'];
+export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review'];
 
 /** Pages that show a user's own records; signed-out visitors are sent to sign-in. */
-export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox'];
+export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review'];
 
 export type Route =
   | { kind: 'auth'; mode: 'signin' | 'signup' }
@@ -94,6 +95,7 @@ export const ROUTE_META: Record<string, { title: string; description: string }> 
   settings: { title: 'Settings & Privacy: EchoSelf', description: 'Export or delete your records; review what the app stores and what it never does.' },
   profile: { title: 'My Profile: EchoSelf', description: 'Your personal model identity, activity statistics, and workspace settings.' },
   inbox: { title: 'Capture Inbox: EchoSelf', description: 'Quickly capture thoughts, reflections, and fleeting observations before promoting them to memories.' },
+  review: { title: 'Review Center: EchoSelf', description: 'Inspect, approve, edit, or dismiss pending AI suggestions and proposed changes.' },
   signin: { title: 'Sign in: EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
   signup: { title: 'Create account: EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
   notFound: { title: 'Page not found: EchoSelf', description: 'This address does not match any page in EchoSelf.' },

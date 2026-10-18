@@ -18,6 +18,7 @@ import {
   Settings,
   Eye,
   Inbox,
+  CheckSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -466,6 +467,28 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   </a>
                 )}
 
+                {/* Review Center Fast Action (Only visible when signed in) */}
+                {signedIn && (
+                  <a
+                    href={hrefFor('review')}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      go('review');
+                    }}
+                    aria-current={page === 'review' ? 'page' : undefined}
+                    className={`hidden lg:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
+                      page === 'review'
+                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
+                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
+                    }`}
+                    title="Review Center"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
+                    <span>Review</span>
+                  </a>
+                )}
+
                 {/* Twin Chat Primary Action */}
                 <a
                   href={hrefFor('chat')}
@@ -529,6 +552,20 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         >
                           <Inbox className="w-4 h-4 text-terracotta" aria-hidden="true" />
                           <span>Capture Inbox</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => go('review')}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                            page === 'review'
+                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
+                              : 'text-charcoal hover:bg-linen/60'
+                          }`}
+                        >
+                          <CheckSquare className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                          <span>Review Center</span>
                         </button>
 
                         <button

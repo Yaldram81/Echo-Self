@@ -68,6 +68,9 @@ const DATA_TABLES = [
   'timeline_events',
   'interpretation_flags',
   'graph_edge_confirmations',
+  'statement_relationships',
+  'captures',
+  'review_actions_log',
 ] as const;
 
 export function SettingsPage() {
