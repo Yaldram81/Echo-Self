@@ -353,7 +353,7 @@ export function MemoriesPage() {
                 }`}
               >
                 <span className="md:hidden">+{Math.max(0, allTags.length - 6)} more</span>
-                <span className="hidden md:inline">Read more tags ({Math.max(0, allTags.length - 8)})</span>
+                <span className="hidden md:inline">more tags ({Math.max(0, allTags.length - 8)})</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slateink-light shrink-0" />
               </button>
             )}
