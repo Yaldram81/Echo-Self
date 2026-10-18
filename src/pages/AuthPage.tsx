@@ -11,8 +11,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
-import { SectionHeading } from '@/components/ui';
 import { supabase } from '@/lib/supabaseClient';
 import { authErrorMessage } from '@/lib/authMessages';
 import type { Memory } from '@/lib/types';
@@ -94,28 +95,29 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
   };
 
   return (
-    <div className="max-w-md mx-auto space-y-6 pb-28 sm:pb-16 px-1 sm:px-0">
-      {/* Top Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-terracotta/10 border border-terracotta/20 text-terracotta-deep shadow-2xs mb-1">
-          <Feather className="w-6 h-6" aria-hidden />
+    <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto animate-[fadeIn_150ms_ease-out]">
+      {/* Auth Card */}
+      <div className="card-surface p-5 sm:p-7 rounded-3xl border border-linen-dark/80 bg-paper/95 backdrop-blur-md shadow-card space-y-4 sm:space-y-5">
+        {/* Card Header */}
+        <div className="text-center space-y-1.5">
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-terracotta to-terracotta-dark text-paper shadow-xs mb-1">
+            <Feather className="w-5 h-5" aria-hidden />
+          </div>
+          <h1 className="font-serif text-xl sm:text-2xl font-bold text-charcoal tracking-tight">
+            {mode === 'signin' ? 'Welcome back' : 'Create your workspace'}
+          </h1>
+          <p className="text-xs text-slateink leading-relaxed max-w-xs mx-auto">
+            {mode === 'signin'
+              ? 'Sign in to access your private memories, decisions, and twin.'
+              : 'Your experiences, beliefs, and reflections in strict privacy.'}
+          </p>
         </div>
-        <SectionHeading
-          eyebrow="Account"
-          title={mode === 'signin' ? 'Sign in to EchoSelf' : 'Create your workspace'}
-          as="h1"
-        />
-        <p className="text-xs sm:text-sm text-slateink max-w-sm mx-auto leading-relaxed">
-          {mode === 'signin'
-            ? 'Sign in to access your private memories, decisions, and personalized twin.'
-            : 'Start with a clean, private workspace protected by row-level database security.'}
-        </p>
-      </div>
 
-      {/* Main Auth Card */}
-      <div className="card-surface p-5 sm:p-7 rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper shadow-xs space-y-5">
         {/* Segmented Mode Switcher */}
-        <div className="p-1 rounded-full bg-linen border border-linen-dark/80 flex items-center" role="tablist">
+        <div
+          className="p-1 rounded-full bg-linen border border-linen-dark/80 flex items-center"
+          role="tablist"
+        >
           <button
             type="button"
             role="tab"
@@ -145,14 +147,21 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
         </div>
 
         {/* Auth Form */}
-        <form onSubmit={handleSubmit} className="space-y-4" aria-label={mode === 'signin' ? 'Sign in form' : 'Sign up form'}>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-3 sm:space-y-3.5"
+          aria-label={mode === 'signin' ? 'Sign in form' : 'Sign up form'}
+        >
           {/* Email Field */}
           <div>
-            <label htmlFor="auth-email" className="block text-xs font-semibold text-charcoal mb-1.5">
+            <label htmlFor="auth-email" className="block text-xs font-semibold text-charcoal mb-1">
               Email address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slateink-light pointer-events-none" aria-hidden />
+              <Mail
+                className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slateink-light pointer-events-none"
+                aria-hidden
+              />
               <input
                 id="auth-email"
                 type="email"
@@ -161,14 +170,14 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full h-11 pl-10 pr-4 rounded-xl border border-linen-dark bg-white text-xs sm:text-sm text-charcoal placeholder:text-slateink-light focus:outline-none focus:ring-1 focus:ring-terracotta/50 focus:border-terracotta transition-all shadow-2xs"
+                className="w-full h-10 sm:h-10.5 pl-10 pr-3.5 rounded-xl border border-linen-dark bg-white text-xs sm:text-sm text-charcoal placeholder:text-slateink-light focus:outline-none focus:border-terracotta transition-all shadow-2xs"
               />
             </div>
           </div>
 
           {/* Password Field */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1">
               <label htmlFor="auth-password" className="block text-xs font-semibold text-charcoal">
                 Password
               </label>
@@ -177,7 +186,10 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
               )}
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slateink-light pointer-events-none" aria-hidden />
+              <Lock
+                className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slateink-light pointer-events-none"
+                aria-hidden
+              />
               <input
                 id="auth-password"
                 type={showPassword ? 'text' : 'password'}
@@ -187,7 +199,7 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-11 pl-10 pr-10 rounded-xl border border-linen-dark bg-white text-xs sm:text-sm text-charcoal placeholder:text-slateink-light focus:outline-none focus:ring-1 focus:ring-terracotta/50 focus:border-terracotta transition-all shadow-2xs font-mono"
+                className="w-full h-10 sm:h-10.5 pl-10 pr-10 rounded-xl border border-linen-dark bg-white text-xs sm:text-sm text-charcoal placeholder:text-slateink-light focus:outline-none focus:border-terracotta transition-all shadow-2xs font-mono"
               />
               <button
                 type="button"
@@ -202,16 +214,22 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
 
           {/* Error & Status Alerts */}
           {error && (
-            <div role="alert" className="rounded-xl bg-clayred-light/60 border border-clayred-light p-3 text-xs text-clayred-DEFAULT flex items-start gap-2">
+            <div
+              role="alert"
+              className="rounded-xl bg-clayred-light/60 border border-clayred-light p-2.5 text-xs text-clayred-DEFAULT flex items-start gap-2 shadow-2xs"
+            >
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-              <span className="leading-relaxed">{error}</span>
+              <span className="leading-snug">{error}</span>
             </div>
           )}
 
           {notice && (
-            <div role="status" className="rounded-xl bg-sage-light/60 border border-sage/40 p-3 text-xs text-sage-dark flex items-start gap-2">
+            <div
+              role="status"
+              className="rounded-xl bg-sage-light/60 border border-sage/40 p-2.5 text-xs text-sage-dark flex items-start gap-2 shadow-2xs"
+            >
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-              <span className="leading-relaxed">{notice}</span>
+              <span className="leading-snug">{notice}</span>
             </div>
           )}
 
@@ -219,7 +237,7 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-full bg-charcoal text-paper text-xs sm:text-sm font-semibold hover:bg-slateink-dark transition-all disabled:opacity-50 shadow-xs cursor-pointer"
+            className="w-full h-10 sm:h-10.5 inline-flex items-center justify-center gap-2 rounded-full bg-charcoal text-paper text-xs sm:text-sm font-semibold hover:bg-terracotta transition-all duration-150 disabled:opacity-50 shadow-xs cursor-pointer active:scale-98"
           >
             {busy ? (
               <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />
@@ -232,40 +250,28 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
           </button>
         </form>
 
-        {/* Footer Link */}
-        <p className="text-center text-xs text-slateink pt-1">
-          {mode === 'signin' ? (
-            <>
-              Don't have an account yet?{' '}
-              <button
-                type="button"
-                onClick={() => switchMode('signup')}
-                className="font-semibold text-terracotta-deep hover:text-terracotta-dark hover:underline cursor-pointer"
-              >
-                Create one now
-              </button>
-            </>
-          ) : (
-            <>
-              Already registered?{' '}
-              <button
-                type="button"
-                onClick={() => switchMode('signin')}
-                className="font-semibold text-terracotta-deep hover:text-terracotta-dark hover:underline cursor-pointer"
-              >
-                Sign in to your account
-              </button>
-            </>
-          )}
-        </p>
-      </div>
+        {/* Fast-Pass Demo Option */}
+        <div className="pt-2 border-t border-linen-dark/60 space-y-2">
+          <a
+            href="/memories"
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+              e.preventDefault();
+              navigateTo('memories');
+            }}
+            className="w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-full border border-linen-dark/80 bg-white/80 hover:bg-linen text-slateink-dark hover:text-charcoal text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-terracotta" />
+            <span>Explore Demo Persona (Jordan)</span>
+            <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+          </a>
+        </div>
 
-      {/* Trust & Privacy Footnote */}
-      <div className="flex items-start gap-2 text-center justify-center max-w-sm mx-auto text-xs text-slateink-light leading-relaxed">
-        <ShieldCheck className="w-4 h-4 text-sage-dark shrink-0 mt-0.5" aria-hidden />
-        <span>
-          Private by design: records are protected by database row-level security. The public sample persona remains separate and read-only.
-        </span>
+        {/* Trust & Security Footnote */}
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slateink-light text-center pt-0.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-sage-dark shrink-0" aria-hidden />
+          <span>Row-level database security · Private by design</span>
+        </div>
       </div>
     </div>
   );

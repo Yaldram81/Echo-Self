@@ -116,7 +116,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   return (
     <div
       className={`flex flex-col bg-paper text-charcoal ${
-        page === 'chat' ? 'h-dvh overflow-hidden' : 'min-h-screen'
+        page === 'chat' || route.kind === 'auth' ? 'h-dvh overflow-hidden' : 'min-h-screen'
       }`}
     >
       <a
@@ -564,6 +564,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             ? 'flex-1 max-w-7xl py-6 md:py-12 pb-12 shell-pad'
             : page === 'chat'
             ? 'flex-1 min-h-0 w-full overflow-hidden flex flex-col p-0'
+            : route.kind === 'auth'
+            ? 'flex-1 min-h-0 w-full overflow-y-auto flex items-center justify-center p-3 sm:p-4'
             : 'flex-1 max-w-6xl py-6 md:py-10 pb-28 md:pb-16 shell-pad'
         }`}
       >
