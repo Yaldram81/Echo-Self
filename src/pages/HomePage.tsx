@@ -9,7 +9,6 @@ import {
   Badge,
   ConfidenceBar,
   StrengthMeter,
-  DemoModeBanner,
 } from '@/components/ui';
 
 export function HomePage() {
@@ -47,9 +46,6 @@ export function HomePage() {
           Your twin reflects only what has been recorded (memories, beliefs, and open
           decisions), each traceable to its source.
         </p>
-        <div className="mt-6">
-          <DemoModeBanner />
-        </div>
       </section>
 
       {loading ? (

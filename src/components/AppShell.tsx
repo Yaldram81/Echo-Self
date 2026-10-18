@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
 import { MobileBottomBar } from '@/components/MobileBottomBar';
+import { SampleDataToast } from '@/components/ui';
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -240,12 +241,16 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             back to recorded evidence.
           </p>
           <p className="text-xs text-slateink-light">
-            {signedIn ? 'Your private workspace' : 'Demo persona · Sample data (read-only)'}
+            {signedIn ? 'Your private workspace' : 'A quiet space for self-examination.'}
           </p>
         </div>
       </footer>
 
       <MobileBottomBar route={route} />
+
+      {/* Floating, auto-dismissing sample-data notice for signed-out
+          visitors. Disappears on its own after 3 seconds. */}
+      {!signedIn && !loading && <SampleDataToast />}
 
       {/* Floating Twin Chat shortcut — sits above the mobile bottom bar on
           small screens, bottom-right on desktop. Hidden on the chat page and

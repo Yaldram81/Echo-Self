@@ -10,7 +10,7 @@ import {
   type PersistedRelationshipInput,
 } from '@/lib/relationshipService';
 import type { Belief, Memory } from '@/lib/types';
-import { Card, Badge, DemoModeBanner } from '@/components/ui';
+import { Card, Badge } from '@/components/ui';
 
 /**
  * Statement relationships panel (Upgrade 3).
@@ -188,7 +188,6 @@ export function RelationshipsPanel({ beliefs, memories }: { beliefs: Belief[]; m
         established relationship only when you confirm it. Records differing is never a judgment
         about you.
       </p>
-      <DemoModeBanner />
 
       <div className="flex flex-wrap gap-2">
         {(['tensions', 'all', 'confirmed'] as const).map((f) => (

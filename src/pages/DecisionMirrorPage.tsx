@@ -13,7 +13,6 @@ import {
   ErrorState,
   EmptyState,
   Badge,
-  DemoModeBanner,
 } from '@/components/ui';
 
 const STATUS_TONES: Record<DecisionStatus, 'amber' | 'sage' | 'neutral'> = {
@@ -55,7 +54,6 @@ export function DecisionMirrorPage() {
   return (
     <div className="space-y-8">
       <SectionHeading eyebrow="Deliberation" title="Decision Mirror" as="h1" />
-      <DemoModeBanner />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
         Lay out a decision with its constraints, uncertainties, and the values it touches. The

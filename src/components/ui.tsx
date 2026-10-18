@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Info, X } from 'lucide-react';
 
 export function Card({
   children,
@@ -122,18 +123,32 @@ export function EmptyState({
   );
 }
 
-export function DemoModeBanner() {
+export function SampleDataToast() {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!visible) return null;
+
   return (
-    <div className="flex items-start gap-3 bg-amberclay-light/60 border border-amberclay-DEFAULT/40 rounded-xl px-4 py-3">
-      <span
-        className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-amberclay-DEFAULT px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
-      >
-        Sample data
+    <div
+      role="status"
+      className="fixed left-1/2 -translate-x-1/2 bottom-[5.5rem] lg:bottom-6 z-40 flex items-center gap-2.5 rounded-full bg-charcoal/95 text-paper shadow-lifted pl-3.5 pr-2 py-2 max-w-[calc(100vw-2rem)]"
+    >
+      <Info className="w-4 h-4 shrink-0 text-amberclay-light" aria-hidden />
+      <span className="text-xs leading-snug">
+        Viewing sample data — a fictional demo persona.
       </span>
-      <p className="text-xs leading-relaxed text-charcoal-soft">
-        Everything here is a fictional demo persona, not your data. Explore freely: add or
-        remove things to see how the app behaves.
-      </p>
+      <button
+        onClick={() => setVisible(false)}
+        aria-label="Dismiss"
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-paper/80 hover:text-paper hover:bg-white/10 transition-colors"
+      >
+        <X className="w-3.5 h-3.5" aria-hidden />
+      </button>
     </div>
   );
 }

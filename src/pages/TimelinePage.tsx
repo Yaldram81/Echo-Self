@@ -16,7 +16,6 @@ import {
   ErrorState,
   EmptyState,
   Badge,
-  DemoModeBanner,
 } from '@/components/ui';
 
 const KIND_META: Record<TimelineEntry['kind'], { icon: typeof Brain; tone: 'terracotta' | 'sage' | 'amber' | 'neutral'; label: string }> = {
@@ -148,7 +147,6 @@ export function TimelinePage() {
   return (
     <div className="space-y-8">
       <SectionHeading eyebrow="Chronology" title="Timeline" as="h1" />
-      <DemoModeBanner />
 
       <p className="max-w-2xl text-sm text-slateink leading-relaxed">
         Memories, decisions, confirmed belief changes, and outcome reflections in one sequence.

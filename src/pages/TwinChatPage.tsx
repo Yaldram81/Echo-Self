@@ -6,7 +6,7 @@ import { askTwin, twinMode, TwinUnavailableError } from '@/lib/twinService';
 import type { TwinMode } from '@/lib/twinService';
 import type { ChatMessage, Memory, TwinReply } from '@/lib/types';
 import { useAsyncData } from '@/hooks/useAsyncData';
-import { SectionHeading, LoadingState, ErrorState, DemoModeBanner } from '@/components/ui';
+import { SectionHeading, LoadingState, ErrorState } from '@/components/ui';
 import { formatMemoryForContext } from '@/lib/retrieval';
 import { useAuth } from '@/lib/useAuth';
 import { CorrectionsPanel } from '@/components/CorrectionsPanel';
@@ -136,16 +136,6 @@ export function TwinChatPage() {
   return (
     <div className="space-y-6">
       <SectionHeading eyebrow="Dialogue" title="Twin Chat" as="h1" />
-      {mode === 'demo' && <DemoModeBanner />}
-
-      {mode === 'demo' && (
-        <div className="rounded-xl border border-terracotta/25 bg-terracotta/10 px-4 py-3 text-xs leading-relaxed text-terracotta-deep">
-          <strong className="font-semibold">Sample conversation mode.</strong> Replies are
-          composed locally from the sample persona's records using keyword retrieval; no AI
-          provider is connected. Answers are grounded in the records shown in the evidence
-          panels, but they are not model-generated.
-        </div>
-      )}
 
       {notConfigured && (
         <div className="card-surface border-clayred-light p-5 flex items-start gap-3">
@@ -154,8 +144,7 @@ export function TwinChatPage() {
             <p className="text-sm font-medium text-charcoal mb-1">AI provider not configured</p>
             <p className="text-sm text-slateink leading-relaxed">
               The twin runs server-side and needs an AI provider key before it can answer. Until
-              it's set up, you'll see a setup message here rather than a fabricated reply. You
-              can still explore the sample conversation mode below.
+              it's set up, you'll see a setup message here rather than a fabricated reply.
             </p>
           </div>
         </div>
@@ -414,11 +403,6 @@ function TwinMessage({
   return (
     <div className="flex justify-start">
       <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-linen-light border border-linen-dark/60 px-4 py-3">
-        {mode === 'demo' && (
-          <p className="text-[10px] uppercase tracking-[0.15em] text-amberclay-DEFAULT mb-2">
-            Sample reply: composed locally from records
-          </p>
-        )}
         <p className="whitespace-pre-line text-sm leading-relaxed text-charcoal">
           {message.content}
         </p>
