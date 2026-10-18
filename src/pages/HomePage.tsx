@@ -314,7 +314,7 @@ export function HomePage() {
       {/* =========================================================================
           4. HOW ECHOSELF WORKS
           ========================================================================= */}
-      <section id="how-it-works" className="max-w-5xl mx-auto space-y-5 sm:space-y-8">
+      <section id="how-it-works" className="max-w-5xl mx-auto space-y-5 sm:space-y-8 scroll-mt-24">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             One Connected Experience
@@ -504,7 +504,7 @@ export function HomePage() {
       {/* =========================================================================
           6. DECISION MIRROR (Interactive Arithmetic Preview)
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      <section id="decision-mirror" className="max-w-4xl mx-auto space-y-4 sm:space-y-6 scroll-mt-24">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Transparent Arithmetic
