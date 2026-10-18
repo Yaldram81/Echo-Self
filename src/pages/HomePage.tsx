@@ -28,9 +28,6 @@ import {
 import { navigateTo, hrefFor } from '@/lib/router';
 
 export function HomePage() {
-  // Hero Preview State: Active Citation
-  const [activeCitation, setActiveCitation] = useState<number | null>(0);
-
   // Section 1: Evidence Inspector Active Tab
   const [inspectorTab, setInspectorTab] = useState<'support' | 'conflict' | 'unknown'>('support');
 
@@ -128,22 +125,18 @@ export function HomePage() {
   return (
     <div className="space-y-16 sm:space-y-24 md:space-y-32">
       {/* =========================================================================
-          1. ASTONISHING HERO SECTION (Left Editorial / Right Live Preview Split)
+          1. REFINED EDITORIAL HERO SECTION (Light, Breathable Left/Right Split)
           ========================================================================= */}
-      <section className="pt-2 sm:pt-6 lg:pt-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-          {/* Left Column: Bold Editorial Narrative (7 cols on lg) */}
-          <div className="lg:col-span-7 space-y-6 sm:space-y-7">
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-linen/80 border border-linen-dark/80 text-xs font-semibold text-terracotta-deep shadow-2xs">
+      <section className="pt-2 sm:pt-4 lg:pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Left Column: Focused Editorial Copy (7 cols on lg) */}
+          <div className="lg:col-span-7 space-y-4 sm:space-y-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linen/80 border border-linen-dark/80 text-xs font-semibold text-terracotta-deep shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
               <span>Evidence-Grounded Personal Intelligence</span>
-              <span className="w-1 h-1 rounded-full bg-linen-dark" />
-              <span className="text-slateink font-medium">No Black Boxes</span>
             </div>
 
-            {/* Headline */}
-            <h1 className="font-serif text-4xl sm:text-6xl xl:text-[68px] font-bold tracking-tight text-charcoal leading-[1.06]">
+            <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-charcoal leading-[1.08]">
               Meet the self you can{' '}
               <span className="italic font-normal text-terracotta underline decoration-terracotta/25 decoration-wavy decoration-2">
                 examine
@@ -151,17 +144,15 @@ export function HomePage() {
               .
             </h1>
 
-            {/* Subtitle */}
-            <p className="text-base sm:text-lg lg:text-xl text-slateink leading-relaxed font-sans max-w-xl">
-              EchoSelf organizes your memories, confirmed values, and past decisions into a transparent personal model. Ask questions, test dilemmas, and verify every cited piece of evidence behind its words.
+            <p className="text-sm sm:text-base lg:text-lg text-slateink leading-relaxed font-sans max-w-xl">
+              Your memories, confirmed values, and past decisions organized into a transparent personal model. Ask questions, test dilemmas, and verify every cited piece of evidence behind its words.
             </p>
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => navigateTo('memories')}
-                className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 rounded-full bg-charcoal text-paper font-semibold text-sm sm:text-base hover:bg-slateink-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-charcoal text-paper font-semibold text-xs sm:text-sm hover:bg-slateink-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
               >
                 <span>Explore Jordan Demo</span>
                 <ArrowRight className="w-4 h-4 text-terracotta-light" aria-hidden="true" />
@@ -169,182 +160,68 @@ export function HomePage() {
 
               <a
                 href="#how-it-works"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-full border border-linen-dark/90 bg-white/80 hover:bg-white text-charcoal font-medium text-sm sm:text-base transition-colors shadow-2xs"
+                className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border border-linen-dark/90 bg-white/80 hover:bg-white text-charcoal font-medium text-xs sm:text-sm transition-colors shadow-2xs"
               >
                 <span>How it works</span>
-                <ChevronDown className="w-4 h-4 text-slateink-light" aria-hidden="true" />
+                <ChevronDown className="w-3.5 h-3.5 text-slateink-light" aria-hidden="true" />
               </a>
 
               <a
                 href="#decision-mirror"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-terracotta-deep hover:text-terracotta transition-colors px-2 py-1"
+                className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-terracotta-deep hover:text-terracotta transition-colors px-2 py-1"
               >
                 <span>Try Decision Mirror</span>
                 <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             </div>
-
-            {/* Live Architectural Proof Strip */}
-            <div className="pt-4 border-t border-linen-dark/60 grid grid-cols-3 gap-3 sm:gap-4 max-w-lg">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal">
-                  <BookOpen className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                  <span>100% Traceable</span>
-                </div>
-                <p className="text-[11px] text-slateink">Every claim cites exact memory records.</p>
-              </div>
-
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal">
-                  <ShieldCheck className="w-3.5 h-3.5 text-sage-dark" aria-hidden="true" />
-                  <span>Postgres RLS</span>
-                </div>
-                <p className="text-[11px] text-slateink">Strict tenant database isolation.</p>
-              </div>
-
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal">
-                  <AlertCircle className="w-3.5 h-3.5 text-amberclay-DEFAULT" aria-hidden="true" />
-                  <span>Zero Guessing</span>
-                </div>
-                <p className="text-[11px] text-slateink">Declares unknowns when unrecorded.</p>
-              </div>
-            </div>
           </div>
 
-          {/* Right Column: Interactive Live Twin Intelligence Preview (5 cols on lg) */}
+          {/* Right Column: Refined, Lightweight Preview Card (5 cols on lg) */}
           <div className="lg:col-span-5">
-            <div className="rounded-2xl sm:rounded-3xl border border-linen-dark bg-white/95 backdrop-blur-xl shadow-lifted overflow-hidden">
-              {/* Window Header */}
-              <div className="px-4 py-3 border-b border-linen-dark/60 bg-paper/70 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-clayred-light border border-clayred-DEFAULT/40" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amberclay-light border border-amberclay-DEFAULT/40" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-sage-light border border-sage-DEFAULT/40" />
-                  <span className="ml-1 text-xs font-serif font-bold text-charcoal">
-                    EchoSelf · Twin Intelligence
-                  </span>
-                </div>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-sage-dark bg-sage/15 px-2.5 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sage-dark animate-pulse" />
-                  <span>Live Persona (Jordan)</span>
+            <div className="rounded-2xl sm:rounded-3xl border border-linen-dark bg-white shadow-card p-5 sm:p-6 space-y-3.5">
+              <div className="flex items-center justify-between text-xs text-slateink pb-2.5 border-b border-linen-dark/60">
+                <span className="font-serif font-bold text-charcoal flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-terracotta" />
+                  Twin Synthesis
+                </span>
+                <span className="text-[11px] bg-sage/15 text-sage-dark font-medium px-2 py-0.5 rounded-full">
+                  Sample Persona (Jordan)
                 </span>
               </div>
 
-              {/* Chat Body */}
-              <div className="p-4 sm:p-5 space-y-4">
-                {/* User Query */}
-                <div className="flex justify-end">
-                  <div className="bg-charcoal text-paper rounded-2xl rounded-tr-xs px-4 py-2.5 max-w-[85%] text-xs sm:text-sm font-medium shadow-xs leading-relaxed">
-                    Why do I feel conflicted every time a leadership promotion comes up?
-                  </div>
+              {/* Inquiry & Response */}
+              <div className="space-y-2.5">
+                <div className="text-xs text-slateink">
+                  <span className="font-semibold text-charcoal">Query: </span>
+                  &ldquo;Why do I hesitate whenever a leadership promotion comes up?&rdquo;
                 </div>
 
-                {/* Twin Response */}
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="w-7 h-7 rounded-xl bg-gradient-to-br from-terracotta to-terracotta-dark text-paper font-serif font-bold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                      E
-                    </span>
-                    <div className="flex-1 bg-paper-soft border border-linen-dark/80 rounded-2xl rounded-tl-xs p-3.5 sm:p-4 text-xs sm:text-sm text-charcoal leading-relaxed space-y-2">
-                      <p>
-                        Across your records, your hesitation isn&apos;t about leadership itself. It stems from a verified tension between <strong>direct craftsmanship</strong> and <strong>organizational overhead</strong>.
-                      </p>
-                      <p className="text-xs text-slateink">
-                        When leading the Platform Architecture RFC, your satisfaction was 94%. But during the Director role review, you noted feeling exhausted by political coordination.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Interactive Citation Pills */}
-                  <div className="pl-10 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slateink-light">
-                      <span>Cited Records (Tap to verify):</span>
-                      <span className="text-terracotta-deep font-medium">94% Confidence</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setActiveCitation(activeCitation === 0 ? null : 0)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          activeCitation === 0
-                            ? 'bg-terracotta/10 border-terracotta ring-1 ring-terracotta/30 shadow-xs'
-                            : 'bg-white border-linen-dark/80 hover:bg-linen/40'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-xs font-semibold text-terracotta-deep">
-                          <span className="truncate flex items-center gap-1">
-                            <BookOpen className="w-3 h-3 shrink-0" />
-                            <span>Memory #1</span>
-                          </span>
-                          <span className="text-[10px] bg-linen px-1.5 py-0.5 rounded font-normal">92%</span>
-                        </div>
-                        <p className="text-[11px] text-charcoal mt-1 line-clamp-1">Platform Architecture Offer</p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveCitation(activeCitation === 1 ? null : 1)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          activeCitation === 1
-                            ? 'bg-terracotta/10 border-terracotta ring-1 ring-terracotta/30 shadow-xs'
-                            : 'bg-white border-linen-dark/80 hover:bg-linen/40'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-xs font-semibold text-terracotta-deep">
-                          <span className="truncate flex items-center gap-1">
-                            <Compass className="w-3 h-3 shrink-0" />
-                            <span>Belief #3</span>
-                          </span>
-                          <span className="text-[10px] bg-linen px-1.5 py-0.5 rounded font-normal">Confirmed</span>
-                        </div>
-                        <p className="text-[11px] text-charcoal mt-1 line-clamp-1">Direct Craft Priority</p>
-                      </button>
-                    </div>
-
-                    {/* Expanded Citation Preview Box */}
-                    {activeCitation === 0 && (
-                      <div className="p-3 rounded-xl bg-linen-light/80 border border-linen-dark text-xs space-y-1 animate-[fadeIn_120ms_ease-out]">
-                        <div className="flex items-center justify-between text-[11px] text-slateink">
-                          <span>Personal Journal · Oct 14, 2026</span>
-                          <span className="text-sage-dark font-semibold">Reliability: 92%</span>
-                        </div>
-                        <p className="font-serif italic text-charcoal leading-relaxed text-[11px]">
-                          &ldquo;Two offers inside the team. What actually bothered me was the assumption that bigger org management equals better engineering leverage.&rdquo;
-                        </p>
-                      </div>
-                    )}
-
-                    {activeCitation === 1 && (
-                      <div className="p-3 rounded-xl bg-linen-light/80 border border-linen-dark text-xs space-y-1 animate-[fadeIn_120ms_ease-out]">
-                        <div className="flex items-center justify-between text-[11px] text-slateink">
-                          <span>Self-Affirmed Principle</span>
-                          <span className="text-terracotta font-semibold">Weight: 5/5</span>
-                        </div>
-                        <p className="font-serif italic text-charcoal leading-relaxed text-[11px]">
-                          &ldquo;I do my best thinking with my hands in code. When meetings exceed 15 hrs/week, my cognitive clarity plummets.&rdquo;
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                <div className="p-3.5 rounded-xl bg-paper-soft border border-linen-dark/80 text-xs sm:text-sm text-charcoal leading-relaxed space-y-1.5">
+                  <p>
+                    &ldquo;Across your records, your hesitation isn&apos;t about leadership scope. It stems from a verified tension between <strong>direct craft</strong> and <strong>organizational overhead</strong>.&rdquo;
+                  </p>
                 </div>
 
-                {/* Grounding Declaration Footer */}
-                <div className="pt-3 border-t border-linen-dark/60 flex items-center justify-between text-[11px] text-slateink">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-sage-dark" />
-                    <span>0 Hallucinations · 1 Declared Unknown</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('chat')}
-                    className="font-semibold text-terracotta-deep hover:underline inline-flex items-center gap-1"
-                  >
-                    <span>Open in Twin Chat</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
+                {/* Grounded Citation */}
+                <div className="p-2.5 rounded-xl bg-linen-light border border-linen-dark/70 text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <BookOpen className="w-3.5 h-3.5 text-terracotta shrink-0" />
+                    <span className="font-medium text-charcoal truncate">Memory #1: Platform Architecture Offer</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-sage-dark shrink-0">92% Match</span>
                 </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between text-[11px] text-slateink-light border-t border-linen-dark/50">
+                <span>0 Hallucinations · Declared Unknowns</span>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('chat')}
+                  className="font-medium text-terracotta-deep hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open Chat</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>
