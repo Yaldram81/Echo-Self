@@ -71,19 +71,19 @@ export function BeliefForm({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-charcoal/50 backdrop-blur-xs animate-[fadeIn_150ms_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-charcoal/50 backdrop-blur-xs animate-[fadeIn_150ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[calc(100dvh-1.5rem)] flex flex-col rounded-2xl sm:rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl overflow-hidden">
-        {/* Fixed Header */}
-        <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-linen-dark/60 flex items-center justify-between shrink-0 bg-paper">
+      <div className="relative w-full max-w-[480px] max-h-[min(520px,85dvh)] flex flex-col rounded-2xl sm:rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl overflow-hidden">
+        {/* Fixed Compact Header */}
+        <div className="px-4 py-2.5 sm:py-3 border-b border-linen-dark/60 flex items-center justify-between shrink-0 bg-paper">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-terracotta-deep">
               {existing ? 'Recalibrate' : 'New Principle'}
             </span>
-            <h3 className="font-serif text-base sm:text-lg font-bold text-charcoal leading-tight">
+            <h3 className="font-serif text-base font-bold text-charcoal leading-tight">
               {existing ? 'Edit statement' : 'Add a belief or value'}
             </h3>
           </div>
@@ -144,7 +144,7 @@ export function BeliefForm({
                 required
                 rows={2}
                 maxLength={280}
-                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs"
+                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2 text-xs sm:text-sm text-charcoal leading-snug placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all shadow-2xs"
                 placeholder={kind === 'belief' ? 'e.g. Long-term craft matters more than temporary acclaim.' : 'e.g. Intellectual honesty in relationships.'}
                 autoFocus
               />
@@ -159,9 +159,9 @@ export function BeliefForm({
                 id="b-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all shadow-2xs"
-                placeholder="Where did this originate? What does it look like in practice?"
+                rows={1}
+                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2 text-xs sm:text-sm text-charcoal leading-snug placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all shadow-2xs"
+                placeholder="Where did this originate? (optional)"
               />
             </div>
 
@@ -177,7 +177,7 @@ export function BeliefForm({
                       key={cat}
                       type="button"
                       onClick={() => setCategory(cat)}
-                      className={`px-1.5 py-0.5 rounded-full text-[10px] transition-all cursor-pointer ${
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] transition-all cursor-pointer ${
                         category.toLowerCase() === cat
                           ? 'bg-terracotta/15 text-terracotta-deep font-semibold border border-terracotta/30'
                           : 'bg-linen/60 text-slateink hover:bg-linen hover:text-charcoal'
@@ -192,19 +192,19 @@ export function BeliefForm({
                 id="b-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-8 sm:h-9 rounded-xl border border-linen-dark bg-white/95 px-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
+                className="w-full h-8 rounded-xl border border-linen-dark bg-white/95 px-2.5 text-xs text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
                 placeholder="e.g. personal, career, creative…"
               />
             </div>
 
             {/* Strength Slider & Reviewed Date in compact row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-              <div className="p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-1">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-0.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor="b-strength" className="text-[11px] font-semibold text-charcoal">
-                    Conviction Strength:
+                    Conviction:
                   </label>
-                  <span className="text-[11px] font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-1.5 py-0.2 rounded-full">
+                  <span className="text-[10px] font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-1.5 py-0.2 rounded-full">
                     {strength}/100
                   </span>
                 </div>
@@ -220,7 +220,7 @@ export function BeliefForm({
                 />
               </div>
 
-              <div className="p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-1">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-0.5">
                 <label htmlFor="b-reviewed" className="block text-[11px] font-semibold text-charcoal">
                   Date Grounded / Reviewed
                 </label>
@@ -229,13 +229,13 @@ export function BeliefForm({
                   type="date"
                   value={reviewed}
                   onChange={(e) => setReviewed(e.target.value)}
-                  className="w-full h-7 rounded-lg border border-linen-dark bg-white px-2 text-xs text-charcoal focus:border-terracotta focus:outline-none"
+                  className="w-full h-6.5 rounded-lg border border-linen-dark bg-white px-2 text-xs text-charcoal focus:border-terracotta focus:outline-none"
                 />
               </div>
             </div>
 
             {formError && (
-              <p role="alert" className="rounded-xl bg-clayred-light px-3.5 py-2 text-xs text-clayred-DEFAULT">
+              <p role="alert" className="rounded-xl bg-clayred-light px-3 py-1.5 text-xs text-clayred-DEFAULT">
                 {formError}
               </p>
             )}
