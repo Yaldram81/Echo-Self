@@ -76,45 +76,45 @@ export function HomePage() {
   ];
 
   return (
-    <div className="space-y-14 md:space-y-20">
+    <div className="space-y-10 md:space-y-16">
       {/* =========================================================================
           1. HERO SECTION
           ========================================================================= */}
-      <section className="pt-2 md:pt-6 max-w-4xl mx-auto text-center space-y-5">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-linen/70 border border-linen-dark/60 text-xs font-semibold uppercase tracking-wider text-terracotta-deep shadow-xs">
-          <Sparkles className="w-3.5 h-3.5 text-terracotta" />
+      <section className="pt-1 md:pt-6 max-w-4xl mx-auto text-center space-y-4">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linen/70 border border-linen-dark/60 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-terracotta-deep shadow-xs">
+          <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-terracotta" />
           <span>A more thoughtful kind of AI</span>
         </div>
 
-        <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-charcoal leading-[1.08]">
+        <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight text-charcoal leading-[1.1]">
           An AI twin that shows its <em className="italic font-normal text-terracotta">evidence</em>.
         </h1>
 
-        <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-slateink leading-relaxed font-sans">
+        <p className="max-w-2xl mx-auto text-sm sm:text-base md:text-xl text-slateink leading-relaxed font-sans">
           Your memories. Your values. Your decisions. EchoSelf helps you explore your experiences,
           understand possible patterns, and see the records behind its interpretations.
         </p>
 
         {/* Primary Call to Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+        <div className="flex flex-row items-center justify-center gap-2.5 sm:gap-3.5 pt-1">
           <button
             onClick={() => navigateTo('memories')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full bg-charcoal text-paper font-semibold text-sm sm:text-base hover:bg-charcoal/90 hover:scale-[1.02] active:scale-98 transition-all shadow-lifted"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-charcoal text-paper font-semibold text-xs sm:text-base hover:bg-charcoal/90 hover:scale-[1.02] active:scale-98 transition-all shadow-lifted"
           >
             <span>Explore the demo</span>
-            <ArrowRight className="w-4 h-4 text-terracotta-light" />
+            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-terracotta-light" />
           </button>
 
           <a
             href="#how-it-works"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-3.5 rounded-full border border-linen-dark bg-white/70 hover:bg-white text-charcoal font-medium text-sm sm:text-base transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-full border border-linen-dark bg-white/70 hover:bg-white text-charcoal font-medium text-xs sm:text-base transition-colors"
           >
             <span>How it works</span>
-            <ChevronDown className="w-4 h-4 text-slateink-light" />
+            <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slateink-light" />
           </a>
         </div>
 
-        <p className="text-xs text-slateink-light tracking-wide pt-1">
+        <p className="text-[11px] sm:text-xs text-slateink-light tracking-wide">
           Explore a fictional sample persona. No account required.
         </p>
       </section>
@@ -123,48 +123,48 @@ export function HomePage() {
           2. A REAL PRODUCT PREVIEW (Twin Chat in Action)
           ========================================================================= */}
       <section className="max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-linen-dark/80 bg-white/90 backdrop-blur-xl shadow-lifted overflow-hidden">
+        <div className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-white/90 backdrop-blur-xl shadow-lifted overflow-hidden">
           {/* Mock Window Top Bar */}
-          <div className="px-5 py-3.5 border-b border-linen-dark/60 bg-paper/60 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-clayred-light border border-clayred-DEFAULT/40" />
-              <span className="w-3 h-3 rounded-full bg-amberclay-light border border-amberclay-DEFAULT/40" />
-              <span className="w-3 h-3 rounded-full bg-sage-light border border-sage-DEFAULT/40" />
-              <span className="ml-2 text-xs font-serif font-semibold text-charcoal">EchoSelf · Twin Chat Live Inspection</span>
+          <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-linen-dark/60 bg-paper/60 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-clayred-light border border-clayred-DEFAULT/40" />
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amberclay-light border border-amberclay-DEFAULT/40" />
+              <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-sage-light border border-sage-DEFAULT/40" />
+              <span className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs font-serif font-semibold text-charcoal">EchoSelf · Twin Chat</span>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-sage-dark bg-sage/10 px-2.5 py-0.5 rounded-full">
-              <CheckCircle2 className="w-3 h-3" /> Grounded in 16 Records
+            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[11px] font-medium text-sage-dark bg-sage/10 px-2 py-0.5 rounded-full">
+              <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> 16 Records
             </span>
           </div>
 
-          <div className="p-5 sm:p-8 space-y-6">
+          <div className="p-3.5 sm:p-8 space-y-4 sm:space-y-6">
             {/* User Query */}
-            <div className="flex items-start gap-3 justify-end">
-              <div className="bg-charcoal text-paper rounded-2xl rounded-tr-xs px-5 py-3 max-w-lg text-sm font-medium shadow-xs">
+            <div className="flex items-start gap-2 sm:gap-3 justify-end">
+              <div className="bg-charcoal text-paper rounded-2xl rounded-tr-xs px-3.5 sm:px-5 py-2.5 sm:py-3 max-w-lg text-xs sm:text-sm font-medium shadow-xs">
                 Why do I feel torn every time a leadership role comes up at work?
               </div>
             </div>
 
             {/* Twin Response */}
-            <div className="flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-terracotta text-paper flex items-center justify-center shrink-0 font-serif font-bold text-sm shadow-xs mt-0.5">
+            <div className="flex items-start gap-2.5 sm:gap-3.5">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-terracotta text-paper flex items-center justify-center shrink-0 font-serif font-bold text-[10px] sm:text-sm shadow-xs mt-0.5">
                 E
               </div>
 
-              <div className="flex-1 space-y-4">
-                <div className="bg-paper-soft border border-linen-dark/70 rounded-2xl rounded-tl-xs p-5 sm:p-6 text-sm sm:text-base text-charcoal leading-relaxed space-y-3">
+              <div className="flex-1 space-y-3 sm:space-y-4">
+                <div className="bg-paper-soft border border-linen-dark/70 rounded-2xl rounded-tl-xs p-3.5 sm:p-6 text-xs sm:text-base text-charcoal leading-relaxed space-y-2 sm:space-y-3">
                   <p>
                     Across your recorded choices, your hesitation isn&apos;t about leadership itself. It stems from an unaddressed tension between <strong>team autonomy</strong> and <strong>protecting your creative craft</strong>.
                   </p>
-                  <p className="text-sm text-slateink leading-relaxed">
+                  <p className="text-xs text-slateink leading-relaxed">
                     When you led the Platform Architecture RFC, your satisfaction was 92%. But when evaluating the Director role, you noted feeling drained by organizational politics.
                   </p>
                 </div>
 
                 {/* Interactive Citations Tray */}
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slateink-light">
-                    Cited Evidence Records (Click to inspect):
+                <div className="space-y-1.5 sm:space-y-2">
+                  <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slateink-light">
+                    Cited Evidence Records:
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -240,10 +240,10 @@ export function HomePage() {
                   )}
 
                   {/* Uncertainty Indicator */}
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-linen/50 border border-linen-dark/60 text-xs text-slateink">
-                    <AlertCircle className="w-4 h-4 text-amberclay-DEFAULT shrink-0" />
+                  <div className="flex items-start gap-2 p-2.5 sm:p-3 rounded-xl bg-linen/50 border border-linen-dark/60 text-[11px] sm:text-xs text-slateink">
+                    <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amberclay-DEFAULT shrink-0 mt-0.5" />
                     <span>
-                      <strong>Honest Uncertainty:</strong> Zero recorded evidence regarding compensation pressure or family expectations. The twin explicitly leaves those factors unassumed.
+                      <strong>Honest Uncertainty:</strong> Zero recorded evidence regarding compensation pressure or family expectations.
                     </span>
                   </div>
                 </div>
@@ -257,20 +257,20 @@ export function HomePage() {
           3. THE PROBLEM WITH ORDINARY AI
           ========================================================================= */}
       <section className="max-w-4xl mx-auto">
-        <div className="p-6 sm:p-10 rounded-3xl bg-charcoal text-paper shadow-card space-y-5 relative overflow-hidden">
-          <div className="relative z-10 space-y-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-amberclay-light font-semibold">
+        <div className="p-5 sm:p-10 rounded-2xl sm:rounded-3xl bg-charcoal text-paper shadow-card space-y-4 relative overflow-hidden">
+          <div className="relative z-10 space-y-3">
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-amberclay-light font-semibold">
               The Grounding Gap
             </p>
-            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+            <h2 className="font-serif text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
               An answer can sound personal without being grounded.
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3 text-sm leading-relaxed text-linen-light">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5 pt-2 text-xs sm:text-sm leading-relaxed text-linen-light">
               <p>
-                Standard conversational AI produces articulate, empathetic-sounding psychological advice. But behind the screen, you have no way to distinguish what you actually said from what the model invented or generalized from internet stereotypes.
+                Standard conversational AI produces articulate, empathetic-sounding psychological advice. But you have no way to distinguish what you actually said from what the model invented.
               </p>
               <p>
-                EchoSelf introduces a strict principle: <strong>don&apos;t just give an answer. Let people inspect the evidence behind it.</strong> Every pattern, reflection, and decision mirror points directly to inspectable records you own.
+                EchoSelf introduces a strict principle: <strong>don&apos;t just give an answer. Let people inspect the evidence behind it.</strong> Every pattern and decision mirror points to inspectable records you own.
               </p>
             </div>
           </div>
@@ -280,73 +280,73 @@ export function HomePage() {
       {/* =========================================================================
           4. HOW ECHOSELF WORKS
           ========================================================================= */}
-      <section id="how-it-works" className="max-w-5xl mx-auto space-y-8">
-        <div className="text-center space-y-3 max-w-xl mx-auto">
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
+      <section id="how-it-works" className="max-w-5xl mx-auto space-y-5 sm:space-y-8">
+        <div className="text-center space-y-2 max-w-xl mx-auto">
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             One Connected Experience
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal tracking-tight">
+          <h2 className="font-serif text-2xl sm:text-4xl font-bold text-charcoal tracking-tight">
             How EchoSelf works
           </h2>
-          <p className="text-sm text-slateink leading-relaxed">
+          <p className="text-xs sm:text-sm text-slateink leading-relaxed">
             A quiet loop of capture, examination, transparent choice, and active reflection.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {/* Step 1: Remember */}
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta-deep">
-              <BookOpen className="w-6 h-6" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-1.5 sm:space-y-3">
+            <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-terracotta/10 text-terracotta-deep">
+              <BookOpen className="w-4 h-4 sm:w-6 sm:h-6" />
             </span>
-            <h3 className="font-serif text-xl font-bold text-charcoal">Remember</h3>
-            <p className="text-xs font-semibold text-terracotta-deep uppercase tracking-wider">
+            <h3 className="font-serif text-base sm:text-xl font-bold text-charcoal">Remember</h3>
+            <p className="text-[9px] sm:text-xs font-semibold text-terracotta-deep uppercase tracking-wider">
               Record experiences
             </p>
-            <p className="text-xs text-slateink leading-relaxed">
-              Capture moments, thoughts, values, and choices in your own natural language with private confidence weights.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Capture moments, thoughts, and choices in your own natural language.
             </p>
           </div>
 
           {/* Step 2: Examine */}
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-sage/15 text-sage-dark">
-              <MessageCircle className="w-6 h-6" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-1.5 sm:space-y-3">
+            <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-sage/15 text-sage-dark">
+              <MessageCircle className="w-4 h-4 sm:w-6 sm:h-6" />
             </span>
-            <h3 className="font-serif text-xl font-bold text-charcoal">Examine</h3>
-            <p className="text-xs font-semibold text-sage-dark uppercase tracking-wider">
+            <h3 className="font-serif text-base sm:text-xl font-bold text-charcoal">Examine</h3>
+            <p className="text-[9px] sm:text-xs font-semibold text-sage-dark uppercase tracking-wider">
               Ask & Inspect Sources
             </p>
-            <p className="text-xs text-slateink leading-relaxed">
-              Ask your twin difficult questions; inspect the exact citations, dates, and reliability factors behind its claims.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Ask your twin questions; inspect citations and reliability factors.
             </p>
           </div>
 
           {/* Step 3: Decide */}
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-amberclay/15 text-amberclay-DEFAULT">
-              <Scale className="w-6 h-6" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-1.5 sm:space-y-3">
+            <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-amberclay/15 text-amberclay-DEFAULT">
+              <Scale className="w-4 h-4 sm:w-6 sm:h-6" />
             </span>
-            <h3 className="font-serif text-xl font-bold text-charcoal">Decide</h3>
-            <p className="text-xs font-semibold text-amberclay-DEFAULT uppercase tracking-wider">
+            <h3 className="font-serif text-base sm:text-xl font-bold text-charcoal">Decide</h3>
+            <p className="text-[9px] sm:text-xs font-semibold text-amberclay-DEFAULT uppercase tracking-wider">
               Compare Priorities
             </p>
-            <p className="text-xs text-slateink leading-relaxed">
-              Weigh real choices using transparent arithmetic grounded in your confirmed values rather than black-box guesses.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Weigh choices using transparent arithmetic grounded in your values.
             </p>
           </div>
 
           {/* Step 4: Reflect */}
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-linen text-slateink-dark">
-              <RotateCcw className="w-6 h-6" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-card space-y-1.5 sm:space-y-3">
+            <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-linen text-slateink-dark">
+              <RotateCcw className="w-4 h-4 sm:w-6 sm:h-6" />
             </span>
-            <h3 className="font-serif text-xl font-bold text-charcoal">Reflect</h3>
-            <p className="text-xs font-semibold text-slateink-dark uppercase tracking-wider">
+            <h3 className="font-serif text-base sm:text-xl font-bold text-charcoal">Reflect</h3>
+            <p className="text-[9px] sm:text-xs font-semibold text-slateink-dark uppercase tracking-wider">
               Correct & Evolve
             </p>
-            <p className="text-xs text-slateink leading-relaxed">
-              Flag incorrect model assumptions, update evolving beliefs, and observe how your life priorities shift across time.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Flag incorrect assumptions and observe how priorities shift over time.
             </p>
           </div>
         </div>
@@ -355,83 +355,83 @@ export function HomePage() {
       {/* =========================================================================
           5. THE SIGNATURE EXPERIENCE: EVIDENCE INSPECTOR
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-3 max-w-xl mx-auto">
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
+      <section className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center space-y-2 max-w-xl mx-auto">
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Signature Experience
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal tracking-tight">
+          <h2 className="font-serif text-2xl sm:text-4xl font-bold text-charcoal tracking-tight">
             The Evidence Inspector
           </h2>
-          <p className="text-sm text-slateink leading-relaxed">
+          <p className="text-xs sm:text-sm text-slateink leading-relaxed">
             Every interpretation is laid bare with supporting records, nuance, and declared unknowns.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-linen-dark/80 bg-white p-6 sm:p-8 shadow-card space-y-6">
-          <div className="border-b border-linen-dark/50 pb-5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slateink-light">
+        <div className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-white p-4 sm:p-8 shadow-card space-y-4 sm:space-y-6">
+          <div className="border-b border-linen-dark/50 pb-3 sm:pb-5">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slateink-light">
               Synthesized Hypothesis
             </span>
-            <h3 className="font-serif text-xl sm:text-2xl font-bold text-charcoal mt-1 leading-snug">
+            <h3 className="font-serif text-base sm:text-2xl font-bold text-charcoal mt-1 leading-snug">
               &ldquo;You hesitate on leadership when team autonomy is threatened, but thrive when directly guiding architecture.&rdquo;
             </h3>
           </div>
 
           {/* Inspector Tabs */}
-          <div className="flex items-center gap-2 border-b border-linen-dark/50 pb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 border-b border-linen-dark/50 pb-2.5 sm:pb-3 overflow-x-auto">
             <button
               onClick={() => setInspectorTab('support')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
                 inspectorTab === 'support'
                   ? 'bg-terracotta/15 text-terracotta-deep'
                   : 'text-slateink hover:text-charcoal'
               }`}
             >
-              Supporting Memories (2)
+              Supporting (2)
             </button>
             <button
               onClick={() => setInspectorTab('conflict')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
                 inspectorTab === 'conflict'
                   ? 'bg-amberclay/20 text-amberclay-DEFAULT'
                   : 'text-slateink hover:text-charcoal'
               }`}
             >
-              Surfaced Conflict (1)
+              Conflict (1)
             </button>
             <button
               onClick={() => setInspectorTab('unknown')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap ${
                 inspectorTab === 'unknown'
                   ? 'bg-clayred-light/30 text-clayred-DEFAULT'
                   : 'text-slateink hover:text-charcoal'
               }`}
             >
-              Declared Unknowns
+              Unknowns
             </button>
           </div>
 
           {/* Inspector Content */}
           {inspectorTab === 'support' && (
-            <div className="space-y-3 animate-[fadeIn_150ms_ease-out]">
-              <div className="p-4 rounded-xl bg-paper-soft border border-linen-dark/70 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-charcoal">Memory: The small team vs big director role</span>
-                  <span className="text-sage-dark font-medium">Recorded Oct 14, 2026 · 92% Confidence</span>
+            <div className="space-y-2.5 animate-[fadeIn_150ms_ease-out]">
+              <div className="p-3 sm:p-4 rounded-xl bg-paper-soft border border-linen-dark/70 space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] sm:text-xs gap-0.5">
+                  <span className="font-semibold text-charcoal">Memory: Small team vs director role</span>
+                  <span className="text-sage-dark font-medium">Oct 14, 2026 · 92%</span>
                 </div>
-                <p className="text-xs text-slateink-dark leading-relaxed font-serif">
-                  &ldquo;He wants a big traditional role; I love building with the small platform team. What actually bothered me was the assumption that bigger org equals better work.&rdquo;
+                <p className="text-[11px] sm:text-xs text-slateink-dark leading-relaxed font-serif">
+                  &ldquo;He wants a big traditional role; I love building with the small platform team.&rdquo;
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-paper-soft border border-linen-dark/70 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
+              <div className="p-3 sm:p-4 rounded-xl bg-paper-soft border border-linen-dark/70 space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] sm:text-xs gap-0.5">
                   <span className="font-semibold text-charcoal">Memory: Architecture RFC breakthrough</span>
-                  <span className="text-sage-dark font-medium">Recorded Aug 22, 2026 · 88% Confidence</span>
+                  <span className="text-sage-dark font-medium">Aug 22, 2026 · 88%</span>
                 </div>
-                <p className="text-xs text-slateink-dark leading-relaxed font-serif">
-                  &ldquo;Spent Saturday drafting the offline-sync protocol. Deepest flow state I&apos;ve experienced all year. Zero meetings, just clear engineering.&rdquo;
+                <p className="text-[11px] sm:text-xs text-slateink-dark leading-relaxed font-serif">
+                  &ldquo;Deepest flow state I&apos;ve experienced all year. Zero meetings, just clear engineering.&rdquo;
                 </p>
               </div>
             </div>
@@ -470,31 +470,31 @@ export function HomePage() {
       {/* =========================================================================
           6. DECISION MIRROR (Interactive Arithmetic Preview)
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-3 max-w-xl mx-auto">
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
+      <section className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center space-y-2 max-w-xl mx-auto">
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Transparent Arithmetic
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal tracking-tight">
+          <h2 className="font-serif text-2xl sm:text-4xl font-bold text-charcoal tracking-tight">
             Decision Mirror
           </h2>
-          <p className="text-sm text-slateink leading-relaxed">
+          <p className="text-xs sm:text-sm text-slateink leading-relaxed">
             Changing your priorities changes the comparison in real time—with inspectable reasoning.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-linen-dark/80 bg-white p-6 sm:p-8 shadow-card space-y-6">
+        <div className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-white p-4 sm:p-8 shadow-card space-y-4 sm:space-y-6">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slateink-light">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slateink-light">
               Active Dilemma
             </span>
-            <h3 className="font-serif text-2xl font-bold text-charcoal mt-1">
+            <h3 className="font-serif text-lg sm:text-2xl font-bold text-charcoal mt-1">
               Take the promotion or keep building the small team
             </h3>
           </div>
 
           {/* Interactive Weight Sliders */}
-          <div className="space-y-4 p-5 rounded-2xl bg-paper-soft border border-linen-dark/60">
+          <div className="space-y-3 sm:space-y-4 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-paper-soft border border-linen-dark/60">
             <p className="text-xs font-semibold uppercase tracking-wider text-slateink">
               Adjust Your Priority Weights (1 to 5):
             </p>
@@ -548,30 +548,30 @@ export function HomePage() {
           </div>
 
           {/* Calculated Alignment Comparison */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className={`p-5 rounded-2xl border transition-all ${optionAScore > optionBScore ? 'border-terracotta bg-terracotta/5 shadow-sm' : 'border-linen-dark/70 bg-white'}`}>
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-base text-charcoal">Option A: Director of Platform</h4>
-                <span className="font-serif text-2xl font-bold text-charcoal">{optionAScore}%</span>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+            <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl border transition-all ${optionAScore > optionBScore ? 'border-terracotta bg-terracotta/5 shadow-sm' : 'border-linen-dark/70 bg-white'}`}>
+              <div className="flex items-center justify-between gap-1">
+                <h4 className="font-serif font-bold text-xs sm:text-base text-charcoal">A: Director</h4>
+                <span className="font-serif text-lg sm:text-2xl font-bold text-charcoal">{optionAScore}%</span>
               </div>
-              <p className="text-xs text-slateink mt-2 leading-relaxed">
-                High org-wide leverage, but requires delegating hands-on craft and taking on coordination load.
+              <p className="text-[11px] sm:text-xs text-slateink mt-1.5 sm:mt-2 leading-relaxed">
+                High org-wide leverage, but requires delegating craft.
               </p>
             </div>
 
-            <div className={`p-5 rounded-2xl border transition-all ${optionBScore >= optionAScore ? 'border-terracotta bg-terracotta/5 shadow-sm' : 'border-linen-dark/70 bg-white'}`}>
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-base text-charcoal">Option B: Staff IC on Small Team</h4>
-                <span className="font-serif text-2xl font-bold text-charcoal">{optionBScore}%</span>
+            <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl border transition-all ${optionBScore >= optionAScore ? 'border-terracotta bg-terracotta/5 shadow-sm' : 'border-linen-dark/70 bg-white'}`}>
+              <div className="flex items-center justify-between gap-1">
+                <h4 className="font-serif font-bold text-xs sm:text-base text-charcoal">B: Staff IC</h4>
+                <span className="font-serif text-lg sm:text-2xl font-bold text-charcoal">{optionBScore}%</span>
               </div>
-              <p className="text-xs text-slateink mt-2 leading-relaxed">
-                Maximum craft alignment and high daily focus; lower administrative reach across other teams.
+              <p className="text-[11px] sm:text-xs text-slateink mt-1.5 sm:mt-2 leading-relaxed">
+                Maximum craft alignment and high daily focus.
               </p>
             </div>
           </div>
 
-          <p className="text-xs text-center text-slateink-light italic">
-            Note: This measures alignment with your recorded preferences, not the probability of external success.
+          <p className="text-[10px] sm:text-xs text-center text-slateink-light italic">
+            Measures alignment with your recorded preferences, not probability of success.
           </p>
         </div>
       </section>
@@ -579,57 +579,57 @@ export function HomePage() {
       {/* =========================================================================
           7. TRUST, UNCERTAINTY, AND PRIVACY
           ========================================================================= */}
-      <section className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-3 max-w-xl mx-auto">
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
+      <section className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center space-y-2 max-w-xl mx-auto">
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-terracotta-deep font-semibold">
             Architectural Guarantees
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal tracking-tight">
+          <h2 className="font-serif text-2xl sm:text-4xl font-bold text-charcoal tracking-tight">
             Trust, uncertainty, and privacy
           </h2>
-          <p className="text-sm text-slateink leading-relaxed">
+          <p className="text-xs sm:text-sm text-slateink leading-relaxed">
             Engineered with strict security boundaries, honest limits, and user ownership.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-2.5">
-            <div className="flex items-center gap-2.5 text-terracotta-deep font-semibold text-sm">
-              <CheckCircle2 className="w-5 h-5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-1.5 sm:space-y-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 text-terracotta-deep font-semibold text-xs sm:text-sm">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
               <span>Traceable evidence</span>
             </div>
-            <p className="text-xs text-slateink leading-relaxed">
-              Inspect the exact memories, timestamps, and confidence scores associated with any synthesized interpretation.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Inspect memories, timestamps, and confidence scores behind every interpretation.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-2.5">
-            <div className="flex items-center gap-2.5 text-amberclay-DEFAULT font-semibold text-sm">
-              <AlertCircle className="w-5 h-5" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-1.5 sm:space-y-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 text-amberclay-DEFAULT font-semibold text-xs sm:text-sm">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
               <span>Conflicts surfaced</span>
             </div>
-            <p className="text-xs text-slateink leading-relaxed">
-              When your records contradict each other, EchoSelf highlights the disagreement instead of silently hiding it.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              Contradictions in your records are highlighted, not silently hidden.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-2.5">
-            <div className="flex items-center gap-2.5 text-slateink-dark font-semibold text-sm">
-              <HelpCircle className="w-5 h-5" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-1.5 sm:space-y-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 text-slateink-dark font-semibold text-xs sm:text-sm">
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
               <span>Honest uncertainty</span>
             </div>
-            <p className="text-xs text-slateink leading-relaxed">
-              The model recognizes when available data is insufficient, plainly stating unknowns rather than fabricating advice.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              When data is insufficient, unknowns are plainly stated.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-2.5">
-            <div className="flex items-center gap-2.5 text-sage-dark font-semibold text-sm">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-linen-dark/80 shadow-xs space-y-1.5 sm:space-y-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 text-sage-dark font-semibold text-xs sm:text-sm">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
               <span>User control</span>
             </div>
-            <p className="text-xs text-slateink leading-relaxed">
-              Authenticated Postgres workspaces with RLS isolation. Full control to review, export to JSON/CSV, or wipe records.
+            <p className="text-[11px] sm:text-xs text-slateink leading-relaxed">
+              RLS-isolated workspaces. Export to JSON/CSV or wipe records anytime.
             </p>
           </div>
         </div>
@@ -638,31 +638,31 @@ export function HomePage() {
       {/* =========================================================================
           8. FREQUENTLY ASKED QUESTIONS
           ========================================================================= */}
-      <section className="max-w-3xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="font-serif text-3xl font-bold text-charcoal tracking-tight">
+      <section className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center space-y-1.5">
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-charcoal tracking-tight">
             Frequently asked questions
           </h2>
-          <p className="text-xs text-slateink">Clear answers regarding current capabilities and privacy.</p>
+          <p className="text-[11px] sm:text-xs text-slateink">Clear answers regarding current capabilities and privacy.</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {faqs.map((faq, i) => {
             const isOpen = openFaq === i;
             return (
               <div
                 key={faq.q}
-                className="rounded-2xl border border-linen-dark/70 bg-white overflow-hidden transition-all shadow-xs"
+                className="rounded-xl sm:rounded-2xl border border-linen-dark/70 bg-white overflow-hidden transition-all shadow-xs"
               >
                 <button
                   onClick={() => setOpenFaq(isOpen ? null : i)}
-                  className="w-full flex items-center justify-between p-5 text-left text-sm font-semibold text-charcoal hover:bg-linen/20 transition-colors"
+                  className="w-full flex items-center justify-between p-3.5 sm:p-5 text-left text-xs sm:text-sm font-semibold text-charcoal hover:bg-linen/20 transition-colors gap-2"
                 >
                   <span>{faq.q}</span>
-                  <ChevronDown className={`w-4 h-4 text-slateink-light transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slateink-light shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slateink leading-relaxed border-t border-linen-dark/40 animate-[fadeIn_100ms_ease-out]">
+                  <div className="px-3.5 sm:px-5 pb-3.5 sm:pb-5 pt-1 text-[11px] sm:text-sm text-slateink leading-relaxed border-t border-linen-dark/40 animate-[fadeIn_100ms_ease-out]">
                     {faq.a}
                   </div>
                 )}
@@ -675,36 +675,36 @@ export function HomePage() {
       {/* =========================================================================
           9. CLEAR CLOSING ACTION
           ========================================================================= */}
-      <section className="max-w-3xl mx-auto text-center space-y-5 pt-2 pb-6">
-        <h2 className="font-serif text-3xl sm:text-5xl font-bold text-charcoal tracking-tight">
+      <section className="max-w-3xl mx-auto text-center space-y-4 pt-2 pb-4">
+        <h2 className="font-serif text-2xl sm:text-5xl font-bold text-charcoal tracking-tight">
           Meet the self you can examine.
         </h2>
 
-        <p className="max-w-lg mx-auto text-sm sm:text-base text-slateink leading-relaxed">
+        <p className="max-w-lg mx-auto text-xs sm:text-base text-slateink leading-relaxed">
           Start with a fictional experience. Explore the evidence. See how EchoSelf approaches a difficult question.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <div className="flex flex-row items-center justify-center gap-2.5 sm:gap-3 pt-1">
           <button
             onClick={() => navigateTo('memories')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-charcoal text-paper font-semibold text-sm sm:text-base hover:bg-charcoal/90 hover:scale-[1.02] active:scale-98 transition-all shadow-lifted"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-full bg-charcoal text-paper font-semibold text-xs sm:text-base hover:bg-charcoal/90 hover:scale-[1.02] active:scale-98 transition-all shadow-lifted"
           >
             <span>Explore EchoSelf</span>
-            <ArrowRight className="w-4 h-4 text-terracotta-light" />
+            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-terracotta-light" />
           </button>
 
           <button
             onClick={() => navigateTo('signin')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-linen-dark bg-white hover:bg-linen/30 text-charcoal font-medium text-sm sm:text-base transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 sm:px-7 py-2.5 sm:py-3.5 rounded-full border border-linen-dark bg-white hover:bg-linen/30 text-charcoal font-medium text-xs sm:text-base transition-colors"
           >
-            <span>Sign in to your private workspace</span>
+            <span>Sign in</span>
           </button>
         </div>
 
         {/* Minimal Restrained Footer */}
         <div className="pt-10 mt-10 border-t border-linen-dark/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slateink">
           <p>© EchoSelf · An evidence-grounded personal model.</p>
-          <div className="flex items-center gap-4 text-slateink-dark">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-slateink-dark">
             <button onClick={() => navigateTo('memories')} className="hover:underline">Demo Persona</button>
             <button onClick={() => navigateTo('graph')} className="hover:underline">Evidence Graph</button>
             <button onClick={() => navigateTo('decisions')} className="hover:underline">Decision Mirror</button>
