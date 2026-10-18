@@ -563,3 +563,70 @@ export interface InsightInput {
   uncertainty_notes?: string | null;
 }
 
+export type PeriodType = 'weekly' | 'custom' | 'monthly';
+export type ReflectionStatus = 'draft' | 'saved' | 'archived';
+
+export interface ProposedBeliefUpdate {
+  statement: string;
+  rationale: string;
+  kind?: 'belief' | 'value';
+}
+
+export interface ReflectionItem {
+  id: string;
+  user_id?: string | null;
+  period_start: string;
+  period_end: string;
+  period_type: PeriodType;
+  title: string;
+  content: string;
+  guided_answers: Record<string, string>;
+  summary?: string | null;
+  memory_ids: string[];
+  decision_ids: string[];
+  belief_ids: string[];
+  proposed_belief_update?: ProposedBeliefUpdate | null;
+  status: ReflectionStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReflectionInput {
+  period_start: string;
+  period_end: string;
+  period_type?: PeriodType;
+  title?: string;
+  content: string;
+  guided_answers?: Record<string, string>;
+  summary?: string | null;
+  memory_ids?: string[];
+  decision_ids?: string[];
+  belief_ids?: string[];
+  proposed_belief_update?: ProposedBeliefUpdate | null;
+  status?: ReflectionStatus;
+}
+
+export interface PeriodSummary {
+  periodStart: string;
+  periodEnd: string;
+  periodLabel: string;
+  memories: Memory[];
+  decisions: Decision[];
+  beliefs: Belief[];
+  insights: InsightItem[];
+  unresolvedDecisions: Decision[];
+  isEmpty: boolean;
+}
+
+export interface ReflectionPrompt {
+  id: string;
+  question: string;
+  rationale: string;
+  sourceType?: 'memory' | 'decision' | 'belief' | 'general';
+  sourceId?: string;
+  sourceTitle?: string;
+  sourceUrl?: string;
+  isAiGenerated?: boolean;
+}
+
+
