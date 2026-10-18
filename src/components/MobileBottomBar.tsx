@@ -218,12 +218,13 @@ export function MobileBottomBar({ route }: { route: Route }) {
             the five main items. */}
         <nav
           aria-label="Mobile navigation"
-          className="relative grid grid-cols-1 items-center bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] h-16 pr-2.5 pb-[max(0rem,env(safe-area-inset-bottom))]"
+          className="relative grid items-center gap-0 bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] h-16 pb-[max(0rem,env(safe-area-inset-bottom))]"
+          style={{ gridTemplateColumns: 'minmax(0,1fr) 20px' }}
         >
           {/* 5 evenly-distributed slots; the center slot hosts the
               absolutely-centered plus button so padding never offsets it.
-              The 3-dots overflow button is overlaid at the far right and
-              takes zero layout space, so the five slots stay equal. */}
+              A narrow 20px column is reserved at the far right for the
+              3-dots menu so it never overlaps Twin. */}
           <div className="grid grid-cols-5 items-center gap-0 min-w-0 h-full">
             {NAV_TABS.slice(0, 2).map((tab) => (
               <TabButton
@@ -260,22 +261,24 @@ export function MobileBottomBar({ route }: { route: Route }) {
             ))}
           </div>
 
-          {/* Far-right 3-dots: overlaid so it consumes no layout space.
-              Visible icon stays small; clickable area is expanded invisibly
-              for usable touch targets. */}
-          <button
-            type="button"
-            onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
-            aria-expanded={tray === 'more'}
-            aria-haspopup="menu"
-            aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
-            aria-current={moreActive ? 'page' : undefined}
-            className={`absolute right-0.5 top-1/2 -translate-y-1/2 grid place-items-center w-12 h-12 bg-transparent border-0 cursor-pointer transition-colors ${
-              moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
-            }`}
-          >
-            <MoreVertical className="w-[15px] h-5" aria-hidden />
-          </button>
+          {/* Far-right 3-dots: narrow 20px reserved column so Twin is not
+              overlapped. Visible icon stays small; clickable area extends
+              invisibly above/below for usable touch targets. */}
+          <div className="flex justify-center items-center h-full">
+            <button
+              type="button"
+              onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
+              aria-expanded={tray === 'more'}
+              aria-haspopup="menu"
+              aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
+              aria-current={moreActive ? 'page' : undefined}
+              className={`grid place-items-center w-5 h-12 p-0 border-0 bg-transparent cursor-pointer transition-colors ${
+                moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
+              }`}
+            >
+              <MoreVertical className="w-[15px] h-5" aria-hidden />
+            </button>
+          </div>
         </nav>
       </div>
     </>
