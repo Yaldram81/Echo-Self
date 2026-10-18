@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
 import { MobileBottomBar } from '@/components/MobileBottomBar';
 import { SampleDataToast } from '@/components/ui';
+import { PublicFooter } from '@/components/PublicFooter';
 
 interface NavItem {
   id: PageId;
@@ -565,19 +566,33 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         {children}
       </main>
 
-      {/* Desktop Footer (Rendered only on in-app pages; landing page has its own bespoke footer) */}
-      {!isLandingPage && (
+      {/* Site Footer System: Editorial PublicFooter on Public Landing, and Minimal Desktop Footer on In-App Workspace */}
+      {isLandingPage ? (
+        <PublicFooter />
+      ) : route.kind === 'app' ? (
         <footer className="hidden md:block border-t border-linen-dark/50 mt-auto bg-paper">
-          <div className="max-w-6xl mx-auto shell-pad py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <p className="text-xs text-slateink leading-relaxed">
-              EchoSelf: a personal knowledge and decision-support tool. Claims about you trace back to recorded evidence.
+          <div className="max-w-6xl mx-auto shell-pad py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slateink">
+            <p className="leading-relaxed">
+              © {new Date().getFullYear()} EchoSelf · Every claim traces back to recorded evidence.
             </p>
-            <p className="text-xs text-slateink-light whitespace-nowrap">
-              {signedIn ? 'Private workspace active' : 'Viewing sample persona (Jordan)'}
-            </p>
+            <div className="flex items-center gap-4 text-slateink-light">
+              <span>{signedIn ? 'Private workspace active' : 'Viewing sample persona (Jordan)'}</span>
+              <span className="text-linen-dark">·</span>
+              <a
+                href={hrefFor('settings')}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  e.preventDefault();
+                  go('settings');
+                }}
+                className="hover:text-charcoal hover:underline transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-terracotta/40 rounded-xs"
+              >
+                Settings & Privacy
+              </a>
+            </div>
           </div>
         </footer>
-      )}
+      ) : null}
 
       {/* Mobile Navigation Dock - Rendered ONLY inside application routes, NOT on public landing page */}
       {!isLandingPage && <MobileBottomBar route={route} />}

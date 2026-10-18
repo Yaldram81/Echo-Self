@@ -734,17 +734,6 @@ export function HomePage() {
             <span>Sign in</span>
           </button>
         </div>
-
-        {/* Minimal Restrained Footer */}
-        <div className="pt-10 mt-10 border-t border-linen-dark/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slateink">
-          <p>© EchoSelf · An evidence-grounded personal model.</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-slateink-dark">
-            <button onClick={() => navigateTo('memories')} className="hover:underline">Demo Persona</button>
-            <button onClick={() => navigateTo('graph')} className="hover:underline">Evidence Graph</button>
-            <button onClick={() => navigateTo('decisions')} className="hover:underline">Decision Mirror</button>
-            <button onClick={() => navigateTo('settings')} className="hover:underline">Privacy & Data</button>
-          </div>
-        </div>
       </section>
     </div>
   );
