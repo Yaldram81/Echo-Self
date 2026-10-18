@@ -15,6 +15,7 @@
     "decision-tests": "tsx scripts/run-decision-tests.mts",
     "capture-tests": "tsx --env-file=.env scripts/run-capture-tests.mts",
     "review-tests": "tsx --env-file=.env scripts/run-review-tests.mts",
+    "insight-tests": "tsx --env-file=.env scripts/run-insights-tests.mts",
     "graph-tests": "tsx --env-file=.env scripts/run-graph-tests.mts",
     "workspace-tests": "tsx --env-file=.env scripts/run-workspace-tests.mts",
     "journey-tests": "tsx --env-file=.env scripts/run-e2e-journey.mts",

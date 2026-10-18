@@ -71,6 +71,7 @@ const DATA_TABLES = [
   'statement_relationships',
   'captures',
   'review_actions_log',
+  'insights',
 ] as const;
 
 export function SettingsPage() {

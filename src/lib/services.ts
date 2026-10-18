@@ -191,6 +191,11 @@ export const beliefsService = {
       history: (history as BeliefHistoryPoint[]).filter((h) => h.belief_id === b.id),
     }));
   },
+  async get(id: string): Promise<Belief | null> {
+    return unwrap(
+      supabase.from('beliefs').select('*').eq('id', id).maybeSingle()
+    ) as Promise<Belief | null>;
+  },
   async create(input: BeliefInput): Promise<Belief> {
     const { data, error } = await supabase
       .from('beliefs')
@@ -200,9 +205,18 @@ export const beliefsService = {
     if (error) throw new Error(error.message);
     return data as Belief;
   },
-  async update(id: string, input: BeliefInput): Promise<void> {
+  async update(id: string, input: Partial<BeliefInput> & { note?: string }): Promise<void> {
     const { error } = await supabase.from('beliefs').update(input).eq('id', id);
     if (error) throw new Error(error.message);
+    try {
+      await supabase.from('beliefs_history').insert({
+        belief_id: id,
+        strength: input.strength ?? 75,
+        note: input.note || (input.statement ? `Updated: ${input.statement}` : 'Updated belief'),
+      });
+    } catch {
+      // Non-blocking
+    }
   },
   /** Confirm an AI suggestion: it becomes a user-owned statement. */
   async confirmSuggestion(id: string): Promise<void> {

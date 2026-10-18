@@ -12,6 +12,7 @@ export type Mood = 'positive' | 'neutral' | 'mixed' | 'difficult';
 
 export interface Memory {
   id: string;
+  user_id?: string | null;
   title: string;
   content: string;
   category: MemoryCategory;
@@ -65,6 +66,7 @@ export interface BeliefHistoryPoint {
 }
 
 export interface Belief extends BeliefHistoryPointOmit {
+  user_id?: string | null;
   kind: BeliefKind;
   status: BeliefStatus;
   formed_at: string;
@@ -219,6 +221,7 @@ export interface AnalysisSnapshot {
 
 export interface Decision {
   id: string;
+  user_id?: string | null;
   title: string;
   context: string;
   status: DecisionStatus;
@@ -497,3 +500,66 @@ export interface CaptureInput {
   tags?: string[];
   occurred_at?: string;
 }
+
+export type InsightCategory =
+  | 'recurring_theme'
+  | 'decision_pattern'
+  | 'decision_approach'
+  | 'belief_evolution'
+  | 'repeated_obstacle'
+  | 'value_alignment'
+  | 'value_decision_alignment'
+  | 'stated_vs_choice_tension'
+  | 'priority_tension'
+  | 'reflection_prompt'
+  | 'reflection_question'
+  | 'missing_information';
+
+export type EvidenceQuality =
+  | 'multiple_examples'
+  | 'single_example'
+  | 'conflicting_evidence'
+  | 'limited_recent'
+  | 'insufficient_evidence';
+
+export type InsightStatus = 'candidate' | 'confirmed' | 'dismissed';
+
+export interface InsightItem {
+  id: string;
+  user_id?: string | null;
+  category: InsightCategory;
+  title: string;
+  statement: string;
+  scope_label: string;
+  evidence_quality: EvidenceQuality;
+  evidence_coverage: string;
+  status: InsightStatus;
+  user_correction?: string | null;
+  supporting_memory_ids: string[];
+  counter_memory_ids: string[];
+  related_decision_ids: string[];
+  related_belief_ids: string[];
+  reasoning: string;
+  uncertainty_notes?: string | null;
+  promoted_belief_id?: string | null;
+  generated_at: string;
+  reviewed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsightInput {
+  category: InsightCategory;
+  title: string;
+  statement: string;
+  scope_label?: string;
+  evidence_quality: EvidenceQuality;
+  evidence_coverage?: string;
+  supporting_memory_ids?: string[];
+  counter_memory_ids?: string[];
+  related_decision_ids?: string[];
+  related_belief_ids?: string[];
+  reasoning: string;
+  uncertainty_notes?: string | null;
+}
+

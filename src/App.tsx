@@ -29,6 +29,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ de
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const CaptureInboxPage = lazy(() => import('@/pages/CaptureInboxPage').then((m) => ({ default: m.CaptureInboxPage })));
 const ReviewCenterPage = lazy(() => import('@/pages/ReviewCenterPage').then((m) => ({ default: m.ReviewCenterPage })));
+const InsightsPage = lazy(() => import('@/pages/InsightsPage').then((m) => ({ default: m.InsightsPage })));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -120,6 +121,7 @@ function SwitchPage({ page }: { page: PageId }) {
     case 'profile': return <ProfilePage />;
     case 'inbox': return <CaptureInboxPage />;
     case 'review': return <ReviewCenterPage />;
+    case 'insights': return <InsightsPage />;
     default: return <HomePage />;
   }
 }
