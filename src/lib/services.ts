@@ -12,6 +12,9 @@ import type {
   MemoryInput,
   TimelineEvent,
   UserProfile,
+  CaptureItem,
+  CaptureInput,
+  CaptureStatus,
 } from './types';
 
 type DbResult<T> = { data: T | null; error: { message: string } | null };
@@ -410,7 +413,7 @@ export const dataManagementService = {
    * graph edge confirmations. Sample rows are excluded.
    */
   async exportAll(): Promise<Record<string, unknown[]>> {
-    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships'] as const;
+    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships', 'captures'] as const;
     const out: Record<string, unknown[]> = {};
     for (const table of tables) {
       // Personal workspaces only: the public sample rows (user_id IS NULL)
@@ -464,5 +467,239 @@ export const profilesService = {
     } catch {
       // Gracefully retained
     }
+  },
+};
+
+const CAPTURES_STORAGE_KEY = 'echoself_local_captures_v1';
+let inMemoryCaptures: CaptureItem[] | null = null;
+
+function getLocalCaptures(): CaptureItem[] {
+  if (inMemoryCaptures) return inMemoryCaptures;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(CAPTURES_STORAGE_KEY);
+      if (raw) {
+        inMemoryCaptures = JSON.parse(raw);
+        return inMemoryCaptures!;
+      }
+    }
+  } catch {}
+
+  inMemoryCaptures = [
+    {
+      id: 'local-cap-sample-1',
+      content: 'Notice how much calmer mornings feel when I leave my phone in the kitchen overnight. Need to test this for another two weeks before calling it a permanent habit.',
+      title: 'Kitchen phone experiment note',
+      category: 'health',
+      tags: ['habits', 'mornings', 'screen-time'],
+      status: 'inbox',
+      promoted_memory_id: null,
+      promoted_at: null,
+      occurred_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    },
+    {
+      id: 'local-cap-sample-2',
+      content: 'Overheard an engineer say: "Simplicity is the prerequisite for reliability." Struck a chord with my current dilemma over our microservices refactor.',
+      title: 'Simplicity and reliability quote',
+      category: 'work',
+      tags: ['engineering', 'simplicity', 'architecture'],
+      status: 'inbox',
+      promoted_memory_id: null,
+      promoted_at: null,
+      occurred_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    },
+  ];
+  return inMemoryCaptures;
+}
+
+function setLocalCaptures(items: CaptureItem[]) {
+  inMemoryCaptures = items;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CAPTURES_STORAGE_KEY, JSON.stringify(items));
+    }
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+export const capturesService = {
+  /** List captures, optionally filtered by status ('inbox' | 'promoted' | 'archived') */
+  async list(status?: CaptureStatus): Promise<CaptureItem[]> {
+    try {
+      let query = supabase.from('captures').select('*').order('created_at', { ascending: false });
+      if (status) {
+        query = query.eq('status', status);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      if (data && data.length > 0) {
+        return data as CaptureItem[];
+      }
+      const local = getLocalCaptures();
+      return status ? local.filter((c) => c.status === status) : local;
+    } catch {
+      const local = getLocalCaptures();
+      return status ? local.filter((c) => c.status === status) : local;
+    }
+  },
+
+  /** Get a single capture by ID */
+  async get(id: string): Promise<CaptureItem | null> {
+    try {
+      const { data, error } = await supabase.from('captures').select('*').eq('id', id).maybeSingle();
+      if (error || !data) {
+        const local = getLocalCaptures();
+        return local.find((c) => c.id === id) ?? null;
+      }
+      return data as CaptureItem;
+    } catch {
+      const local = getLocalCaptures();
+      return local.find((c) => c.id === id) ?? null;
+    }
+  },
+
+  /** Quickly create a raw capture without forced categorization */
+  async create(input: CaptureInput): Promise<CaptureItem> {
+    const cleanContent = input.content.trim();
+    if (!cleanContent) {
+      throw new Error('Capture content cannot be empty.');
+    }
+    const now = new Date().toISOString();
+    const payload = {
+      content: cleanContent,
+      title: input.title?.trim() || null,
+      category: input.category || null,
+      tags: input.tags ?? [],
+      occurred_at: input.occurred_at || now,
+      status: 'inbox' as const,
+      promoted_memory_id: null,
+      promoted_at: null,
+      created_at: now,
+      updated_at: now,
+    };
+
+    try {
+      const { data, error } = await supabase.from('captures').insert(payload).select().maybeSingle();
+      if (error || !data) {
+        const localItem: CaptureItem = {
+          id: `local-cap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          ...payload,
+        };
+        const local = getLocalCaptures();
+        setLocalCaptures([localItem, ...local]);
+        return localItem;
+      }
+      return data as CaptureItem;
+    } catch {
+      const localItem: CaptureItem = {
+        id: `local-cap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        ...payload,
+      };
+      const local = getLocalCaptures();
+      setLocalCaptures([localItem, ...local]);
+      return localItem;
+    }
+  },
+
+  /** Update an existing capture in place */
+  async update(id: string, patch: Partial<CaptureItem>): Promise<CaptureItem> {
+    const now = new Date().toISOString();
+    const cleanPatch = { ...patch, updated_at: now };
+    try {
+      const { data, error } = await supabase.from('captures').update(cleanPatch).eq('id', id).select().maybeSingle();
+      if (error || !data) {
+        const local = getLocalCaptures();
+        const idx = local.findIndex((c) => c.id === id);
+        if (idx !== -1) {
+          local[idx] = { ...local[idx], ...cleanPatch };
+          setLocalCaptures(local);
+          return local[idx];
+        }
+        throw new Error('Capture not found');
+      }
+      return data as CaptureItem;
+    } catch (e) {
+      const local = getLocalCaptures();
+      const idx = local.findIndex((c) => c.id === id);
+      if (idx !== -1) {
+        local[idx] = { ...local[idx], ...cleanPatch };
+        setLocalCaptures(local);
+        return local[idx];
+      }
+      throw e;
+    }
+  },
+
+  /** Delete a capture */
+  async delete(id: string): Promise<void> {
+    try {
+      await supabase.from('captures').delete().eq('id', id);
+    } catch {}
+    const local = getLocalCaptures();
+    setLocalCaptures(local.filter((c) => c.id !== id));
+  },
+
+  /**
+   * Promote an inbox capture into a permanent memory in the memory library.
+   * Preserves the original capture with its original content, stamps status='promoted',
+   * and records promoted_memory_id. Prevents duplicate promotion.
+   */
+  async promoteToMemory(
+    captureId: string,
+    overrides?: Partial<MemoryInput>
+  ): Promise<{ capture: CaptureItem; memory: Memory }> {
+    const capture = await this.get(captureId);
+    if (!capture) {
+      throw new Error('Capture not found');
+    }
+
+    // Guard against repeated promotion creating duplicate memories
+    if (capture.status === 'promoted' && capture.promoted_memory_id) {
+      const existing = await memoriesService.get(capture.promoted_memory_id);
+      if (existing) {
+        return { capture, memory: existing };
+      }
+    }
+
+    let fallbackTitle = capture.title?.trim();
+    if (!fallbackTitle) {
+      const firstLine = capture.content.split('\n')[0].trim();
+      fallbackTitle = firstLine.length > 50 ? firstLine.slice(0, 47) + '…' : firstLine;
+    }
+
+    const memoryInput: MemoryInput = {
+      title: overrides?.title?.trim() || fallbackTitle || 'Captured Reflection',
+      content: capture.content.trim(),
+      category: overrides?.category || capture.category || 'personal_growth',
+      tags: overrides?.tags && overrides.tags.length > 0 ? overrides.tags : capture.tags,
+      occurred_at: overrides?.occurred_at || capture.occurred_at || new Date().toISOString(),
+      source: overrides?.source || 'note',
+      mood: overrides?.mood || 'neutral',
+      confidence: overrides?.confidence ?? 80,
+      user_importance: overrides?.user_importance ?? null,
+    };
+
+    const newMemory = await memoriesService.create(memoryInput);
+    const updatedCapture = await this.update(captureId, {
+      status: 'promoted',
+      promoted_memory_id: newMemory.id,
+      promoted_at: new Date().toISOString(),
+    });
+
+    return { capture: updatedCapture, memory: newMemory };
+  },
+
+  /** Revert a promoted capture back to inbox status without deleting the promoted memory */
+  async unpromote(captureId: string): Promise<CaptureItem> {
+    return this.update(captureId, {
+      status: 'inbox',
+      promoted_memory_id: null,
+      promoted_at: null,
+    });
   },
 };

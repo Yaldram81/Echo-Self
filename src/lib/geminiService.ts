@@ -44,7 +44,14 @@ export const geminiService = {
     const list: string[] = [];
 
     // Environment variable key
-    const fromEnv = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)?.trim();
+    let fromEnv: string | undefined;
+    try {
+      fromEnv = typeof import.meta !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY
+        ? (import.meta.env.VITE_GEMINI_API_KEY as string).trim()
+        : (typeof process !== 'undefined' ? process.env?.VITE_GEMINI_API_KEY?.trim() : undefined);
+    } catch {
+      fromEnv = typeof process !== 'undefined' ? process.env?.VITE_GEMINI_API_KEY?.trim() : undefined;
+    }
     if (fromEnv) list.push(fromEnv);
 
     // Multi-key local storage list
@@ -314,4 +321,132 @@ Be realistic, psychologically nuanced, and objective. Never hallucinate irreleva
       new Error('Could not connect to Gemini API. Please check your network and API keys in Settings.')
     );
   },
+
+  /**
+   * Suggest title, category, and tags for a raw capture without altering original text.
+   * If live AI provider is configured and available, returns an AI-generated suggestion.
+   * Otherwise falls back to honest local rule-based heuristic suggestions.
+   */
+  async suggestCaptureDetails(
+    content: string
+  ): Promise<{
+    title: string;
+    category: import('./types').MemoryCategory;
+    tags: string[];
+    source: 'ai' | 'heuristic';
+  }> {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return {
+        title: '',
+        category: 'personal_growth',
+        tags: [],
+        source: 'heuristic',
+      };
+    }
+
+    // Local heuristic fallback generator
+    const generateLocalHeuristic = (): {
+      title: string;
+      category: import('./types').MemoryCategory;
+      tags: string[];
+      source: 'heuristic';
+    } => {
+      const firstLine = trimmed.split('\n')[0].replace(/^[#*-]\s*/, '').trim();
+      const title = firstLine.length > 50 ? firstLine.slice(0, 47) + '…' : firstLine;
+      const lower = trimmed.toLowerCase();
+
+      let category: import('./types').MemoryCategory = 'personal_growth';
+      if (/\b(work|team|code|project|career|client|job|engineer|meeting|salary)\b/.test(lower)) {
+        category = 'work';
+      } else if (/\b(health|run|sleep|gym|workout|doctor|food|diet|habit|morning)\b/.test(lower)) {
+        category = 'health';
+      } else if (/\b(friend|family|dad|mom|partner|maya|nadia|wife|husband|relationship|love)\b/.test(lower)) {
+        category = 'relationship';
+      } else if (/\b(travel|trip|flight|amsterdam|paris|hotel|explore)\b/.test(lower)) {
+        category = 'travel';
+      } else if (/\b(money|budget|invest|savings|expense|cost|finance)\b/.test(lower)) {
+        category = 'finance';
+      }
+
+      const potentialTags = ['habits', 'work', 'leadership', 'reflection', 'family', 'learning', 'health', 'focus', 'decision'];
+      const matchedTags = potentialTags.filter((t) => lower.includes(t));
+      if (matchedTags.length === 0) matchedTags.push('note');
+
+      return {
+        title: title || 'Captured reflection',
+        category,
+        tags: matchedTags.slice(0, 4),
+        source: 'heuristic',
+      };
+    };
+
+    const allKeys = this.getApiKeys();
+    if (allKeys.length === 0) {
+      return generateLocalHeuristic();
+    }
+
+    const systemInstruction = `You are a concise editorial assistant for EchoSelf.
+Given raw personal notes or thoughts, generate:
+1. title: A concise, dignified 3 to 6 word title summarizing the central observation or experience.
+2. category: Strictly one of: "relationship", "health", "work", "personal_growth", "travel", "finance", "other".
+3. tags: Array of 2 to 4 clean, single-word lowercase tags.
+Do not invent facts or alter user intent. Output valid JSON only.`;
+
+    const prompt = `Raw capture text:\n"${trimmed.slice(0, 1000)}"\n\nJSON output format:\n{\n  "title": "string",\n  "category": "string",\n  "tags": ["string"]\n}`;
+
+    try {
+      const activeKey = allKeys[this.getActiveKeyIndex() % allKeys.length];
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': activeKey,
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              maxOutputTokens: 500,
+              temperature: 0.2,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        return generateLocalHeuristic();
+      }
+
+      const data = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) return generateLocalHeuristic();
+
+      const parsed = JSON.parse(rawText) as {
+        title?: string;
+        category?: import('./types').MemoryCategory;
+        tags?: string[];
+      };
+
+      const validCategories = ['relationship', 'health', 'work', 'personal_growth', 'travel', 'finance', 'other'];
+      const category = validCategories.includes(parsed.category as string)
+        ? (parsed.category as import('./types').MemoryCategory)
+        : 'personal_growth';
+
+      return {
+        title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : generateLocalHeuristic().title,
+        category,
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 5) : ['note'],
+        source: 'ai',
+      };
+    } catch {
+      return generateLocalHeuristic();
+    }
+  },
 };
+

@@ -17,6 +17,7 @@ import {
   X,
   Settings,
   Eye,
+  Inbox,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -33,6 +34,7 @@ interface NavItem {
 }
 
 const PRIMARY_WORKSPACE_NAV: NavItem[] = [
+  { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'memories', label: 'Memories', icon: BookOpen },
   { id: 'decisions', label: 'Decisions', icon: Scale },
   { id: 'beliefs', label: 'Beliefs', icon: Compass },
@@ -442,6 +444,26 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   </a>
                 )}
 
+                {/* Quick Capture Fast Action */}
+                <a
+                  href={hrefFor('inbox')}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    e.preventDefault();
+                    go('inbox');
+                  }}
+                  aria-current={page === 'inbox' ? 'page' : undefined}
+                  className={`hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
+                    page === 'inbox'
+                      ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
+                      : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
+                  }`}
+                  title="Capture Inbox"
+                >
+                  <Feather className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
+                  <span>Capture</span>
+                </a>
+
                 {/* Twin Chat Primary Action */}
                 <a
                   href={hrefFor('chat')}
@@ -496,6 +518,20 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         <button
                           type="button"
                           role="menuitem"
+                          onClick={() => go('inbox')}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                            page === 'inbox'
+                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
+                              : 'text-charcoal hover:bg-linen/60'
+                          }`}
+                        >
+                          <Inbox className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                          <span>Capture Inbox</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="menuitem"
                           onClick={() => go('profile')}
                           className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
                             page === 'profile'
@@ -503,7 +539,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                               : 'text-charcoal hover:bg-linen/60'
                           }`}
                         >
-                          <User className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                          <User className="w-4 h-4 text-slateink-dark" aria-hidden="true" />
                           <span>My Profile</span>
                         </button>
 

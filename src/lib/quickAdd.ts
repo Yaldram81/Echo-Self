@@ -4,12 +4,13 @@
  * The bar dispatches an intent; the matching page listens and opens its form.
  */
 
-export type QuickAddKind = 'memory' | 'belief' | 'decision';
+export type QuickAddKind = 'memory' | 'belief' | 'decision' | 'capture';
 
 export const QUICK_ADD_PAGE: Record<QuickAddKind, import('@/lib/router').PageId> = {
   memory: 'memories',
   belief: 'beliefs',
   decision: 'decisions',
+  capture: 'inbox',
 };
 
 const CHANNEL = 'echoself:quick-add';

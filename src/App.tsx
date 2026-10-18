@@ -27,6 +27,7 @@ const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ de
 const EvidenceGraphPage = lazy(() => import('@/pages/EvidenceGraphPage').then((m) => ({ default: m.EvidenceGraphPage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const CaptureInboxPage = lazy(() => import('@/pages/CaptureInboxPage').then((m) => ({ default: m.CaptureInboxPage })));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -116,6 +117,7 @@ function SwitchPage({ page }: { page: PageId }) {
     case 'graph': return <EvidenceGraphPage />;
     case 'settings': return <SettingsPage />;
     case 'profile': return <ProfilePage />;
+    case 'inbox': return <CaptureInboxPage />;
     default: return <HomePage />;
   }
 }

@@ -14,6 +14,7 @@ import {
   LogOut,
   User,
   Sparkles,
+  Inbox,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -29,6 +30,7 @@ interface SecondaryNavItem {
 }
 
 const SECONDARY_DESTINATIONS: SecondaryNavItem[] = [
+  { page: 'inbox', label: 'Capture Inbox', description: 'Quick thoughts & reflection drafts', icon: Inbox },
   { page: 'beliefs', label: 'Beliefs & Values', description: 'Confirmed principles & confidence', icon: Compass },
   { page: 'graph', label: 'Evidence Graph', description: 'Visual map of records & tensions', icon: GitBranch },
   { page: 'timeline', label: 'Timeline', description: 'Chronological history of moments', icon: History },
@@ -68,8 +70,13 @@ export function MobileBottomBar({ route }: { route: Route }) {
     navigateTo(p);
   };
 
-  const handleQuickAdd = (kind: 'memory' | 'decision' | 'belief') => {
+  const handleQuickAdd = (kind: 'memory' | 'decision' | 'belief' | 'capture') => {
     setMoreOpen(false);
+    if (kind === 'capture') {
+      navigateTo('inbox');
+      setTimeout(() => requestQuickAdd('capture'), 80);
+      return;
+    }
     if (kind === 'decision') {
       navigateTo({ page: 'decision', action: 'new' });
       return;
@@ -143,11 +150,19 @@ export function MobileBottomBar({ route }: { route: Route }) {
             <span className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light pl-1">
               Quick create
             </span>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleQuickAdd('capture')}
+                className="py-1.5 px-1.5 rounded-xl bg-linen border border-terracotta/40 text-xs font-semibold text-terracotta-deep hover:bg-terracotta/10 transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5 text-terracotta" />
+                <span>Capture</span>
+              </button>
               <button
                 type="button"
                 onClick={() => handleQuickAdd('memory')}
-                className="py-1.5 px-2 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-terracotta hover:text-terracotta-deep transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-terracotta hover:text-terracotta-deep transition-colors flex items-center justify-center gap-1 shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5 text-terracotta" />
                 <span>Memory</span>
@@ -155,7 +170,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
               <button
                 type="button"
                 onClick={() => handleQuickAdd('decision')}
-                className="py-1.5 px-2 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-amberclay-DEFAULT hover:text-amberclay-DEFAULT transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-amberclay-DEFAULT hover:text-amberclay-DEFAULT transition-colors flex items-center justify-center gap-1 shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5 text-amberclay-DEFAULT" />
                 <span>Decision</span>
@@ -163,7 +178,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
               <button
                 type="button"
                 onClick={() => handleQuickAdd('belief')}
-                className="py-1.5 px-2 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-sage-dark hover:text-sage-dark transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                className="py-1.5 px-1.5 rounded-xl bg-white border border-linen-dark/80 text-xs font-semibold text-charcoal hover:border-sage-dark hover:text-sage-dark transition-colors flex items-center justify-center gap-1 shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5 text-sage-dark" />
                 <span>Belief</span>
