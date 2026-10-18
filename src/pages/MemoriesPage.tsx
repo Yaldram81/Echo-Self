@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Plus,
@@ -17,6 +17,8 @@ import {
   SlidersHorizontal,
   X,
   Pencil,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
@@ -63,6 +65,10 @@ export function MemoriesPage() {
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Inline tag creation state
+  const [newTagInput, setNewTagInput] = useState('');
+  const [isSavingTag, setIsSavingTag] = useState(false);
+
   useEffect(() => onQuickAddRequest((kind) => {
     if (kind !== 'memory') return;
     setEditing(null);
@@ -80,7 +86,7 @@ export function MemoriesPage() {
     return Array.from(counts.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([t]) => t)
-      .slice(0, 10);
+      .slice(0, 12);
   }, [data]);
 
   const activeFiltersCount =
@@ -94,6 +100,42 @@ export function MemoriesPage() {
     setTag(null);
     setQuery('');
   };
+
+  async function handleInlineAddTag(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = newTagInput.trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, '-').slice(0, 24);
+    if (!clean || isSavingTag) return;
+    setIsSavingTag(true);
+    setActionError(null);
+    try {
+      const list = data ?? [];
+      if (list.length > 0) {
+        const targetMemory = list[0];
+        const existingTags = targetMemory.tags ?? [];
+        if (!existingTags.includes(clean)) {
+          const updatedTags = [...existingTags, clean];
+          await memoriesService.update(targetMemory.id, {
+            title: targetMemory.title,
+            content: targetMemory.content,
+            category: targetMemory.category,
+            source: targetMemory.source,
+            mood: targetMemory.mood,
+            confidence: targetMemory.confidence,
+            occurred_at: targetMemory.occurred_at,
+            user_importance: targetMemory.user_importance,
+            tags: updatedTags,
+          });
+        }
+      }
+      setNewTagInput('');
+      setTag(clean);
+      await reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save new tag to database.');
+    } finally {
+      setIsSavingTag(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     const items = data ?? [];
@@ -123,7 +165,7 @@ export function MemoriesPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Page Title & Counter */}
       <div className="flex items-baseline justify-between gap-2">
         <div>
@@ -137,9 +179,9 @@ export function MemoriesPage() {
         )}
       </div>
 
-      {/* Search and Action Bar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      {/* Primary Toolbar: Search Bar inline with Categories & Time on desktop */}
+      <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slateink-light" aria-hidden />
           <input
             type="search"
@@ -147,22 +189,39 @@ export function MemoriesPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search text, memories, tags…"
             aria-label="Search memories"
-            className="w-full rounded-full border border-linen-dark bg-white/80 pl-9 pr-3.5 py-2 text-xs sm:text-sm placeholder:text-slateink-light focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 shadow-xs transition-all"
+            className="w-full h-9 sm:h-10 rounded-full border border-linen-dark bg-white/90 pl-9 pr-8 py-2 text-xs sm:text-sm placeholder:text-slateink-light focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 shadow-xs transition-all"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slateink-light hover:text-charcoal"
+              aria-label="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Filter Toggle Button */}
+        {/* Categories & Time inline on Desktop/Tablet */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <CategoryDropdown category={category} onChange={setCategory} />
+          <TimeDropdown dateRange={dateRange} onChange={setDateRange} />
+        </div>
+
+        {/* Mobile Filter Toggle Button */}
         <button
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
-          className={`inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-full border px-3 sm:px-3.5 text-xs sm:text-sm font-medium transition-all shadow-xs shrink-0 ${
+          className={`sm:hidden inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all shadow-xs shrink-0 ${
             showFilters || activeFiltersCount > 0
               ? 'border-terracotta bg-terracotta/10 text-terracotta-deep font-semibold'
-              : 'border-linen-dark bg-white/80 text-slateink-dark hover:border-terracotta'
+              : 'border-linen-dark bg-white/90 text-slateink-dark hover:border-terracotta'
           }`}
+          aria-label="Toggle filters"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
-          <span className="hidden sm:inline">Filters</span>
+          <span>Filters</span>
           {activeFiltersCount > 0 && (
             <span className="h-4 min-w-[16px] px-1 rounded-full bg-terracotta text-paper text-[10px] font-bold flex items-center justify-center">
               {activeFiltersCount}
@@ -170,7 +229,7 @@ export function MemoriesPage() {
           )}
         </button>
 
-        {/* Primary Action Button */}
+        {/* Record Memory Action Button */}
         <button
           onClick={() => {
             setEditing(null);
@@ -184,76 +243,87 @@ export function MemoriesPage() {
         </button>
       </div>
 
-      {/* Expandable Filters Tray */}
+      {/* Mobile Filters Tray: Categories and Time in a SINGLE LINE */}
       {showFilters && (
-        <div className="p-3 sm:p-4 rounded-2xl bg-paper-soft border border-linen-dark/80 shadow-xs space-y-3 animate-[fadeIn_120ms_ease-out]">
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect
-              icon={<FolderOpen className="w-3.5 h-3.5" aria-hidden />}
-              label="Category"
-              value={category}
-              onChange={(v) => setCategory(v as 'all' | MemoryCategory)}
-              options={[
-                { value: 'all', label: 'All categories' },
-                ...MEMORY_CATEGORIES.map((c) => ({ value: c, label: c.replace('_', ' ') })),
-              ]}
-            />
-
-            <FilterSelect
-              icon={<Calendar className="w-3.5 h-3.5" aria-hidden />}
-              label="When"
-              value={dateRange}
-              onChange={(v) => setDateRange(v as 'all' | '30' | '90' | '365')}
-              options={[
-                { value: 'all', label: 'All time' },
-                { value: '30', label: 'Last 30 days' },
-                { value: '90', label: 'Last 90 days' },
-                { value: '365', label: 'Past year' },
-              ]}
-            />
-
-            {activeFiltersCount > 0 && (
-              <button
-                onClick={resetFilters}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-clayred-DEFAULT hover:underline transition-colors ml-auto"
-              >
-                <X className="w-3 h-3" />
-                <span>Reset filters</span>
-              </button>
-            )}
-          </div>
-
-          {/* Tag Chips */}
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-linen-dark/40" role="group" aria-label="Filter by tag">
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slateink-light mr-1">
-                <TagIcon className="w-3 h-3" aria-hidden /> Tags:
-              </span>
-              <button
-                onClick={() => setTag(null)}
-                aria-pressed={tag === null}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  tag === null ? 'bg-charcoal text-paper' : 'bg-linen/70 text-slateink hover:bg-linen'
-                }`}
-              >
-                All
-              </button>
-              {allTags.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTag(tag === t ? null : t)}
-                  aria-pressed={tag === t}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                    tag === t ? 'bg-terracotta text-paper' : 'bg-linen/70 text-slateink hover:bg-linen'
-                  }`}
-                >
-                  #{t}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="sm:hidden grid grid-cols-2 gap-2 p-2 rounded-2xl bg-paper-soft/95 border border-linen-dark/80 shadow-xs animate-[fadeIn_120ms_ease-out]">
+          <CategoryDropdown category={category} onChange={setCategory} fullWidth />
+          <TimeDropdown dateRange={dateRange} onChange={setDateRange} fullWidth />
         </div>
       )}
+
+      {/* Tags Row: Shown below Search & Dropdowns, with inline DB tag creator */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5" role="group" aria-label="Filter by tag">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-slateink-light mr-1 shrink-0">
+          <TagIcon className="w-3.5 h-3.5" aria-hidden /> Tags:
+        </span>
+        <button
+          onClick={() => setTag(null)}
+          aria-pressed={tag === null}
+          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+            tag === null
+              ? 'bg-charcoal text-paper shadow-xs font-semibold'
+              : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+          }`}
+        >
+          All
+        </button>
+        {allTags.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTag(tag === t ? null : t)}
+            aria-pressed={tag === t}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+              tag === t
+                ? 'bg-terracotta text-paper shadow-xs font-semibold'
+                : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+            }`}
+          >
+            #{t}
+          </button>
+        ))}
+
+        {/* Inline Add Tag Field & Save Button */}
+        <form onSubmit={handleInlineAddTag} className="inline-flex items-center gap-1 ml-0.5">
+          <div className="relative inline-flex items-center">
+            <span className="absolute left-2.5 text-xs text-slateink-light font-mono select-none">#</span>
+            <input
+              type="text"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              placeholder="Add tag…"
+              aria-label="Add new tag"
+              className="h-7 w-24 sm:w-28 rounded-full border border-dashed border-linen-dark bg-white/80 pl-5 pr-2 text-[11px] text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:border-solid focus:bg-white focus:w-36 focus:outline-none transition-all shadow-2xs"
+            />
+          </div>
+          {newTagInput.trim().length > 0 && (
+            <button
+              type="submit"
+              disabled={isSavingTag}
+              className="h-7 px-2.5 rounded-full bg-terracotta text-paper text-[11px] font-semibold hover:bg-terracotta-dark transition-all disabled:opacity-50 flex items-center gap-1 shadow-xs"
+              title="Save tag to database"
+            >
+              {isSavingTag ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="w-3 h-3" />
+                  <span>Save</span>
+                </>
+              )}
+            </button>
+          )}
+        </form>
+
+        {activeFiltersCount > 0 && (
+          <button
+            onClick={resetFilters}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-clayred-DEFAULT hover:underline transition-colors ml-auto shrink-0"
+          >
+            <X className="w-3 h-3" />
+            <span>Reset filters</span>
+          </button>
+        )}
+      </div>
 
       {/* Memory Form Modal */}
       {(showForm || editing) && (
@@ -320,39 +390,206 @@ export function MemoriesPage() {
   );
 }
 
-function FilterSelect({
-  icon,
-  label,
-  value,
+const TIME_OPTIONS = [
+  { value: 'all', label: 'All time' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: '365', label: 'Past year' },
+] as const;
+
+function CategoryDropdown({
+  category,
   onChange,
-  options,
+  fullWidth = false,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
+  category: 'all' | MemoryCategory;
+  onChange: (cat: 'all' | MemoryCategory) => void;
+  fullWidth?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [open]);
+
+  const activeLabel = category === 'all' ? 'All' : category.replace('_', ' ');
+
   return (
-    <label className="relative inline-flex items-center h-8 sm:h-9 rounded-full border border-linen-dark bg-white pl-2.5 pr-1.5 text-xs text-slateink-dark hover:border-terracotta transition-colors focus-within:border-terracotta">
-      <span className="flex items-center gap-1 text-slateink-light mr-1.5">
-        {icon}
-        <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={`Filter by ${label.toLowerCase()}`}
-        className="appearance-none bg-transparent pr-4 py-1 text-xs capitalize text-charcoal font-medium focus:outline-none cursor-pointer"
+    <div ref={ref} className={`relative ${fullWidth ? 'w-full' : ''}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`h-9 sm:h-10 inline-flex items-center gap-1.5 rounded-full border px-3 text-xs sm:text-sm font-medium transition-all shadow-xs cursor-pointer ${
+          fullWidth ? 'w-full justify-between' : ''
+        } ${
+          category !== 'all'
+            ? 'border-terracotta bg-terracotta/10 text-terracotta-deep font-semibold'
+            : 'border-linen-dark bg-white/90 text-slateink-dark hover:border-terracotta hover:bg-white'
+        }`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="Filter by category"
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value} className="capitalize">
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slateink-light" aria-hidden />
-    </label>
+        <span className="inline-flex items-center gap-1.5 truncate">
+          <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${category !== 'all' ? 'text-terracotta' : 'text-slateink-light'}`} />
+          <span className="text-slateink-light text-[11px] uppercase tracking-wider hidden md:inline">Category:</span>
+          <span className="capitalize truncate max-w-[100px] sm:max-w-none">{activeLabel}</span>
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 mt-1.5 w-52 sm:w-56 rounded-2xl bg-paper-soft/95 backdrop-blur-md border border-linen-dark/80 shadow-xl p-1.5 z-50 space-y-0.5 animate-[fadeIn_120ms_ease-out]"
+        >
+          <div className="px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-slateink-light">Filter by Category</div>
+          <button
+            type="button"
+            role="option"
+            aria-selected={category === 'all'}
+            onClick={() => {
+              onChange('all');
+              setOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+              category === 'all'
+                ? 'bg-terracotta/15 text-terracotta-deep font-semibold'
+                : 'text-slateink-dark hover:bg-linen/80 hover:text-charcoal'
+            }`}
+          >
+            <span>All categories</span>
+            {category === 'all' && <Check className="w-3.5 h-3.5 text-terracotta shrink-0" />}
+          </button>
+          <div className="my-1 border-t border-linen-dark/40" />
+          {MEMORY_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              role="option"
+              aria-selected={category === cat}
+              onClick={() => {
+                onChange(cat);
+                setOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium capitalize transition-colors cursor-pointer ${
+                category === cat
+                  ? 'bg-terracotta/15 text-terracotta-deep font-semibold'
+                  : 'text-slateink-dark hover:bg-linen/80 hover:text-charcoal'
+              }`}
+            >
+              <span>{cat.replace('_', ' ')}</span>
+              {category === cat && <Check className="w-3.5 h-3.5 text-terracotta shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimeDropdown({
+  dateRange,
+  onChange,
+  fullWidth = false,
+}: {
+  dateRange: 'all' | '30' | '90' | '365';
+  onChange: (range: 'all' | '30' | '90' | '365') => void;
+  fullWidth?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [open]);
+
+  const activeLabel = TIME_OPTIONS.find((o) => o.value === dateRange)?.label ?? 'All time';
+
+  return (
+    <div ref={ref} className={`relative ${fullWidth ? 'w-full' : ''}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`h-9 sm:h-10 inline-flex items-center gap-1.5 rounded-full border px-3 text-xs sm:text-sm font-medium transition-all shadow-xs cursor-pointer ${
+          fullWidth ? 'w-full justify-between' : ''
+        } ${
+          dateRange !== 'all'
+            ? 'border-terracotta bg-terracotta/10 text-terracotta-deep font-semibold'
+            : 'border-linen-dark bg-white/90 text-slateink-dark hover:border-terracotta hover:bg-white'
+        }`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="Filter by time"
+      >
+        <span className="inline-flex items-center gap-1.5 truncate">
+          <Calendar className={`w-3.5 h-3.5 shrink-0 ${dateRange !== 'all' ? 'text-terracotta' : 'text-slateink-light'}`} />
+          <span className="text-slateink-light text-[11px] uppercase tracking-wider hidden md:inline">When:</span>
+          <span className="truncate max-w-[100px] sm:max-w-none">{activeLabel}</span>
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-48 sm:w-52 rounded-2xl bg-paper-soft/95 backdrop-blur-md border border-linen-dark/80 shadow-xl p-1.5 z-50 space-y-0.5 animate-[fadeIn_120ms_ease-out]"
+        >
+          <div className="px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-slateink-light">Filter by Time</div>
+          {TIME_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="option"
+              aria-selected={dateRange === opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                dateRange === opt.value
+                  ? 'bg-terracotta/15 text-terracotta-deep font-semibold'
+                  : 'text-slateink-dark hover:bg-linen/80 hover:text-charcoal'
+              }`}
+            >
+              <span>{opt.label}</span>
+              {dateRange === opt.value && <Check className="w-3.5 h-3.5 text-terracotta shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

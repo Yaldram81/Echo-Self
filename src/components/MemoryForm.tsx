@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, Sparkles, Tag as TagIcon, Plus } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import {
   MEMORY_CATEGORIES,
@@ -33,6 +33,24 @@ export function MemoryForm({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Fetch all existing tags from memories in the database for autocomplete
+  const [dbTags, setDbTags] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    memoriesService.list().then((list) => {
+      if (cancelled) return;
+      const seen = new Set<string>();
+      for (const m of list) {
+        for (const t of m.tags ?? []) {
+          const clean = t.trim().toLowerCase();
+          if (clean && clean !== 'demo-wave-2') seen.add(clean);
+        }
+      }
+      setDbTags(Array.from(seen));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const valid = title.trim().length > 0 && content.trim().length > 0 && date !== '';
 
   function parseTags(raw: string): string[] {
@@ -42,6 +60,28 @@ export function MemoryForm({
       if (tag && tag !== 'demo-wave-2') seen.add(tag);
     }
     return Array.from(seen).slice(0, 8);
+  }
+
+  // Active word token being typed
+  const currentToken = useMemo(() => {
+    const parts = tagsInput.split(',');
+    return parts[parts.length - 1].trim().toLowerCase();
+  }, [tagsInput]);
+
+  // Matching tags from database as user types
+  const tagSuggestions = useMemo(() => {
+    if (!currentToken || currentToken.length < 1) return [];
+    const alreadyChosen = parseTags(tagsInput);
+    return dbTags
+      .filter((t) => t.includes(currentToken) && !alreadyChosen.includes(t))
+      .slice(0, 6);
+  }, [currentToken, dbTags, tagsInput]);
+
+  function handleSelectSuggestion(suggestedTag: string) {
+    const parts = tagsInput.split(',').map((p) => p.trim()).filter(Boolean);
+    parts.pop(); // Remove the partial token
+    parts.push(suggestedTag);
+    setTagsInput(parts.join(', ') + ', ');
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -249,18 +289,47 @@ export function MemoryForm({
             </div>
           </div>
 
-          {/* Tags */}
-          <div>
-            <label htmlFor="memory-tags" className="block text-xs font-semibold text-charcoal mb-1">
-              Tags (comma separated)
-            </label>
+          {/* Tags with Dynamic DB Fetching/Suggestions */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="memory-tags" className="block text-xs font-semibold text-charcoal">
+                Tags (comma separated)
+              </label>
+              {tagSuggestions.length > 0 && (
+                <span className="text-[10px] text-terracotta font-medium flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> Suggestions from DB
+                </span>
+              )}
+            </div>
+
             <input
               id="memory-tags"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               className="w-full rounded-xl border border-linen-dark bg-white px-3 py-1.5 text-xs focus:border-terracotta shadow-xs"
-              placeholder="family, career, habits"
+              placeholder="e.g. career, habits, family..."
+              autoComplete="off"
             />
+
+            {/* Live Autocomplete suggestions fetched from Database */}
+            {tagSuggestions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 animate-[fadeIn_100ms_ease-out]">
+                <span className="text-[10px] text-slateink-light uppercase font-semibold mr-0.5">
+                  Tap to add:
+                </span>
+                {tagSuggestions.map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(st)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-linen-dark text-[11px] font-medium text-terracotta-deep hover:bg-terracotta hover:text-paper hover:border-terracotta transition-all shadow-xs"
+                  >
+                    <span>#{st}</span>
+                    <Plus className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {formError && (
