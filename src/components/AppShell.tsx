@@ -21,6 +21,7 @@ import {
   CheckSquare,
   Lightbulb,
   PenLine,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -679,6 +680,20 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         <button
                           type="button"
                           role="menuitem"
+                          onClick={() => go('privacy')}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                            page === 'privacy'
+                              ? 'bg-terracotta/10 text-terracotta-deep font-semibold'
+                              : 'text-charcoal hover:bg-linen/60'
+                          }`}
+                        >
+                          <ShieldCheck className="w-4 h-4 text-terracotta" aria-hidden="true" />
+                          <span>Privacy & Data</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="menuitem"
                           onClick={() => go('settings')}
                           className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
                             page === 'settings'
@@ -687,7 +702,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                           }`}
                         >
                           <Settings className="w-4 h-4 text-slateink-dark" aria-hidden="true" />
-                          <span>Settings & Privacy</span>
+                          <span>Settings & AI Keys</span>
                         </button>
 
                         <div className="my-1 border-t border-linen-dark/40" />

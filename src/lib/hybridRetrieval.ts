@@ -1,6 +1,7 @@
 import type { Memory } from './types';
 import { retrieve, DEFAULT_WEIGHTS, type RetrievalResult, type ScoredCandidate } from './retrieval';
 import type { InterpretationFlag } from './types';
+import { profilesService } from './services';
 
 /**
  * Hybrid semantic + keyword retrieval (Upgrade 1).
@@ -104,22 +105,28 @@ export function createHybridRetriever(embedding: EmbeddingPort) {
       .filter((c) => !c.isNearDuplicateOf)
       .map((c) => c.memory.id);
 
-    // Semantic leg: best-effort; any failure degrades to keyword mode.
+    // Check if semantic vector retrieval is enabled by user privacy preference
+    const semanticRetrievalAllowed = profilesService.getPrivacyPreferences().semantic_retrieval_enabled;
+
+    // Semantic leg: best-effort; any failure or privacy disable degrades to keyword mode.
     let semanticIds: string[] = [];
     let semanticUsed = false;
-    try {
-      const { embedding: queryVec, model } = await embedding.embedQuery(question);
-      const matches = await embedding.matchEmbeddings(queryVec, model, semanticLimit);
-      const memoryIdSet = new Set(memories.map((m) => m.id));
-      // Only ids that are in the caller-supplied set survive: the semantic leg
-      // can widen relevance ordering but never introduce records the caller
-      // was not authorized to pass in.
-      semanticIds = matches
-        .map((m) => m.memoryId)
-        .filter((id) => memoryIdSet.has(id));
-      semanticUsed = semanticIds.length > 0;
-    } catch {
-      semanticUsed = false;
+
+    if (semanticRetrievalAllowed) {
+      try {
+        const { embedding: queryVec, model } = await embedding.embedQuery(question);
+        const matches = await embedding.matchEmbeddings(queryVec, model, semanticLimit);
+        const memoryIdSet = new Set(memories.map((m) => m.id));
+        // Only ids that are in the caller-supplied set survive: the semantic leg
+        // can widen relevance ordering but never introduce records the caller
+        // was not authorized to pass in.
+        semanticIds = matches
+          .map((m) => m.memoryId)
+          .filter((id) => memoryIdSet.has(id));
+        semanticUsed = semanticIds.length > 0;
+      } catch {
+        semanticUsed = false;
+      }
     }
 
     if (!semanticUsed) {
@@ -127,7 +134,9 @@ export function createHybridRetriever(embedding: EmbeddingPort) {
         result: keywordResult,
         status: {
           mode: 'keyword',
-          detail: 'Semantic retrieval unavailable or empty; keyword ranking active.',
+          detail: !semanticRetrievalAllowed
+            ? 'Semantic vector retrieval disabled by user privacy preference; keyword ranking active.'
+            : 'Semantic retrieval unavailable or empty; keyword ranking active.',
           semanticUsed: false,
         },
       };

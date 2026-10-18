@@ -23,6 +23,7 @@ import { geminiService } from '@/lib/geminiService';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeading } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { navigateTo } from '@/lib/router';
 
 function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
   return (
@@ -90,17 +91,17 @@ export function SettingsPage() {
     setExporting(format);
     setExportError(null);
     try {
-      const all = await dataManagementService.exportAll();
+      const bundle = await dataManagementService.exportAll();
       const stamp = new Date().toISOString().slice(0, 10);
       if (format === 'json') {
         download(
           `echoself-export-${stamp}.json`,
-          JSON.stringify({ exported_at: new Date().toISOString(), data: all }, null, 2),
+          JSON.stringify(bundle, null, 2),
           'application/json'
         );
       } else {
-        for (const [table, rows] of Object.entries(all)) {
-          if (rows.length > 0) {
+        for (const [table, rows] of Object.entries(bundle.data)) {
+          if (rows && (rows as any[]).length > 0) {
             download(`echoself-${table}-${stamp}.csv`, toCsv(rows as Record<string, unknown>[]), 'text/csv');
           }
         }
@@ -115,9 +116,9 @@ export function SettingsPage() {
   async function handleReview() {
     setReviewing(true);
     try {
-      const all = await dataManagementService.exportAll();
+      const bundle = await dataManagementService.exportAll();
       const counts: Record<string, number> = {};
-      for (const [table, rows] of Object.entries(all)) counts[table] = rows.length;
+      for (const [table, rows] of Object.entries(bundle.data)) counts[table] = (rows as any[]).length;
       setReviewCounts(counts);
     } catch {
       setReviewCounts(null);
@@ -208,6 +209,26 @@ export function SettingsPage() {
         <p className="max-w-xl text-xs sm:text-sm text-slateink leading-relaxed">
           Manage your AI configuration, key rotation pool, data export, privacy choices, and account security.
         </p>
+      </div>
+
+      {/* Privacy & Data Center Quick Link Card */}
+      <div className="card-surface p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-sage/60 bg-sage-light/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-sage-light text-sage-dark flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <h3 className="text-xs sm:text-sm font-semibold text-charcoal">Privacy & Personal Data Center</h3>
+            <p className="text-xs text-slateink">Inspect verified record counts, configure AI personalization, download portable exports, or delete records.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigateTo('privacy')}
+          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-charcoal text-paper font-semibold text-xs hover:bg-slateink-dark transition shrink-0 cursor-pointer"
+        >
+          Open Privacy Center
+        </button>
       </div>
 
       {/* Gemini AI Configuration & Multi-Key Auto-Rotation Card */}

@@ -472,8 +472,36 @@ export interface UserProfile {
   twin_context: string;
   date_format: 'relative' | 'standard';
   grounding_level: 'strict' | 'exploratory';
+  ai_personalization_enabled?: boolean;
+  semantic_retrieval_enabled?: boolean;
+  data_retention_period?: 'indefinite' | '1_year' | '2_years';
   created_at: string;
   updated_at: string;
+}
+
+export interface PrivacyRecordCounts {
+  memories: number;
+  captures: number;
+  beliefs: number;
+  beliefs_history: number;
+  decisions: number;
+  reflections: number;
+  interpretation_flags: number;
+  insights: number;
+  timeline_events: number;
+  statement_relationships: number;
+  graph_edge_confirmations: number;
+  review_actions_log: number;
+  total: number;
+}
+
+export interface DataExportBundle {
+  exported_at: string;
+  user_id: string;
+  schema_version: string;
+  counts: Record<string, number>;
+  profile: Partial<UserProfile> | null;
+  data: Record<string, unknown[]>;
 }
 
 export type CaptureStatus = 'inbox' | 'promoted' | 'archived';

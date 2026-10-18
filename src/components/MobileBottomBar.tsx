@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Lightbulb,
   PenLine,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -40,7 +41,8 @@ const SECONDARY_DESTINATIONS: SecondaryNavItem[] = [
   { page: 'beliefs', label: 'Beliefs & Values', description: 'Confirmed principles & confidence', icon: Compass },
   { page: 'graph', label: 'Evidence Graph', description: 'Visual map of records & tensions', icon: GitBranch },
   { page: 'timeline', label: 'Timeline', description: 'Chronological history of moments', icon: History },
-  { page: 'settings', label: 'Settings & Privacy', description: 'Keys, exports, and data ownership', icon: Settings },
+  { page: 'privacy', label: 'Privacy & Data', description: 'Real counts, exports & deletion', icon: ShieldCheck },
+  { page: 'settings', label: 'Settings & AI Keys', description: 'Keys and model configuration', icon: Settings },
   { page: 'profile', label: 'My Profile', description: 'Personal model identity & stats', icon: User },
 ];
 

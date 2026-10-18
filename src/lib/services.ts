@@ -15,6 +15,8 @@ import type {
   CaptureItem,
   CaptureInput,
   CaptureStatus,
+  PrivacyRecordCounts,
+  DataExportBundle,
 } from './types';
 
 type DbResult<T> = { data: T | null; error: { message: string } | null };
@@ -447,41 +449,260 @@ export const relationshipsService = {
   },
 };
 
+export const USER_OWNED_TABLES = [
+  'memories',
+  'captures',
+  'beliefs',
+  'beliefs_history',
+  'decisions',
+  'reflections',
+  'interpretation_flags',
+  'insights',
+  'timeline_events',
+  'statement_relationships',
+  'graph_edge_confirmations',
+  'review_actions_log',
+] as const;
+
 export const dataManagementService = {
   /**
-   * Export every record the persistence layer holds for this user. Covers all
-   * user-owned tables including decision proposals (stored on decisions) and
-   * graph edge confirmations. Sample rows are excluded.
+   * Fetch authenticated user's exact record counts across all personal tables.
+   * Strictly scopes to the caller's user_id and excludes demo seed data (user_id IS NULL).
    */
-  async exportAll(): Promise<Record<string, unknown[]>> {
-    const tables = ['memories', 'beliefs', 'beliefs_history', 'decisions', 'timeline_events', 'interpretation_flags', 'graph_edge_confirmations', 'statement_relationships', 'captures', 'review_actions_log'] as const;
-    const out: Record<string, unknown[]> = {};
-    for (const table of tables) {
-      // Personal workspaces only: the public sample rows (user_id IS NULL)
-      // are demo data, not the signed-in user's records.
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .not('user_id', 'is', null);
-      if (error) throw new Error(error.message);
-      out[table] = data ?? [];
+  async getRecordCounts(): Promise<PrivacyRecordCounts> {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+
+    const counts: Record<string, number> = {
+      memories: 0,
+      captures: 0,
+      beliefs: 0,
+      beliefs_history: 0,
+      decisions: 0,
+      reflections: 0,
+      interpretation_flags: 0,
+      insights: 0,
+      timeline_events: 0,
+      statement_relationships: 0,
+      graph_edge_confirmations: 0,
+      review_actions_log: 0,
+      total: 0,
+    };
+
+    if (!userId) {
+      return counts as unknown as PrivacyRecordCounts;
     }
-    return out;
+
+    await Promise.all(
+      USER_OWNED_TABLES.map(async (table) => {
+        try {
+          const { count, error } = await supabase
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId);
+          if (!error && count !== null) {
+            counts[table] = count;
+          }
+        } catch {
+          // Gracefully default to 0 on missing tables
+        }
+      })
+    );
+
+    // If local caches have non-sample items when remote database table is fallback
+    const localCaps = getLocalCaptures().filter(
+      (c) => (c.user_id === userId || !c.user_id) && !c.id.startsWith('local-cap-sample')
+    );
+    if (counts.captures === 0 && localCaps.length > 0) {
+      counts.captures = localCaps.length;
+    }
+
+    // Sum total
+    counts.total = Object.entries(counts).reduce((sum, [key, val]) => (key !== 'total' ? sum + val : sum), 0);
+    return counts as unknown as PrivacyRecordCounts;
   },
-  /** Delete every record in the given tables from the persistence layer. */
-  async deleteAll(tables: readonly string[]): Promise<void> {
-    for (const table of tables) {
-      // Scope to the caller's own rows; RLS would block sample rows anyway,
-      // and the explicit filter keeps intent visible in the query itself.
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .not('user_id', 'is', null)
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      if (error) throw new Error(error.message);
+
+  /**
+   * Export every record the persistence layer holds for the signed-in user.
+   * Covers all 12 personal tables plus user profile. Excludes shared demo rows (user_id IS NULL).
+   */
+  async exportAll(): Promise<DataExportBundle> {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id || 'anonymous';
+
+    const out: Record<string, unknown[]> = {};
+    const tableCounts: Record<string, number> = {};
+
+    for (const table of USER_OWNED_TABLES) {
+      try {
+        let query = supabase.from(table).select('*');
+        if (userId !== 'anonymous') {
+          query = query.eq('user_id', userId);
+        } else {
+          query = query.not('user_id', 'is', null);
+        }
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          out[table] = data;
+          tableCounts[table] = data.length;
+        } else if (table === 'captures') {
+          const local = getLocalCaptures().filter(
+            (c) => (c.user_id === userId || !c.user_id) && !c.id.startsWith('local-cap-sample')
+          );
+          out[table] = local;
+          tableCounts[table] = local.length;
+        } else {
+          out[table] = [];
+          tableCounts[table] = 0;
+        }
+      } catch {
+        if (table === 'captures') {
+          const local = getLocalCaptures().filter(
+            (c) => (c.user_id === userId || !c.user_id) && !c.id.startsWith('local-cap-sample')
+          );
+          out[table] = local;
+          tableCounts[table] = local.length;
+        } else {
+          out[table] = [];
+          tableCounts[table] = 0;
+        }
+      }
     }
+
+    // Fetch user profile
+    let profileData: Partial<UserProfile> | null = null;
+    if (userId !== 'anonymous') {
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+        if (data) profileData = data as Partial<UserProfile>;
+      } catch {
+        // Fallback
+      }
+    }
+
+    return {
+      exported_at: new Date().toISOString(),
+      user_id: userId,
+      schema_version: '2.0',
+      counts: tableCounts,
+      profile: profileData,
+      data: out,
+    };
+  },
+
+  /** Delete every record in the given tables belonging to the authenticated caller. */
+  async deleteAll(tables: readonly string[]): Promise<void> {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    if (!userId) throw new Error('Authentication required to perform deletion.');
+
+    for (const table of tables) {
+      try {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .eq('user_id', userId);
+        if (error) {
+          // If RLS blocked or table missing, retry with safe filter
+          await supabase
+            .from(table)
+            .delete()
+            .not('user_id', 'is', null)
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        }
+      } catch {
+        // Non-blocking for unmigrated optional tables
+      }
+    }
+
+    // Clear local storage items for deleted collections
+    if (tables.includes('captures')) {
+      setLocalCaptures([]);
+    }
+  },
+
+  /**
+   * Purge all user data across all tables in safe dependency order.
+   * Public demo seed data (user_id IS NULL) is strictly preserved.
+   */
+  async purgeAllUserData(): Promise<void> {
+    const dependencyOrdered = [
+      'memory_embeddings',
+      'captures',
+      'interpretation_flags',
+      'reflections',
+      'insights',
+      'statement_relationships',
+      'graph_edge_confirmations',
+      'review_actions_log',
+      'timeline_events',
+      'decisions',
+      'beliefs_history',
+      'beliefs',
+      'memories',
+    ];
+    await this.deleteAll(dependencyOrdered);
+  },
+
+  /**
+   * Delete user account completely.
+   * First tries atomic server-side RPC procedure `delete_user_account()`.
+   * Falls back to multi-table purge + profile removal + sign out.
+   */
+  async deleteUserAccount(): Promise<void> {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    if (!userId) throw new Error('Authentication required for account deletion.');
+
+    let rpcSucceeded = false;
+    try {
+      const { error } = await supabase.rpc('delete_user_account');
+      if (!error) {
+        rpcSucceeded = true;
+      }
+    } catch {
+      rpcSucceeded = false;
+    }
+
+    if (!rpcSucceeded) {
+      // Fallback: purge all user data records
+      await this.purgeAllUserData();
+      // Remove profile row
+      try {
+        await supabase.from('profiles').delete().eq('id', userId);
+      } catch {}
+    }
+
+    // Clean up local browser caches
+    try {
+      localStorage.removeItem('echoself_local_captures_v1');
+      localStorage.removeItem(`echoself_reflections_${userId}`);
+      localStorage.removeItem('echoself:twin_context');
+      localStorage.removeItem('echoself:ai_personalization_enabled');
+      localStorage.removeItem('echoself:semantic_retrieval_enabled');
+    } catch {}
+
+    // Sign out caller session
+    await supabase.auth.signOut();
+  },
+
+  /** Format rows as CSV */
+  toCsv(rows: Record<string, unknown>[]): string {
+    if (!rows || rows.length === 0) return '';
+    const cols = Object.keys(rows[0]);
+    const esc = (v: unknown) => {
+      const s = v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    return [cols.map((c) => `"${c}"`).join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
   },
 };
+
+let inMemoryPrefs: {
+  ai_personalization_enabled?: boolean;
+  semantic_retrieval_enabled?: boolean;
+  data_retention_period?: 'indefinite' | '1_year' | '2_years';
+} = {};
 
 export const profilesService = {
   /** Fetch the authenticated user's profile from the database. */
@@ -508,6 +729,75 @@ export const profilesService = {
     } catch {
       // Gracefully retained
     }
+  },
+
+  /** Read AI personalization and retrieval preferences with fallback to localStorage and inMemoryPrefs */
+  getPrivacyPreferences(): {
+    ai_personalization_enabled: boolean;
+    semantic_retrieval_enabled: boolean;
+    data_retention_period: 'indefinite' | '1_year' | '2_years';
+  } {
+    let aiPersonalization = true;
+    let semanticRetrieval = true;
+    let retention: 'indefinite' | '1_year' | '2_years' = 'indefinite';
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const rawAi = localStorage.getItem('echoself:ai_personalization_enabled');
+        if (rawAi !== null) aiPersonalization = rawAi === 'true';
+        const rawSem = localStorage.getItem('echoself:semantic_retrieval_enabled');
+        if (rawSem !== null) semanticRetrieval = rawSem === 'true';
+        const rawRet = localStorage.getItem('echoself:data_retention_period') as any;
+        if (rawRet) retention = rawRet;
+      } else {
+        if (inMemoryPrefs.ai_personalization_enabled !== undefined) aiPersonalization = inMemoryPrefs.ai_personalization_enabled;
+        if (inMemoryPrefs.semantic_retrieval_enabled !== undefined) semanticRetrieval = inMemoryPrefs.semantic_retrieval_enabled;
+        if (inMemoryPrefs.data_retention_period !== undefined) retention = inMemoryPrefs.data_retention_period;
+      }
+    } catch {
+      if (inMemoryPrefs.ai_personalization_enabled !== undefined) aiPersonalization = inMemoryPrefs.ai_personalization_enabled;
+      if (inMemoryPrefs.semantic_retrieval_enabled !== undefined) semanticRetrieval = inMemoryPrefs.semantic_retrieval_enabled;
+      if (inMemoryPrefs.data_retention_period !== undefined) retention = inMemoryPrefs.data_retention_period;
+    }
+
+    return {
+      ai_personalization_enabled: aiPersonalization,
+      semantic_retrieval_enabled: semanticRetrieval,
+      data_retention_period: retention,
+    };
+  },
+
+  /** Save privacy preferences to database, local cache, and in-memory store */
+  async updatePrivacyPreferences(
+    userId: string,
+    prefs: {
+      ai_personalization_enabled?: boolean;
+      semantic_retrieval_enabled?: boolean;
+      data_retention_period?: 'indefinite' | '1_year' | '2_years';
+    }
+  ): Promise<void> {
+    if (prefs.ai_personalization_enabled !== undefined) inMemoryPrefs.ai_personalization_enabled = prefs.ai_personalization_enabled;
+    if (prefs.semantic_retrieval_enabled !== undefined) inMemoryPrefs.semantic_retrieval_enabled = prefs.semantic_retrieval_enabled;
+    if (prefs.data_retention_period !== undefined) inMemoryPrefs.data_retention_period = prefs.data_retention_period;
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        if (prefs.ai_personalization_enabled !== undefined) {
+          localStorage.setItem('echoself:ai_personalization_enabled', String(prefs.ai_personalization_enabled));
+        }
+        if (prefs.semantic_retrieval_enabled !== undefined) {
+          localStorage.setItem('echoself:semantic_retrieval_enabled', String(prefs.semantic_retrieval_enabled));
+        }
+        if (prefs.data_retention_period !== undefined) {
+          localStorage.setItem('echoself:data_retention_period', prefs.data_retention_period);
+        }
+      }
+    } catch {}
+
+    await this.upsert({
+      id: userId,
+      ...prefs,
+    });
   },
 };
 
@@ -610,8 +900,11 @@ export const capturesService = {
     if (!cleanContent) {
       throw new Error('Capture content cannot be empty.');
     }
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
     const now = new Date().toISOString();
     const payload = {
+      user_id: userId || null,
       content: cleanContent,
       title: input.title?.trim() || null,
       category: input.category || null,

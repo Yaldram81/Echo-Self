@@ -175,6 +175,28 @@ export const geminiService = {
     }
   },
 
+  /** Check if user-level AI personalization is active */
+  isPersonalizationEnabled(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem('echoself:ai_personalization_enabled');
+        if (raw !== null) return raw === 'true';
+      }
+    } catch {}
+    return true;
+  },
+
+  /** Check if vector semantic retrieval is enabled by user preference */
+  isSemanticRetrievalEnabled(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem('echoself:semantic_retrieval_enabled');
+        if (raw !== null) return raw === 'true';
+      }
+    } catch {}
+    return true;
+  },
+
   /**
    * Structure a decision dilemma using Gemini.
    * Rotates through all configured keys automatically if a key is exhausted or rate limited (HTTP 429).

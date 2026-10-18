@@ -18,13 +18,14 @@ export type PageId =
   | 'review'
   | 'insights'
   | 'reflect'
+  | 'privacy'
   | 'signin'
   | 'signup';
 
-export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review', 'insights', 'reflect'];
+export const NAV_PAGES: PageId[] = ['home', 'memories', 'chat', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review', 'insights', 'reflect', 'privacy'];
 
 /** Pages that show a user's own records; signed-out visitors are sent to sign-in. */
-export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review', 'insights', 'reflect'];
+export const PROTECTED_PAGES: PageId[] = ['memories', 'decisions', 'beliefs', 'timeline', 'graph', 'settings', 'profile', 'inbox', 'review', 'insights', 'reflect', 'privacy'];
 
 export type Route =
   | { kind: 'auth'; mode: 'signin' | 'signup' }
@@ -66,6 +67,10 @@ export function routeFromPath(pathname: string): Route {
       : { kind: 'notFound' };
   }
 
+  if (p === '/privacy' || p === '/data-privacy') {
+    return { kind: 'app', page: 'privacy', detailKind: null, detailId: null, action: null };
+  }
+
   const raw = p.replace(/^\//, '') || 'home';
   if (NAV_PAGES.includes(raw as PageId)) {
     return { kind: 'app', page: raw as PageId, detailKind: null, detailId: null, action: null };
@@ -100,6 +105,7 @@ export const ROUTE_META: Record<string, { title: string; description: string }> 
   review: { title: 'Review Center: EchoSelf', description: 'Inspect, approve, edit, or dismiss pending AI suggestions and proposed changes.' },
   insights: { title: 'Insights & Patterns: EchoSelf', description: 'Evidence-grounded candidate interpretations of recurring themes, values, and decisions across your recorded experiences.' },
   reflect: { title: 'Weekly Review: EchoSelf', description: 'Review a chosen period, reflect on actual recorded experiences, and preserve lessons without automated life coaching.' },
+  privacy: { title: 'Privacy & Data Center: EchoSelf', description: 'Understand how your records are stored and processed, export your data, and manage your account boundaries.' },
   signin: { title: 'Sign in: EchoSelf', description: 'Sign in to your private EchoSelf workspace.' },
   signup: { title: 'Create account: EchoSelf', description: 'Create a private EchoSelf workspace with just an email and password.' },
   notFound: { title: 'Page not found: EchoSelf', description: 'This address does not match any page in EchoSelf.' },
