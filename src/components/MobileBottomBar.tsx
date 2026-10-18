@@ -6,16 +6,19 @@ import {
   Compass,
   Scale,
   Home,
-  MoreVertical,
   MessageCircle,
   History,
   GitBranch,
   Settings,
+  LayoutGrid,
+  LogOut,
+  UserCircle2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { navigateTo, type PageId, type Route } from '@/lib/router';
 import { requestQuickAdd, QUICK_ADD_PAGE, type QuickAddKind } from '@/lib/quickAdd';
 import { useAuth } from '@/lib/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 type AddOption = {
   kind: QuickAddKind;
@@ -25,9 +28,9 @@ type AddOption = {
 };
 
 const OPTIONS: AddOption[] = [
-  { kind: 'memory', label: 'Memory', hint: 'Record a moment', icon: BookOpen },
-  { kind: 'belief', label: 'Belief / Value', hint: 'State something true of you', icon: Compass },
-  { kind: 'decision', label: 'Decision', hint: 'Lay out a choice', icon: Scale },
+  { kind: 'memory', label: 'Memory', hint: 'Record an experience or event', icon: BookOpen },
+  { kind: 'belief', label: 'Belief / Value', hint: 'Articulate a principle you hold', icon: Compass },
+  { kind: 'decision', label: 'Decision', hint: 'Map a choice and weigh values', icon: Scale },
 ];
 
 type NavTab = {
@@ -36,60 +39,51 @@ type NavTab = {
   icon: LucideIcon;
 };
 
-// Four primary destinations sit alongside the center add button. The rest
-// (Beliefs, Timeline, Graph, Settings) live behind the 3-dots tray.
-const NAV_TABS: NavTab[] = [
+const PRIMARY_TABS: NavTab[] = [
   { page: 'home', label: 'Home', icon: Home },
   { page: 'memories', label: 'Memories', icon: BookOpen },
-  { page: 'decisions', label: 'Decisions', icon: Scale },
   { page: 'chat', label: 'Twin', icon: MessageCircle },
 ];
 
-const MORE_TABS: NavTab[] = [
-  { page: 'beliefs', label: 'Beliefs & Values', icon: Compass },
-  { page: 'timeline', label: 'Timeline', icon: History },
-  { page: 'graph', label: 'Evidence Graph', icon: GitBranch },
-  { page: 'settings', label: 'Settings', icon: Settings },
+const MORE_TOOLS: { page: PageId; label: string; desc: string; icon: LucideIcon }[] = [
+  { page: 'decisions', label: 'Decision Mirror', desc: 'Weigh choices & reflect on outcomes', icon: Scale },
+  { page: 'beliefs', label: 'Beliefs & Values', desc: 'Track principles and evolution', icon: Compass },
+  { page: 'graph', label: 'Evidence Graph', desc: 'Interactive connection map', icon: GitBranch },
+  { page: 'timeline', label: 'Timeline', desc: 'Chronological history of moments', icon: History },
+  { page: 'settings', label: 'Settings & Privacy', desc: 'Preferences, export & data control', icon: Settings },
 ];
 
-type Tray = 'add' | 'more' | null;
+type SheetType = 'add' | 'more' | null;
 
 export function MobileBottomBar({ route }: { route: Route }) {
-  const { loading } = useAuth();
-  const [tray, setTray] = useState<Tray>(null);
+  const { user, loading } = useAuth();
+  const [sheet, setSheet] = useState<SheetType>(null);
   const [burstKind, setBurstKind] = useState<QuickAddKind | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const sheetContentRef = useRef<HTMLDivElement>(null);
 
   const showBar = !loading && route.kind === 'app';
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
-  const moreActive =
+
+  const isMorePageActive =
+    currentPage === 'decisions' ||
     currentPage === 'beliefs' ||
     currentPage === 'timeline' ||
     currentPage === 'graph' ||
     currentPage === 'settings';
 
   useEffect(() => {
-    setTray(null);
+    setSheet(null);
   }, [route]);
 
   useEffect(() => {
-    if (!tray) return;
+    if (!sheet) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setTray(null);
-    };
-    const onPointer = (e: PointerEvent) => {
-      const target = e.target as Element | null;
-      if (target && rootRef.current && !rootRef.current.contains(target)) setTray(null);
+      if (e.key === 'Escape') setSheet(null);
     };
     window.addEventListener('keydown', onKey);
-    document.addEventListener('pointerdown', onPointer);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('pointerdown', onPointer);
-    };
-  }, [tray]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sheet]);
 
-  // After we navigate to a target page, open its form once the page mounts.
   useEffect(() => {
     if (!burstKind) return;
     if (route.kind !== 'app') {
@@ -105,8 +99,8 @@ export function MobileBottomBar({ route }: { route: Route }) {
 
   if (!showBar) return null;
 
-  const choose = (opt: AddOption) => {
-    setTray(null);
+  const chooseAdd = (opt: AddOption) => {
+    setSheet(null);
     const current = route.kind === 'app' ? route.page : null;
     const target: PageId = QUICK_ADD_PAGE[opt.kind];
     if (current === target && route.kind === 'app' && route.detailId === null) {
@@ -118,194 +112,246 @@ export function MobileBottomBar({ route }: { route: Route }) {
   };
 
   const goPage = (p: PageId) => {
-    setTray(null);
+    setSheet(null);
     if (currentPage === p && route.kind === 'app' && route.detailId === null) return;
     navigateTo(p);
   };
 
+  const handleSignOut = async () => {
+    setSheet(null);
+    await supabase.auth.signOut();
+    navigateTo('home');
+  };
+
   return (
     <>
-      {tray && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          tabIndex={-1}
-          onClick={() => setTray(null)}
-          className="lg:hidden fixed inset-0 z-40 bg-charcoal/30 backdrop-blur-[1px]"
+      {/* Backdrop overlay for bottom sheets */}
+      {sheet && (
+        <div
+          role="presentation"
+          aria-hidden="true"
+          onClick={() => setSheet(null)}
+          className="md:hidden fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-xs transition-opacity animate-[fadeIn_150ms_ease-out]"
         />
       )}
-      <div
-        ref={rootRef}
-        className="lg:hidden fixed inset-x-0 bottom-0 z-50"
-        aria-label="Quick actions"
-      >
-        {/* Trays sit above the bar. */}
-        {tray === 'add' && (
-          <div className="absolute inset-x-0 bottom-full pb-2 px-4 flex justify-center pointer-events-none">
-            <ul
-              role="menu"
-              aria-label="Add something"
-              className="pointer-events-auto w-full max-w-xs grid gap-2 animate-[fadeIn_120ms_ease-out]"
-            >
-              {OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                return (
-                  <li key={opt.kind}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => choose(opt)}
-                      className="w-full flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur border border-linen-dark shadow-lifted px-4 py-3 text-left hover:border-terracotta transition-colors"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-terracotta/10 text-terracotta-deep">
-                        <Icon className="w-4.5 h-4.5" aria-hidden />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-medium text-charcoal">{opt.label}</span>
-                        <span className="block text-[11px] text-slateink-light truncate">{opt.hint}</span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
 
-        {tray === 'more' && (
-          <div className="absolute inset-x-0 bottom-full pb-2 px-4 flex justify-center pointer-events-none">
-            <div
-              role="menu"
-              aria-label="More navigation"
-              className="pointer-events-auto w-full max-w-xs rounded-2xl bg-white/95 backdrop-blur border border-linen-dark shadow-lifted p-2 animate-[fadeIn_120ms_ease-out]"
-            >
-              <ul className="grid grid-cols-2 gap-1.5">
-                {MORE_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const active = currentPage === tab.page;
-                  return (
-                    <li key={tab.page}>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => goPage(tab.page)}
-                        aria-current={active ? 'page' : undefined}
-                        className={`w-full flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-center transition-colors ${
-                          active ? 'bg-terracotta/10 border border-terracotta' : 'border border-transparent hover:bg-linen/60'
-                        }`}
-                      >
-                        <span
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                            active ? 'bg-terracotta/15 text-terracotta-deep' : 'bg-linen text-slateink-dark'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" aria-hidden />
-                        </span>
-                        <span className={`block text-xs font-medium leading-tight ${active ? 'text-terracotta-deep' : 'text-charcoal'}`}>
-                          {tab.label}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* The bar itself: classic 5-slot row with the plus centered; the
-            3-dots sit in a narrow slot at the far right so they never shift
-            the five main items. */}
-        <nav
-          aria-label="Mobile navigation"
-          className="relative grid items-center gap-0 bg-paper/95 backdrop-blur border-t border-linen-dark/70 shadow-[0_-2px_12px_rgba(32,35,33,0.06)] h-16 pb-[max(0rem,env(safe-area-inset-bottom))]"
-          style={{ gridTemplateColumns: 'minmax(0,1fr) 20px' }}
+      {/* Quick Add Bottom Sheet */}
+      {sheet === 'add' && (
+        <div
+          ref={sheetContentRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create record"
+          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-3xl border-t border-linen-dark/80 shadow-2xl p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] animate-[fadeIn_180ms_ease-out]"
         >
-          {/* 5 evenly-distributed slots; the center slot hosts the
-              absolutely-centered plus button so padding never offsets it.
-              A narrow 20px column is reserved at the far right for the
-              3-dots menu so it never overlaps Twin. */}
-          <div className="grid grid-cols-5 items-center gap-0 min-w-0 h-full">
-            {NAV_TABS.slice(0, 2).map((tab) => (
-              <TabButton
-                key={tab.page}
-                tab={tab}
-                active={currentPage === tab.page}
-                onClick={() => goPage(tab.page)}
-              />
-            ))}
-
-            {/* Center add button, absolutely centered within its slot. */}
-            <div className="relative flex items-center justify-center h-full">
-              <button
-                type="button"
-                onClick={() => setTray((t) => (t === 'add' ? null : 'add'))}
-                aria-expanded={tray === 'add'}
-                aria-haspopup="menu"
-                aria-label={tray === 'add' ? 'Close add menu' : 'Add something'}
-                className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-4 ring-paper transition-transform duration-200 ${
-                  tray === 'add' ? 'rotate-45 scale-95' : 'hover:bg-terracotta-dark'
-                }`}
-              >
-                {tray === 'add' ? <X className="w-6 h-6" aria-hidden /> : <Plus className="w-6 h-6" aria-hidden />}
-              </button>
+          <div className="w-10 h-1 bg-linen-dark rounded-full mx-auto mb-4" />
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-serif font-semibold text-charcoal">Quick Record</h2>
+              <p className="text-xs text-slateink-light">Capture an experience, belief, or decision</p>
             </div>
-
-            {NAV_TABS.slice(2).map((tab) => (
-              <TabButton
-                key={tab.page}
-                tab={tab}
-                active={currentPage === tab.page}
-                onClick={() => goPage(tab.page)}
-              />
-            ))}
-          </div>
-
-          {/* Far-right 3-dots: narrow 20px reserved column so Twin is not
-              overlapped. Visible icon stays small; clickable area extends
-              invisibly above/below for usable touch targets. */}
-          <div className="flex justify-center items-center h-full">
             <button
-              type="button"
-              onClick={() => setTray((t) => (t === 'more' ? null : 'more'))}
-              aria-expanded={tray === 'more'}
-              aria-haspopup="menu"
-              aria-label={tray === 'more' ? 'Close more menu' : 'More navigation'}
-              aria-current={moreActive ? 'page' : undefined}
-              className={`grid place-items-center w-5 h-12 p-0 border-0 bg-transparent cursor-pointer transition-colors ${
-                moreActive || tray === 'more' ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
-              }`}
+              onClick={() => setSheet(null)}
+              className="p-1.5 rounded-full text-slateink hover:text-charcoal hover:bg-linen/60"
+              aria-label="Close"
             >
-              <MoreVertical className="w-[15px] h-5" aria-hidden />
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </nav>
-      </div>
+
+          <div className="space-y-2">
+            {OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.kind}
+                  onClick={() => chooseAdd(opt)}
+                  className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl bg-white border border-linen-dark/60 shadow-xs hover:border-terracotta active:scale-[0.98] transition-all text-left"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta-deep">
+                    <Icon className="w-5 h-5" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-charcoal">{opt.label}</span>
+                    <span className="block text-xs text-slateink-light truncate">{opt.hint}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Explore & More Tools Bottom Sheet */}
+      {sheet === 'more' && (
+        <div
+          ref={sheetContentRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Explore and tools"
+          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-3xl border-t border-linen-dark/80 shadow-2xl p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] animate-[fadeIn_180ms_ease-out]"
+        >
+          <div className="w-10 h-1 bg-linen-dark rounded-full mx-auto mb-4" />
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-serif font-semibold text-charcoal">Explore & Tools</h2>
+              <p className="text-xs text-slateink-light">Access your models, graph, and preferences</p>
+            </div>
+            <button
+              onClick={() => setSheet(null)}
+              className="p-1.5 rounded-full text-slateink hover:text-charcoal hover:bg-linen/60"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            {MORE_TOOLS.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.page;
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => goPage(item.page)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                    isActive
+                      ? 'bg-terracotta/10 border-terracotta text-terracotta-deep shadow-xs'
+                      : 'bg-white border-linen-dark/60 text-charcoal hover:bg-linen/40'
+                  }`}
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                      isActive ? 'bg-terracotta text-paper' : 'bg-linen text-slateink-dark'
+                    }`}
+                  >
+                    <Icon className="w-4.5 h-4.5" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-xs font-semibold leading-snug">{item.label}</span>
+                    <span className="block text-[11px] text-slateink-light truncate">{item.desc}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Account Footer in More Sheet */}
+          <div className="pt-3 border-t border-linen-dark/50 flex items-center justify-between gap-3">
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserCircle2 className="w-4 h-4 text-slateink-light shrink-0" />
+                  <span className="text-xs text-slateink-dark truncate">{user.email}</span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-clayred-DEFAULT hover:text-clayred-dark px-2.5 py-1.5 rounded-lg hover:bg-clayred-light/30 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign out</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => goPage('signin')}
+                className="w-full text-center py-2.5 rounded-xl bg-terracotta text-paper text-xs font-medium hover:bg-terracotta-dark transition-colors"
+              >
+                Sign in to save your workspace
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main 5-Slot Bottom Bar */}
+      <nav
+        aria-label="Mobile navigation"
+        className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-paper/90 backdrop-blur-xl border-t border-linen-dark/70 shadow-[0_-4px_24px_rgba(32,35,33,0.06)] h-15 pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="grid grid-cols-5 items-center h-full max-w-md mx-auto px-1">
+          {/* Tab 1: Home */}
+          <TabButton
+            label="Home"
+            icon={Home}
+            active={currentPage === 'home'}
+            onClick={() => goPage('home')}
+          />
+
+          {/* Tab 2: Memories */}
+          <TabButton
+            label="Memories"
+            icon={BookOpen}
+            active={currentPage === 'memories'}
+            onClick={() => goPage('memories')}
+          />
+
+          {/* Tab 3: Center Elevated Action (+) Button */}
+          <div className="relative flex items-center justify-center h-full">
+            <button
+              type="button"
+              onClick={() => setSheet((s) => (s === 'add' ? null : 'add'))}
+              aria-expanded={sheet === 'add'}
+              aria-label={sheet === 'add' ? 'Close quick record' : 'Quick record'}
+              className={`flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-3 ring-paper transition-all duration-200 active:scale-95 ${
+                sheet === 'add' ? 'rotate-45 bg-charcoal' : 'hover:bg-terracotta-dark'
+              }`}
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Tab 4: Twin Chat */}
+          <TabButton
+            label="Twin"
+            icon={MessageCircle}
+            active={currentPage === 'chat'}
+            onClick={() => goPage('chat')}
+          />
+
+          {/* Tab 5: More Tools */}
+          <TabButton
+            label="More"
+            icon={LayoutGrid}
+            active={isMorePageActive || sheet === 'more'}
+            onClick={() => setSheet((s) => (s === 'more' ? null : 'more'))}
+          />
+        </div>
+      </nav>
     </>
   );
 }
 
 function TabButton({
-  tab,
+  label,
+  icon: Icon,
   active,
   onClick,
 }: {
-  tab: NavTab;
+  label: string;
+  icon: LucideIcon;
   active: boolean;
   onClick: () => void;
 }) {
-  const Icon = tab.icon;
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[48px] rounded-lg transition-colors ${
-        active ? 'text-terracotta-deep' : 'text-slateink-light hover:text-charcoal'
+      className={`flex flex-col items-center justify-center gap-1 py-1 h-full rounded-xl transition-all ${
+        active
+          ? 'text-terracotta-deep font-semibold'
+          : 'text-slateink hover:text-charcoal active:scale-95'
       }`}
     >
-      <Icon className="w-5 h-5" aria-hidden />
-      <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+      <span
+        className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
+          active ? 'bg-terracotta/12' : ''
+        }`}
+      >
+        <Icon className={`w-4.5 h-4.5 ${active ? 'text-terracotta-deep' : 'text-slateink'}`} aria-hidden="true" />
+      </span>
+      <span className="text-[10px] tracking-tight leading-none">{label}</span>
     </button>
   );
 }

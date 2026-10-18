@@ -1,20 +1,43 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Menu, X, Feather, LogOut, UserCircle2, MessageCircle, Home, BookOpen, Scale, Compass, History, GitBranch, Settings } from 'lucide-react';
+import {
+  Feather,
+  LogOut,
+  UserCircle2,
+  MessageCircle,
+  Home,
+  BookOpen,
+  Scale,
+  Compass,
+  History,
+  GitBranch,
+  Settings,
+  ChevronDown,
+  Sparkles,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
-
-/** Labeled nav links shown in the top bar (Overview removed — the logo goes home). */
-const LABELED_NAV: PageId[] = ['memories', 'decisions', 'beliefs', 'graph'];
-/** Icon-only nav links grouped after the labeled ones. */
-const ICON_NAV: PageId[] = ['chat', 'timeline', 'settings'];
+import { PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
 import { MobileBottomBar } from '@/components/MobileBottomBar';
 import { SampleDataToast } from '@/components/ui';
 
+interface NavItem {
+  id: PageId;
+  label: string;
+  icon: LucideIcon;
+}
+
+const PRIMARY_NAV: NavItem[] = [
+  { id: 'home', label: 'Overview', icon: Home },
+  { id: 'memories', label: 'Memories', icon: BookOpen },
+  { id: 'decisions', label: 'Decisions', icon: Scale },
+  { id: 'beliefs', label: 'Beliefs', icon: Compass },
+  { id: 'graph', label: 'Graph', icon: GitBranch },
+  { id: 'timeline', label: 'Timeline', icon: History },
+];
+
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { user, loading } = useAuth();
   const signedIn = !loading && !!user;
@@ -23,41 +46,24 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
   const go = (p: PageId) => {
     navigateTo(p);
-    setMenuOpen(false);
     setAccountOpen(false);
   };
 
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const firstDrawerLinkRef = useRef<HTMLAnchorElement>(null);
-
-  // Route changes (including back/forward navigation) close the drawer so it
-  // never traps the user behind stale content.
   useEffect(() => {
-    setMenuOpen(false);
+    setAccountOpen(false);
   }, [route]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    // Freeze background scrolling and land focus inside the drawer.
-    document.body.style.overflow = 'hidden';
-    firstDrawerLinkRef.current?.focus();
-    const menuButton = menuButtonRef.current;
-    return () => {
-      document.body.style.overflow = '';
-      menuButton?.focus();
-    };
-  }, [menuOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMenuOpen(false);
         setAccountOpen(false);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Element | null;
-      if (accountOpen && target && !target.closest('[data-account-menu]')) setAccountOpen(false);
+      if (accountOpen && target && !target.closest('[data-account-menu]')) {
+        setAccountOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointerDown);
@@ -69,9 +75,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
   async function handleSignOut() {
     setAccountOpen(false);
-    setMenuOpen(false);
     await supabase.auth.signOut();
-    // Personal pages need an account; land signed-out users somewhere valid.
     const current = window.location.pathname;
     const isPersonal = PROTECTED_PAGES.some((p) => current.startsWith(`/${p}`));
     if (isPersonal || current.startsWith('/memory') || current.startsWith('/decision')) {
@@ -81,22 +85,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
     }
   }
 
-  const navLinkClass = (active: boolean) =>
-    `group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium leading-none transition-colors duration-150 ${
-      active
-        ? 'bg-terracotta/10 text-terracotta-deep'
-        : 'text-slateink-dark hover:text-charcoal hover:bg-linen/70'
-    }`;
-
-  const navMobileClass = (active: boolean) =>
-    `block px-3 py-2.5 rounded-lg text-sm ${
-      active
-        ? 'bg-terracotta/10 text-terracotta-deep font-medium'
-        : 'text-slateink-dark hover:bg-linen'
-    }`;
+  const userDisplayName = user?.email
+    ? user.email.split('@')[0]
+    : 'Account';
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-paper">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:shadow-card"
@@ -104,108 +98,140 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur border-b border-linen-dark/60">
-        <div className="max-w-6xl mx-auto shell-pad h-16 flex items-center justify-between gap-3">
+      {/* Main Top Header */}
+      <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-md border-b border-linen-dark/50 transition-all duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-3">
+          {/* Brand Logo */}
           <button
             onClick={() => go('home')}
-            className="shrink-0 flex items-center gap-2.5 rounded-lg"
+            className="group shrink-0 flex items-center gap-2.5 rounded-xl py-1 px-1.5 -ml-1.5 hover:bg-linen/40 transition-colors"
             aria-label="EchoSelf home"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-terracotta text-paper">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-terracotta text-paper shadow-xs group-hover:scale-105 group-hover:bg-terracotta-dark transition-all">
               <Feather className="w-4 h-4" aria-hidden />
             </span>
-            <span className="font-serif text-xl font-medium tracking-tight text-charcoal">
-              EchoSelf
-            </span>
+            <div className="flex flex-col items-start leading-none">
+              <span className="font-serif text-xl font-semibold tracking-tight text-charcoal">
+                EchoSelf
+              </span>
+            </div>
           </button>
 
+          {/* Desktop Navigation */}
           <nav
-            className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1.5"
+            className="hidden md:flex items-center gap-1 bg-linen/35 p-1 rounded-full border border-linen-dark/40 shadow-xs"
             aria-label="Main"
           >
-            {LABELED_NAV.map((item) => {
-              const Icon = NAV_ICONS[item];
+            {PRIMARY_NAV.map((item) => {
+              const Icon = item.icon;
+              const isActive = page === item.id;
               return (
                 <a
-                  key={item}
-                  href={hrefFor(item)}
+                  key={item.id}
+                  href={hrefFor(item.id)}
                   onClick={(e) => {
                     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
                     e.preventDefault();
-                    go(item);
+                    go(item.id);
                   }}
-                  aria-current={page === item ? 'page' : undefined}
-                  className={navLinkClass(page === item)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs lg:text-[13px] font-medium leading-none transition-all duration-150 ${
+                    isActive
+                      ? 'bg-white text-charcoal font-semibold shadow-xs ring-1 ring-charcoal/5'
+                      : 'text-slateink hover:text-charcoal hover:bg-white/50'
+                  }`}
                 >
                   <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      page === item ? '' : 'text-slateink-light group-hover:text-slateink-dark transition-colors'
+                    className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                      isActive ? 'text-terracotta-deep' : 'text-slateink-light group-hover:text-charcoal'
                     }`}
                     aria-hidden
                   />
-                  {labelFor(item)}
-                </a>
-              );
-            })}
-
-            <span className="mx-1 h-5 w-px bg-linen-dark/80" aria-hidden />
-
-            {ICON_NAV.map((item) => {
-              const Icon = NAV_ICONS[item];
-              return (
-                <a
-                  key={item}
-                  href={hrefFor(item)}
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                    e.preventDefault();
-                    go(item);
-                  }}
-                  aria-current={page === item ? 'page' : undefined}
-                  aria-label={labelFor(item)}
-                  className={navLinkClass(page === item)}
-                >
-                  <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      page === item ? '' : 'text-slateink-light group-hover:text-slateink-dark transition-colors'
-                    }`}
-                    aria-hidden
-                  />
+                  <span>{item.label}</span>
                 </a>
               );
             })}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
+          {/* Right Action Area */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Twin Chat Quick Access (Desktop) */}
+            <a
+              href={hrefFor('chat')}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                go('chat');
+              }}
+              aria-current={page === 'chat' ? 'page' : undefined}
+              className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold tracking-tight transition-all duration-150 shadow-xs ${
+                page === 'chat'
+                  ? 'bg-terracotta text-paper ring-2 ring-terracotta/20'
+                  : 'bg-charcoal text-paper hover:bg-charcoal/85 active:scale-95'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amberclay-light" aria-hidden />
+              <span>Twin Chat</span>
+            </a>
+
+            {/* Account / Auth */}
             {signedIn ? (
               <div className="relative" data-account-menu>
                 <button
                   onClick={() => setAccountOpen((o) => !o)}
                   aria-expanded={accountOpen}
                   aria-label="Account menu"
-                  className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-charcoal hover:bg-linen text-sm"
+                  className="inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-full border border-linen-dark/70 bg-white/70 hover:bg-white text-charcoal text-xs font-medium transition-all shadow-xs"
                 >
-                  <UserCircle2 className="w-5 h-5" aria-hidden />
-                  <span className="hidden md:inline max-w-32 truncate">
-                    {user!.email}
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta/15 text-terracotta-deep font-semibold text-[11px] uppercase">
+                    {userDisplayName.charAt(0)}
                   </span>
+                  <span className="hidden sm:inline max-w-28 truncate font-medium">
+                    {userDisplayName}
+                  </span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slateink-light transition-transform duration-200 ${
+                      accountOpen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden
+                  />
                 </button>
 
                 {accountOpen && (
                   <div
-                    className="absolute right-0 top-12 w-64 rounded-xl border border-linen-dark bg-white shadow-card py-2 z-50"
+                    className="absolute right-0 top-11 w-64 rounded-2xl border border-linen-dark/80 bg-white shadow-lifted p-1.5 z-50 animate-[fadeIn_120ms_ease-out]"
                     role="menu"
                   >
-                    <p className="px-4 py-2 text-xs text-slateink-light border-b border-linen-dark/60 truncate">
-                      Signed in as {user!.email}
-                    </p>
+                    <div className="px-3 py-2.5 border-b border-linen-dark/40 mb-1">
+                      <p className="text-xs font-semibold text-charcoal truncate">
+                        {user!.email}
+                      </p>
+                      <p className="text-[11px] text-slateink-light mt-0.5">
+                        Private workspace
+                      </p>
+                    </div>
+
+                    <a
+                      href={hrefFor('settings')}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        go('settings');
+                      }}
+                      role="menuitem"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2 transition-colors"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slateink-light" aria-hidden />
+                      <span>Settings & Privacy</span>
+                    </a>
+
                     <button
                       role="menuitem"
                       onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2.5 text-sm text-charcoal hover:bg-linen inline-flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light/30 flex items-center gap-2 transition-colors mt-0.5"
                     >
-                      <LogOut className="w-4 h-4" aria-hidden />
-                      Sign out
+                      <LogOut className="w-3.5 h-3.5 text-clayred-DEFAULT" aria-hidden />
+                      <span>Sign out</span>
                     </button>
                   </div>
                 )}
@@ -213,76 +239,25 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             ) : (
               <button
                 onClick={() => go('signin')}
-                aria-label="Sign in or create an account"
-                className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-terracotta text-paper text-sm font-medium hover:bg-terracotta-dark active:bg-terracotta-dark/90 transition-colors"
+                aria-label="Sign in"
+                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-terracotta text-paper text-xs font-medium hover:bg-terracotta-dark active:scale-95 transition-all shadow-xs"
               >
-                <UserCircle2 className="w-5 h-5" aria-hidden />
-                <span className="hidden sm:inline">Sign in</span>
+                <UserCircle2 className="w-3.5 h-3.5" aria-hidden />
+                <span>Sign in</span>
               </button>
             )}
-
-            <button
-              ref={menuButtonRef}
-              className="xl:hidden inline-flex items-center justify-center h-11 w-11 rounded-full text-charcoal hover:bg-linen"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-expanded={menuOpen}
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
-
-        {menuOpen && (
-          <>
-            {/* Scrim: tap outside or Escape to dismiss; click-through blocked. */}
-            <div
-              className="xl:hidden fixed inset-0 top-16 z-30 bg-charcoal/20"
-              aria-hidden
-              onClick={() => setMenuOpen(false)}
-            />
-            <nav
-              className="xl:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto scroll-elegant bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-              aria-label="Mobile"
-            >
-              <ul className="flex flex-col gap-1">
-                {NAV_PAGES.map((item, i) => (
-                  <li key={item}>
-                    <a
-                      ref={i === 0 ? firstDrawerLinkRef : undefined}
-                      href={hrefFor(item)}
-                      onClick={(e) => {
-                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                        e.preventDefault();
-                        go(item);
-                      }}
-                      aria-current={page === item ? 'page' : undefined}
-                      className={`${navMobileClass(page === item)} min-h-[44px] flex items-center`}
-                    >
-                      {labelFor(item)}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              {signedIn && (
-                <button
-                  onClick={handleSignOut}
-                  className="mt-4 w-full text-left px-3 min-h-[44px] flex items-center rounded-lg text-sm text-clayred-DEFAULT"
-                >
-                  Sign out
-                </button>
-              )}
-            </nav>
-          </>
-        )}
       </header>
 
-      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12 pb-28 lg:pb-12">
+      {/* Main Content Area */}
+      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-6 md:py-10 pb-24 md:pb-12">
         {children}
       </main>
 
-      <footer className="hidden lg:block border-t border-linen-dark/60 mt-8">
-        <div className="max-w-6xl mx-auto shell-pad py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      {/* Desktop Footer */}
+      <footer className="hidden md:block border-t border-linen-dark/50 mt-auto">
+        <div className="max-w-6xl mx-auto shell-pad py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-slateink">
             EchoSelf: a personal knowledge and decision-support tool. Claims about you trace
             back to recorded evidence.
@@ -293,49 +268,22 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
       </footer>
 
+      {/* Modern Mobile Bottom Navigation (Shown only on small screens) */}
       <MobileBottomBar route={route} />
 
-      {/* Floating, auto-dismissing sample-data notice for signed-out
-          visitors. Disappears on its own after 3 seconds. */}
+      {/* Floating Sample Data Toast */}
       {!signedIn && !loading && <SampleDataToast />}
 
-      {/* Floating Twin Chat shortcut — sits above the mobile bottom bar on
-          small screens, bottom-right on desktop. Hidden on the chat page and
-          on auth/not-found routes so it never competes with the active view. */}
+      {/* Desktop Floating Twin Chat Button (Hidden on Mobile because Twin is in the bottom bar) */}
       {route.kind === 'app' && route.page !== 'chat' && (
         <button
           onClick={() => go('chat')}
           aria-label="Open Twin Chat"
-          className="fixed z-40 inline-flex items-center justify-center h-14 w-14 rounded-full bg-charcoal text-paper shadow-lifted hover:bg-charcoal/90 hover:scale-105 active:scale-95 transition-all bottom-[5.5rem] right-4 lg:bottom-6 lg:right-6"
+          className="hidden lg:inline-flex fixed z-40 items-center justify-center h-13 w-13 rounded-full bg-charcoal text-paper shadow-lifted hover:bg-charcoal/90 hover:scale-105 active:scale-95 transition-all bottom-6 right-6"
         >
-          <MessageCircle className="w-6 h-6" aria-hidden />
+          <MessageCircle className="w-5 h-5 text-paper" aria-hidden />
         </button>
       )}
     </div>
   );
-}
-
-const NAV_ICONS: Record<PageId, LucideIcon> = {
-  home: Home,
-  memories: BookOpen,
-  chat: MessageCircle,
-  decisions: Scale,
-  beliefs: Compass,
-  timeline: History,
-  graph: GitBranch,
-  settings: Settings,
-};
-
-function labelFor(p: PageId): string {
-  const labels: Record<string, string> = {
-    home: 'Overview',
-    memories: 'Memories',
-    chat: 'Twin Chat',
-    decisions: 'Decision Mirror',
-    beliefs: 'Beliefs & Values',
-    timeline: 'Timeline',
-    graph: 'Evidence Graph',
-    settings: 'Settings & Privacy',
-  };
-  return labels[p] ?? p;
 }
