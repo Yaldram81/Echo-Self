@@ -396,7 +396,7 @@ console.log('\n— User-controlled importance (separate from confidence and rele
   const rNeutral = retrieve('How is my running going?', neutralRated, { now: NOW });
   check('missing importance equals neutral rating (same ranking order and scores)',
     unrated.candidates.map((c) => c.memory.id).join(',') === rNeutral.candidates.map((c) => c.memory.id).join(',') &&
-    unrated.candidates[0].score === rNeutral.candidates[0].score,
+    Math.abs(unrated.candidates[0].score - rNeutral.candidates[0].score) < 1e-9,
     `${unrated.candidates[0].score.toFixed(4)} vs ${rNeutral.candidates[0].score.toFixed(4)}`);
 
   // Identical importance, different relevance: relevance must decide.
