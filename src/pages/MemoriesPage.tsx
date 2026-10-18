@@ -69,13 +69,36 @@ export function MemoriesPage() {
   const [newTagInput, setNewTagInput] = useState('');
   const [isSavingTag, setIsSavingTag] = useState(false);
 
+  // More Tags popover state & click-outside ref
+  const [moreTagsOpen, setMoreTagsOpen] = useState(false);
+  const moreTagsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreTagsRef.current && !moreTagsRef.current.contains(e.target as Node)) {
+        setMoreTagsOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMoreTagsOpen(false);
+    }
+    if (moreTagsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [moreTagsOpen]);
+
   useEffect(() => onQuickAddRequest((kind) => {
     if (kind !== 'memory') return;
     setEditing(null);
     setShowForm(true);
   }), []);
 
-  const allTags = useMemo(() => {
+  const tagCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const m of data ?? []) {
       for (const t of m.tags ?? []) {
@@ -83,11 +106,14 @@ export function MemoriesPage() {
         counts.set(t, (counts.get(t) ?? 0) + 1);
       }
     }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([t]) => t)
-      .slice(0, 12);
+    return counts;
   }, [data]);
+
+  const allTags = useMemo(() => {
+    return Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([t]) => t);
+  }, [tagCounts]);
 
   const activeFiltersCount =
     (category !== 'all' ? 1 : 0) +
@@ -251,78 +277,219 @@ export function MemoriesPage() {
         </div>
       )}
 
-      {/* Tags Row: Shown below Search & Dropdowns, with inline DB tag creator */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-0.5" role="group" aria-label="Filter by tag">
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-slateink-light mr-1 shrink-0">
-          <TagIcon className="w-3.5 h-3.5" aria-hidden /> Tags:
-        </span>
-        <button
-          onClick={() => setTag(null)}
-          aria-pressed={tag === null}
-          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
-            tag === null
-              ? 'bg-charcoal text-paper shadow-xs font-semibold'
-              : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
-          }`}
-        >
-          All
-        </button>
-        {allTags.map((t) => (
+      {/* Tags Row: Strictly single line, top 6 on mobile, with interactive 'More tags' popover */}
+      <div className="flex items-center justify-between gap-2 pt-0.5" role="group" aria-label="Filter by tag">
+        {/* Single-line scrollable tags pill row */}
+        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-1 flex-nowrap">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-slateink-light mr-0.5 shrink-0 select-none">
+            <TagIcon className="w-3.5 h-3.5" aria-hidden /> Tags:
+          </span>
+
+          {/* All filter button */}
           <button
-            key={t}
-            onClick={() => setTag(tag === t ? null : t)}
-            aria-pressed={tag === t}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
-              tag === t
-                ? 'bg-terracotta text-paper shadow-xs font-semibold'
+            type="button"
+            onClick={() => setTag(null)}
+            aria-pressed={tag === null}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              tag === null
+                ? 'bg-charcoal text-paper shadow-xs font-semibold'
                 : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
             }`}
           >
-            #{t}
+            All
           </button>
-        ))}
 
-        {/* Inline Add Tag Field & Save Button */}
-        <form onSubmit={handleInlineAddTag} className="inline-flex items-center gap-1 ml-0.5">
-          <div className="relative inline-flex items-center">
-            <span className="absolute left-2.5 text-xs text-slateink-light font-mono select-none">#</span>
-            <input
-              type="text"
-              value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
-              placeholder="Add tag…"
-              aria-label="Add new tag"
-              className="h-7 w-24 sm:w-28 rounded-full border border-dashed border-linen-dark bg-white/80 pl-5 pr-2 text-[11px] text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:border-solid focus:bg-white focus:w-36 focus:outline-none transition-all shadow-2xs"
-            />
-          </div>
-          {newTagInput.trim().length > 0 && (
+          {/* If an active tag is not in top 6, display it prominently as an active chip */}
+          {tag !== null && !allTags.slice(0, 6).includes(tag) && (
             <button
-              type="submit"
-              disabled={isSavingTag}
-              className="h-7 px-2.5 rounded-full bg-terracotta text-paper text-[11px] font-semibold hover:bg-terracotta-dark transition-all disabled:opacity-50 flex items-center gap-1 shadow-xs"
-              title="Save tag to database"
+              type="button"
+              onClick={() => setTag(null)}
+              className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold bg-terracotta text-paper shadow-xs inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+              title="Click to remove tag filter"
             >
-              {isSavingTag ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="w-3 h-3" />
-                  <span>Save</span>
-                </>
-              )}
+              <span>#{tag}</span>
+              <X className="w-3 h-3" />
             </button>
           )}
-        </form>
 
-        {activeFiltersCount > 0 && (
-          <button
-            onClick={resetFilters}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-clayred-DEFAULT hover:underline transition-colors ml-auto shrink-0"
-          >
-            <X className="w-3 h-3" />
-            <span>Reset filters</span>
-          </button>
-        )}
+          {/* Top 6 Tags: Always visible on mobile, tablet, and desktop */}
+          {allTags.slice(0, 6).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTag(tag === t ? null : t)}
+              aria-pressed={tag === t}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                tag === t
+                  ? 'bg-terracotta text-paper shadow-xs font-semibold'
+                  : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+              }`}
+            >
+              #{t}
+            </button>
+          ))}
+
+          {/* Tags 7 & 8: Visible on desktop and tablet, hidden on mobile */}
+          {allTags.slice(6, 8).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTag(tag === t ? null : t)}
+              aria-pressed={tag === t}
+              className={`hidden md:inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                tag === t
+                  ? 'bg-terracotta text-paper shadow-xs font-semibold'
+                  : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+              }`}
+            >
+              #{t}
+            </button>
+          ))}
+
+          {/* More Tags Dropdown Button */}
+          {allTags.length > 6 && (
+            <div className="relative shrink-0" ref={moreTagsRef}>
+              <button
+                type="button"
+                onClick={() => setMoreTagsOpen((v) => !v)}
+                aria-expanded={moreTagsOpen}
+                aria-haspopup="true"
+                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-all inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-2xs ${
+                  allTags.length <= 8 ? 'md:hidden' : ''
+                } ${
+                  tag !== null && !allTags.slice(0, 8).includes(tag)
+                    ? 'border border-terracotta bg-terracotta/15 text-terracotta-deep font-semibold shadow-xs'
+                    : 'bg-white/80 border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+                }`}
+              >
+                <span className="md:hidden">+{Math.max(0, allTags.length - 6)} more</span>
+                <span className="hidden md:inline">More tags ({Math.max(0, allTags.length - 8)})</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slateink-light shrink-0 transition-transform duration-200 ${
+                    moreTagsOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Floating Dropdown Popover */}
+              {moreTagsOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1.5 z-40 w-72 sm:w-80 rounded-2xl bg-paper-soft/95 backdrop-blur-md border border-linen-dark/80 shadow-xl p-3 space-y-2.5 animate-[fadeIn_100ms_ease-out]"
+                >
+                  <div className="flex items-center justify-between pb-1.5 border-b border-linen-dark/60 text-xs">
+                    <span className="font-semibold text-charcoal flex items-center gap-1.5">
+                      <TagIcon className="w-3.5 h-3.5 text-terracotta" />
+                      <span>More Tags</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMoreTagsOpen(false)}
+                      className="p-1 rounded-md text-slateink hover:text-charcoal transition-colors cursor-pointer"
+                      aria-label="Close tags menu"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto py-1">
+                    {allTags.slice(6).map((t, idx) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          setTag(tag === t ? null : t);
+                          setMoreTagsOpen(false);
+                        }}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all inline-flex items-center gap-1 cursor-pointer ${
+                          idx < 2 ? 'md:hidden' : ''
+                        } ${
+                          tag === t
+                            ? 'bg-terracotta text-paper shadow-xs font-semibold'
+                            : 'bg-white border border-linen-dark/80 text-slateink hover:bg-linen hover:text-charcoal'
+                        }`}
+                      >
+                        <span>#{t}</span>
+                        <span className="text-[10px] opacity-70">({tagCounts.get(t) ?? 1})</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Quick Add Tag field inside dropdown for mobile convenience */}
+                  <div className="pt-2 border-t border-linen-dark/60 sm:hidden">
+                    <form onSubmit={handleInlineAddTag} className="flex items-center gap-1">
+                      <div className="relative flex-1">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slateink-light font-mono select-none">#</span>
+                        <input
+                          type="text"
+                          value={newTagInput}
+                          onChange={(e) => setNewTagInput(e.target.value)}
+                          placeholder="New tag…"
+                          aria-label="Add new tag"
+                          className="h-7 w-full rounded-full border border-dashed border-linen-dark bg-white pl-5 pr-2 text-xs text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:border-solid focus:outline-none"
+                        />
+                      </div>
+                      {newTagInput.trim().length > 0 && (
+                        <button
+                          type="submit"
+                          disabled={isSavingTag}
+                          className="h-7 px-2.5 rounded-full bg-terracotta text-paper text-xs font-semibold hover:bg-terracotta-dark disabled:opacity-50 shrink-0"
+                        >
+                          Save
+                        </button>
+                      )}
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Trailing Controls: Desktop Inline Tag Creator & Reset Filters */}
+        <div className="flex items-center gap-1.5 shrink-0 pl-1">
+          {/* Inline Add Tag Field & Save Button (Desktop) */}
+          <form onSubmit={handleInlineAddTag} className="hidden sm:inline-flex items-center gap-1">
+            <div className="relative inline-flex items-center">
+              <span className="absolute left-2.5 text-xs text-slateink-light font-mono select-none">#</span>
+              <input
+                type="text"
+                value={newTagInput}
+                onChange={(e) => setNewTagInput(e.target.value)}
+                placeholder="Add tag…"
+                aria-label="Add new tag"
+                className="h-7 w-20 sm:w-24 rounded-full border border-dashed border-linen-dark bg-white/80 pl-5 pr-2 text-[11px] text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:border-solid focus:bg-white focus:w-32 focus:outline-none transition-all shadow-2xs"
+              />
+            </div>
+            {newTagInput.trim().length > 0 && (
+              <button
+                type="submit"
+                disabled={isSavingTag}
+                className="h-7 px-2.5 rounded-full bg-terracotta text-paper text-[11px] font-semibold hover:bg-terracotta-dark transition-all disabled:opacity-50 flex items-center gap-1 shadow-xs"
+                title="Save tag to database"
+              >
+                {isSavingTag ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-3 h-3" />
+                    <span>Save</span>
+                  </>
+                )}
+              </button>
+            )}
+          </form>
+
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={resetFilters}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-clayred-DEFAULT hover:underline transition-colors shrink-0 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Memory Form Modal */}
