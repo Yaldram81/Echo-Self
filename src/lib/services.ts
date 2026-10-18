@@ -11,6 +11,7 @@ import type {
   Memory,
   MemoryInput,
   TimelineEvent,
+  UserProfile,
 } from './types';
 
 type DbResult<T> = { data: T | null; error: { message: string } | null };
@@ -434,6 +435,34 @@ export const dataManagementService = {
         .not('user_id', 'is', null)
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (error) throw new Error(error.message);
+    }
+  },
+};
+
+export const profilesService = {
+  /** Fetch the authenticated user's profile from the database. */
+  async get(userId: string): Promise<UserProfile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) return null;
+      return data as UserProfile | null;
+    } catch {
+      return null;
+    }
+  },
+
+  /** Upsert user profile record in the database. */
+  async upsert(profile: Partial<UserProfile> & { id: string }): Promise<void> {
+    try {
+      await supabase
+        .from('profiles')
+        .upsert({ ...profile, updated_at: new Date().toISOString() });
+    } catch {
+      // Gracefully retained
     }
   },
 };

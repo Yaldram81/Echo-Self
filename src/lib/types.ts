@@ -457,3 +457,18 @@ export interface TimelineEntry {
   /** true when the connection is recorded in data (e.g. decision cites memory); false = chronological only */
   linkDemonstrated: boolean;
 }
+
+export interface UserProfile {
+  id: string;
+  display_name: string;
+  preferred_name: string;
+  bio: string;
+  avatar_color: string;
+  twin_tone: 'contemplative' | 'analytical' | 'socratic';
+  response_style: 'concise' | 'balanced' | 'detailed';
+  twin_context: string;
+  date_format: 'relative' | 'standard';
+  grounding_level: 'strict' | 'exploratory';
+  created_at: string;
+  updated_at: string;
+}

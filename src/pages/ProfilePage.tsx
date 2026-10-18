@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import { memoriesService, beliefsService, decisionsService } from '@/lib/services';
+import { memoriesService, beliefsService, decisionsService, profilesService } from '@/lib/services';
 import { navigateTo } from '@/lib/router';
 import { SectionHeading, Card } from '@/components/ui';
 
@@ -161,8 +161,28 @@ export function ProfilePage() {
     };
   }, []);
 
-  // Sync state whenever auth user changes
+  // Sync state whenever auth user changes or load from database profiles table
   useEffect(() => {
+    let cancelled = false;
+    if (user?.id) {
+      profilesService.get(user.id).then((dbProfile) => {
+        if (!cancelled && dbProfile) {
+          setProfile((prev) => ({
+            ...prev,
+            displayName: dbProfile.display_name || prev.displayName,
+            preferredName: dbProfile.preferred_name || prev.preferredName,
+            bio: dbProfile.bio || prev.bio,
+            avatarColor: dbProfile.avatar_color || prev.avatarColor,
+            twinTone: (dbProfile.twin_tone as ProfileData['twinTone']) || prev.twinTone,
+            responseStyle: (dbProfile.response_style as ProfileData['responseStyle']) || prev.responseStyle,
+            twinContext: dbProfile.twin_context || prev.twinContext,
+            dateFormat: (dbProfile.date_format as ProfileData['dateFormat']) || prev.dateFormat,
+            groundingLevel: (dbProfile.grounding_level as ProfileData['groundingLevel']) || prev.groundingLevel,
+          }));
+        }
+      });
+    }
+
     if (user?.user_metadata) {
       const meta = user.user_metadata;
       setProfile((prev) => ({
@@ -178,9 +198,13 @@ export function ProfilePage() {
         groundingLevel: meta.grounding_level ?? prev.groundingLevel,
       }));
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
-  // Helper to persist updates to both Supabase Auth metadata and localStorage
+  // Helper to persist updates to database profiles table, Supabase Auth metadata, and localStorage
   const persistMetadata = async (updates: Partial<ProfileData>) => {
     // 1. Mirror immediately to localStorage for fast local recall and demo personas
     if (updates.displayName !== undefined) localStorage.setItem('echoself:display_name', updates.displayName);
@@ -193,8 +217,21 @@ export function ProfilePage() {
     if (updates.dateFormat !== undefined) localStorage.setItem('echoself:date_format', updates.dateFormat);
     if (updates.groundingLevel !== undefined) localStorage.setItem('echoself:grounding_level', updates.groundingLevel);
 
-    // 2. If authenticated, persist to Supabase Auth metadata
+    // 2. If authenticated, persist to database profiles table and Supabase Auth metadata
     if (user) {
+      void profilesService.upsert({
+        id: user.id,
+        display_name: updates.displayName,
+        preferred_name: updates.preferredName,
+        bio: updates.bio,
+        avatar_color: updates.avatarColor,
+        twin_tone: updates.twinTone,
+        response_style: updates.responseStyle,
+        twin_context: updates.twinContext,
+        date_format: updates.dateFormat,
+        grounding_level: updates.groundingLevel,
+      });
+
       const payload: Record<string, unknown> = {};
       if (updates.displayName !== undefined) payload.display_name = updates.displayName;
       if (updates.preferredName !== undefined) payload.preferred_name = updates.preferredName;

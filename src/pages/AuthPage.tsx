@@ -16,6 +16,7 @@ import {
   User,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { profilesService } from '@/lib/services';
 import { authErrorMessage } from '@/lib/authMessages';
 import type { Memory } from '@/lib/types';
 import { navigateTo } from '@/lib/router';
@@ -60,7 +61,11 @@ export function AuthPage({ mode: initialMode }: { mode?: Mode }) {
           return;
         }
         localStorage.setItem('echoself:display_name', cleanName);
-        if (data.session) {
+        if (data.session?.user) {
+          void profilesService.upsert({ id: data.session.user.id, display_name: cleanName });
+          setNotice('Account created. Your personal workspace is ready.');
+          navigateTo('home');
+        } else if (data.session) {
           setNotice('Account created. Your personal workspace is ready.');
           navigateTo('home');
         } else {
