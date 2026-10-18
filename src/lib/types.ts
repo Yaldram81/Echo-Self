@@ -475,6 +475,8 @@ export interface UserProfile {
   ai_personalization_enabled?: boolean;
   semantic_retrieval_enabled?: boolean;
   data_retention_period?: 'indefinite' | '1_year' | '2_years';
+  onboarding_completed?: boolean;
+  onboarding_step?: number;
   created_at: string;
   updated_at: string;
 }

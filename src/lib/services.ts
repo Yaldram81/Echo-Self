@@ -668,18 +668,24 @@ export const dataManagementService = {
       // Fallback: purge all user data records
       await this.purgeAllUserData();
       // Remove profile row
+      delete inMemoryProfiles[userId];
+      delete inMemoryOnboardingState[userId];
       try {
         await supabase.from('profiles').delete().eq('id', userId);
       } catch {}
     }
 
     // Clean up local browser caches
+    delete inMemoryProfiles[userId];
+    delete inMemoryOnboardingState[userId];
     try {
       localStorage.removeItem('echoself_local_captures_v1');
       localStorage.removeItem(`echoself_reflections_${userId}`);
       localStorage.removeItem('echoself:twin_context');
       localStorage.removeItem('echoself:ai_personalization_enabled');
       localStorage.removeItem('echoself:semantic_retrieval_enabled');
+      localStorage.removeItem(`echoself:onboarding_completed:${userId}`);
+      localStorage.removeItem(`echoself:onboarding_step:${userId}`);
     } catch {}
 
     // Sign out caller session
@@ -704,6 +710,9 @@ let inMemoryPrefs: {
   data_retention_period?: 'indefinite' | '1_year' | '2_years';
 } = {};
 
+const inMemoryProfiles: Record<string, Partial<UserProfile>> = {};
+const inMemoryOnboardingState: Record<string, { completed: boolean; step: number }> = {};
+
 export const profilesService = {
   /** Fetch the authenticated user's profile from the database. */
   async get(userId: string): Promise<UserProfile | null> {
@@ -713,19 +722,71 @@ export const profilesService = {
         .select('*')
         .eq('id', userId)
         .maybeSingle();
-      if (error) return null;
-      return data as UserProfile | null;
+
+      const mem = inMemoryOnboardingState[userId];
+      const memProfile = inMemoryProfiles[userId];
+
+      if (!data || error) {
+        if (memProfile) {
+          return {
+            id: userId,
+            display_name: memProfile.display_name ?? '',
+            preferred_name: memProfile.preferred_name ?? '',
+            bio: memProfile.bio ?? '',
+            avatar_color: memProfile.avatar_color ?? 'terracotta',
+            twin_tone: memProfile.twin_tone ?? 'contemplative',
+            response_style: memProfile.response_style ?? 'balanced',
+            twin_context: memProfile.twin_context ?? '',
+            date_format: memProfile.date_format ?? 'relative',
+            grounding_level: memProfile.grounding_level ?? 'strict',
+            onboarding_completed: mem ? mem.completed : false,
+            onboarding_step: mem ? mem.step : 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...memProfile,
+          };
+        }
+        return null;
+      }
+
+      return {
+        ...(data as UserProfile),
+        ...memProfile,
+        onboarding_completed: (data as any).onboarding_completed ?? (mem ? mem.completed : false),
+        onboarding_step: (data as any).onboarding_step ?? (mem ? mem.step : 1),
+      };
     } catch {
-      return null;
+      return inMemoryProfiles[userId] ? (inMemoryProfiles[userId] as UserProfile) : null;
     }
   },
 
-  /** Upsert user profile record in the database. */
+  /** Upsert user profile record in the database with schema-adaptive fallback. */
   async upsert(profile: Partial<UserProfile> & { id: string }): Promise<void> {
+    const { id, onboarding_completed, onboarding_step, ...rest } = profile;
+    inMemoryProfiles[id] = { ...inMemoryProfiles[id], ...profile };
+
+    if (onboarding_completed !== undefined || onboarding_step !== undefined) {
+      if (!inMemoryOnboardingState[id]) {
+        inMemoryOnboardingState[id] = {
+          completed: onboarding_completed ?? false,
+          step: onboarding_step ?? 1,
+        };
+      } else {
+        if (onboarding_completed !== undefined) inMemoryOnboardingState[id].completed = onboarding_completed;
+        if (onboarding_step !== undefined) inMemoryOnboardingState[id].step = onboarding_step;
+      }
+    }
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert({ ...profile, updated_at: new Date().toISOString() });
+      if (error && (error.message.includes('column') || error.code === '42703')) {
+        // Fallback to core columns if migration is still pending in remote environment
+        await supabase
+          .from('profiles')
+          .upsert({ id, ...rest, updated_at: new Date().toISOString() });
+      }
     } catch {
       // Gracefully retained
     }
@@ -797,6 +858,103 @@ export const profilesService = {
     await this.upsert({
       id: userId,
       ...prefs,
+    });
+  },
+
+  /** Read onboarding completion and current step with local fallback */
+  async getOnboardingState(userId: string): Promise<{ completed: boolean; step: number }> {
+    let localCompleted: boolean | null = null;
+    let localStep: number | null = null;
+
+    if (inMemoryOnboardingState[userId]) {
+      localCompleted = inMemoryOnboardingState[userId].completed;
+      localStep = inMemoryOnboardingState[userId].step;
+    }
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const rawComp = localStorage.getItem(`echoself:onboarding_completed:${userId}`);
+        if (rawComp !== null) localCompleted = rawComp === 'true';
+        const rawStep = localStorage.getItem(`echoself:onboarding_step:${userId}`);
+        if (rawStep !== null) localStep = parseInt(rawStep, 10);
+      }
+    } catch {}
+
+    const profile = await this.get(userId);
+    if (profile) {
+      const completed = profile.onboarding_completed ?? (localCompleted ?? false);
+      const step = profile.onboarding_step ?? (localStep ?? 1);
+      return { completed, step };
+    }
+
+    return {
+      completed: localCompleted ?? false,
+      step: localStep ?? 1,
+    };
+  },
+
+  /** Save current onboarding step for resumption */
+  async saveOnboardingStep(userId: string, step: number): Promise<void> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`echoself:onboarding_step:${userId}`, String(step));
+      }
+    } catch {}
+
+    await this.upsert({
+      id: userId,
+      onboarding_step: step,
+    });
+  },
+
+  /** Mark onboarding completed and optionally persist initial personal preferences */
+  async completeOnboarding(
+    userId: string,
+    preferences?: Partial<UserProfile>
+  ): Promise<void> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`echoself:onboarding_completed:${userId}`, 'true');
+        localStorage.setItem(`echoself:onboarding_step:${userId}`, '5');
+        if (preferences?.preferred_name) {
+          localStorage.setItem('echoself:preferred_name', preferences.preferred_name);
+        }
+        if (preferences?.display_name) {
+          localStorage.setItem('echoself:display_name', preferences.display_name);
+        }
+        if (preferences?.response_style) {
+          localStorage.setItem('echoself:response_style', preferences.response_style);
+        }
+        if (preferences?.twin_tone) {
+          localStorage.setItem('echoself:twin_tone', preferences.twin_tone);
+        }
+        if (preferences?.grounding_level) {
+          localStorage.setItem('echoself:grounding_level', preferences.grounding_level);
+        }
+      }
+    } catch {}
+
+    await this.upsert({
+      id: userId,
+      onboarding_completed: true,
+      onboarding_step: 5,
+      ...preferences,
+    });
+  },
+
+  /** Reset onboarding so user can experience the walkthrough again */
+  async resetOnboarding(userId: string): Promise<void> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(`echoself:onboarding_completed:${userId}`);
+        localStorage.setItem(`echoself:onboarding_step:${userId}`, '1');
+      }
+    } catch {}
+
+    await this.upsert({
+      id: userId,
+      onboarding_completed: false,
+      onboarding_step: 1,
     });
   },
 };

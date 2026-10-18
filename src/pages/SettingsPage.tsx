@@ -17,8 +17,9 @@ import {
   RotateCcw,
   AlertTriangle,
   Lock,
+  Compass,
 } from 'lucide-react';
-import { dataManagementService } from '@/lib/services';
+import { dataManagementService, profilesService } from '@/lib/services';
 import { geminiService } from '@/lib/geminiService';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeading } from '@/components/ui';
@@ -430,6 +431,47 @@ export function SettingsPage() {
             checked={dataSharing}
             onChange={setDataSharing}
           />
+        </div>
+      </div>
+
+      {/* Onboarding & Product Walkthrough Card */}
+      <div className="card-surface p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper shadow-xs space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
+            <Compass className="w-4 h-4" aria-hidden />
+          </div>
+          <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal">Product Walkthrough & Onboarding</h2>
+        </div>
+        <p className="text-xs sm:text-sm text-slateink leading-relaxed">
+          Revisit the 5-step guided walkthrough to review how EchoSelf organizes evidence, inspect AI expectations and data boundaries, or adjust your Twin response style.
+        </p>
+
+        <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (user) {
+                void profilesService.resetOnboarding(user.id);
+              }
+              window.dispatchEvent(new CustomEvent('echoself:launch_onboarding'));
+            }}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-linen border border-linen-dark/80 hover:bg-linen-dark/50 text-charcoal text-xs sm:text-sm font-semibold transition-all shadow-2xs cursor-pointer"
+          >
+            <Compass className="w-4 h-4 text-terracotta" />
+            <span>Launch Walkthrough Modal</span>
+          </button>
+
+          <a
+            href="/onboarding"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateTo('onboarding');
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-medium text-slateink hover:text-charcoal hover:underline cursor-pointer"
+          >
+            <span>Open Dedicated Walkthrough Page</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
       </div>
 

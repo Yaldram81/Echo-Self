@@ -52,7 +52,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const signedIn = !loading && !!user;
-  const showBar = !loading && route.kind === 'app' && route.page !== 'chat' && (signedIn || route.page !== 'home');
+  const showBar = !loading && route.kind === 'app' && route.page !== 'chat' && route.page !== 'onboarding' && (signedIn || route.page !== 'home');
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
 
   const isMorePageActive = SECONDARY_DESTINATIONS.some((item) => item.page === currentPage);

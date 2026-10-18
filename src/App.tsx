@@ -32,6 +32,7 @@ const ReviewCenterPage = lazy(() => import('@/pages/ReviewCenterPage').then((m) 
 const InsightsPage = lazy(() => import('@/pages/InsightsPage').then((m) => ({ default: m.InsightsPage })));
 const ReflectionWorkspacePage = lazy(() => import('@/pages/ReflectionWorkspacePage').then((m) => ({ default: m.ReflectionWorkspacePage })));
 const PrivacyDataCenterPage = lazy(() => import('@/pages/PrivacyDataCenterPage').then((m) => ({ default: m.PrivacyDataCenterPage })));
+const OnboardingPage = lazy(() => import('@/pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -126,6 +127,7 @@ function SwitchPage({ page }: { page: PageId }) {
     case 'insights': return <InsightsPage />;
     case 'reflect': return <ReflectionWorkspacePage />;
     case 'privacy': return <PrivacyDataCenterPage />;
+    case 'onboarding': return <OnboardingPage />;
     default: return <HomePage />;
   }
 }

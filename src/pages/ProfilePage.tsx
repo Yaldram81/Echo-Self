@@ -530,21 +530,35 @@ export function ProfilePage() {
           </div>
 
           {!isEditingIdentity && (
-            <button
-              type="button"
-              onClick={() => {
-                setFormName(profile.displayName);
-                setFormPreferredName(profile.preferredName);
-                setFormBio(profile.bio);
-                setFormAvatarColor(profile.avatarColor);
-                setIsEditingIdentity(true);
-                setIdentityError(null);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-linen-dark bg-paper-soft hover:bg-white text-xs font-semibold text-charcoal transition-all cursor-pointer shadow-2xs shrink-0"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-terracotta" />
-              <span>Edit profile</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('echoself:launch_onboarding'));
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-linen-dark bg-paper-soft hover:bg-white text-xs font-semibold text-charcoal transition-all cursor-pointer shadow-2xs shrink-0"
+                title="Revisit the first-run onboarding and product walkthrough"
+              >
+                <Compass className="w-3.5 h-3.5 text-terracotta" />
+                <span className="hidden sm:inline">Walkthrough</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFormName(profile.displayName);
+                  setFormPreferredName(profile.preferredName);
+                  setFormBio(profile.bio);
+                  setFormAvatarColor(profile.avatarColor);
+                  setIsEditingIdentity(true);
+                  setIdentityError(null);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-linen-dark bg-paper-soft hover:bg-white text-xs font-semibold text-charcoal transition-all cursor-pointer shadow-2xs shrink-0"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-terracotta" />
+                <span>Edit profile</span>
+              </button>
+            </div>
           )}
         </div>
 

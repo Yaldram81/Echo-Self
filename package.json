@@ -27,7 +27,8 @@
     "claim-review-tests": "tsx scripts/run-claim-review-tests.mts",
     "claim-review-live-eval": "tsx --env-file=.env scripts/run-claim-review-live-eval.mts",
     "reflection-tests": "tsx --env-file=.env scripts/run-reflection-tests.mts",
-    "privacy-tests": "tsx --env-file=.env scripts/run-privacy-tests.mts"
+    "privacy-tests": "tsx --env-file=.env scripts/run-privacy-tests.mts",
+    "onboarding-tests": "tsx --env-file=.env scripts/run-onboarding-tests.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

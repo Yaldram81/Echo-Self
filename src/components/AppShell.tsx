@@ -30,6 +30,8 @@ import { PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@
 import { MobileBottomBar } from '@/components/MobileBottomBar';
 import { SampleDataToast } from '@/components/ui';
 import { PublicFooter } from '@/components/PublicFooter';
+import { OnboardingFlow } from '@/components/OnboardingFlow';
+import { profilesService } from '@/lib/services';
 
 interface NavItem {
   id: PageId;
@@ -49,11 +51,42 @@ const PRIMARY_WORKSPACE_NAV: NavItem[] = [
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [publicMenuOpen, setPublicMenuOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const { user, loading } = useAuth();
   const signedIn = !loading && !!user;
 
   const page: PageId = route.kind === 'app' ? route.page : 'signin';
   const isLandingPage = route.kind === 'app' && route.page === 'home';
+
+  // Detect newly registered users and prompt first-run onboarding
+  useEffect(() => {
+    let cancelled = false;
+    async function checkFirstRun() {
+      if (loading || !user) {
+        setOnboardingOpen(false);
+        return;
+      }
+      try {
+        const state = await profilesService.getOnboardingState(user.id);
+        if (!cancelled && !state.completed && page !== 'onboarding') {
+          setOnboardingOpen(true);
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+    void checkFirstRun();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading, page]);
+
+  // Support triggering the onboarding walkthrough from Settings or Profile
+  useEffect(() => {
+    const onLaunch = () => setOnboardingOpen(true);
+    window.addEventListener('echoself:launch_onboarding', onLaunch);
+    return () => window.removeEventListener('echoself:launch_onboarding', onLaunch);
+  }, []);
 
   const go = (p: PageId) => {
     navigateTo(p);
@@ -784,11 +817,19 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </footer>
       ) : null}
 
-      {/* Mobile Navigation Dock - Rendered ONLY inside application routes, NOT on public landing page */}
-      {!isLandingPage && <MobileBottomBar route={route} />}
+      {/* Mobile Navigation Dock - Rendered ONLY inside application routes, NOT on public landing page or during onboarding modal */}
+      {!isLandingPage && !onboardingOpen && <MobileBottomBar route={route} />}
 
       {/* Floating Sample Data Toast for Unauthenticated in-app visitors */}
       {!isLandingPage && !signedIn && !loading && <SampleDataToast />}
+
+      {/* First-Run Onboarding Modal for Authenticated Users */}
+      {signedIn && onboardingOpen && page !== 'onboarding' && (
+        <OnboardingFlow
+          isModal={true}
+          onDismiss={() => setOnboardingOpen(false)}
+        />
+      )}
     </div>
   );
 }
