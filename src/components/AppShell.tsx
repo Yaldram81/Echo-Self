@@ -201,7 +201,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               onClick={() => setMenuOpen(false)}
             />
             <nav
-              className="lg:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              className="lg:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto scroll-elegant bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
               aria-label="Mobile"
             >
               <ul className="flex flex-col gap-1">

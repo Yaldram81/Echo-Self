@@ -35,7 +35,7 @@ export function ConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
+        className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto scroll-elegant rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
       >
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clayred-light text-clayred-DEFAULT">

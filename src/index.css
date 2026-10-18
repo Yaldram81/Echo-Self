@@ -33,6 +33,85 @@
       scroll-behavior: auto !important;
     }
   }
+
+  /* ============================================================
+     EchoSelf scrollbar system
+     Centralized, token-driven, cross-browser. Reuses the warm
+     editorial palette (paper / linen / charcoal / terracotta).
+     Slim capsule thumbs, soft linen track, refined hover.
+     ============================================================ */
+
+  /* Firefox — the supported properties (no pseudo-elements here). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c9beae transparent;
+  }
+  *:hover {
+    scrollbar-color: #a89c8a transparent;
+  }
+
+  /* Chromium / WebKit / Blink — pseudo-element styling. */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: #c9beae;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #a89c8a;
+  }
+  *::-webkit-scrollbar-thumb:active {
+    background-color: #8a7e6c;
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Slimmer overlay variant for dense internal panels (chat history,
+     drawers, modals, side panels). Keeps content readable while still
+     being usable. */
+  .scroll-elegant {
+    scrollbar-width: thin;
+    scrollbar-color: #c9beae transparent;
+  }
+  .scroll-elegant::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-elegant::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-elegant::-webkit-scrollbar-thumb {
+    background-color: #c9beae;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  .scroll-elegant::-webkit-scrollbar-thumb:hover {
+    background-color: #a89c8a;
+  }
+  .scroll-elegant::-webkit-scrollbar-thumb:active {
+    background-color: #8a7e6c;
+  }
+  .scroll-elegant::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Horizontal scrollbar refinement — shorter, capsule thumb. */
+  *::-webkit-scrollbar:horizontal {
+    height: 8px;
+  }
+  *::-webkit-scrollbar:horizontal *::-webkit-scrollbar-thumb {
+    background-color: #c9beae;
+    border-radius: 9999px;
+  }
 }
 
 @layer components {

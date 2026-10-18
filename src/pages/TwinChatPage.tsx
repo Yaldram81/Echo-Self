@@ -167,7 +167,7 @@ export function TwinChatPage() {
         <ErrorState message={error} onRetry={() => { memories.reload(); beliefs.reload(); }} />
       ) : (
         <div className="card-surface flex flex-col h-[calc(100dvh-13rem)] min-h-[420px] lg:h-[70vh] lg:min-h-[460px]">
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5">
+          <div className="flex-1 overflow-y-auto scroll-elegant p-5 md:p-6 space-y-5">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-4">
                 <Sparkles className="w-7 h-7 text-terracotta/70 mb-3" aria-hidden />
@@ -309,7 +309,7 @@ export function TwinChatPage() {
         >
           <div
             ref={flagDialogRef}
-            className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
+            className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto scroll-elegant rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
           >
             <div className="flex items-start gap-3 mb-4">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amberclay-light text-amberclay-DEFAULT">

@@ -349,7 +349,7 @@ function GraphCanvas({
   );
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto scroll-elegant">
       <svg
         viewBox={`0 0 940 ${H}`}
         className="w-full min-w-[720px]"

@@ -788,7 +788,7 @@ function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['
         <div className="mt-2 rounded-xl bg-linen-light/60 border border-linen-dark px-4 py-3">
           {/* The arithmetic trace is dense tabular data; a scoped horizontal
               scroll keeps every column readable on a phone. */}
-          <div className="overflow-x-auto -mx-1 px-1">
+          <div className="overflow-x-auto scroll-elegant -mx-1 px-1">
             <table className="w-full min-w-[420px] text-[11px] tabular-nums">
             <thead>
               <tr className="text-left text-slateink-light">
