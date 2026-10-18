@@ -1130,8 +1130,8 @@ export function TwinChatPage() {
                 }}
                 className="max-w-3xl mx-auto w-full relative"
               >
-                {/* Single-Row Pill Capsule Container */}
-                <div className="rounded-full border border-linen-dark/90 bg-white shadow-lifted focus-within:border-terracotta/80 focus-within:ring-2 focus-within:ring-terracotta/20 transition-all pl-4 pr-1.5 py-1.5 sm:py-2 flex items-center gap-2">
+                {/* Single-Row Pill Capsule Container without focus rings/outlines */}
+                <div className="rounded-full border border-linen-dark/90 bg-white shadow-lifted pl-4 pr-1.5 py-1.5 sm:py-2 flex items-center gap-2 outline-none focus-within:outline-none focus-within:ring-0">
                   <label htmlFor="twin-chat-input" className="sr-only">
                     Message your digital twin
                   </label>
@@ -1143,7 +1143,7 @@ export function TwinChatPage() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask about priorities, decisions, contradictions in beliefs…"
-                    className="flex-1 min-w-0 resize-none bg-transparent text-xs sm:text-sm leading-relaxed text-charcoal placeholder:text-slateink-light focus:outline-none max-h-32 overflow-y-auto py-1"
+                    className="flex-1 min-w-0 resize-none bg-transparent text-xs sm:text-sm leading-relaxed text-charcoal placeholder:text-slateink-light outline-none focus:outline-none focus:ring-0 border-none shadow-none max-h-32 overflow-y-auto py-1"
                   />
 
                   <button
