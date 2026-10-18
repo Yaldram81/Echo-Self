@@ -85,6 +85,9 @@ export function navigateTo(
   const href = hrefFor(target);
   if (replace) history.replaceState({}, '', href);
   else history.pushState({}, '', href);
+  // New in-app navigation should land at the top of the page, not wherever
+  // the previous scroll position happened to be.
+  window.scrollTo(0, 0);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
