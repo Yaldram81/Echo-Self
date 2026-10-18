@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   LogOut,
   UserCircle2,
+  Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { navigateTo, type PageId, type Route } from '@/lib/router';
@@ -28,29 +29,17 @@ type AddOption = {
 };
 
 const OPTIONS: AddOption[] = [
-  { kind: 'memory', label: 'Memory', hint: 'Record an experience or event', icon: BookOpen },
-  { kind: 'belief', label: 'Belief / Value', hint: 'Articulate a principle you hold', icon: Compass },
-  { kind: 'decision', label: 'Decision', hint: 'Map a choice and weigh values', icon: Scale },
-];
-
-type NavTab = {
-  page: PageId;
-  label: string;
-  icon: LucideIcon;
-};
-
-const PRIMARY_TABS: NavTab[] = [
-  { page: 'home', label: 'Home', icon: Home },
-  { page: 'memories', label: 'Memories', icon: BookOpen },
-  { page: 'chat', label: 'Twin', icon: MessageCircle },
+  { kind: 'memory', label: 'Record a Memory', hint: 'An experience, reflection, or moment', icon: BookOpen },
+  { kind: 'belief', label: 'State a Belief or Value', hint: 'A core principle you hold to be true', icon: Compass },
+  { kind: 'decision', label: 'Frame a Decision', hint: 'Weigh choices and examine outcomes', icon: Scale },
 ];
 
 const MORE_TOOLS: { page: PageId; label: string; desc: string; icon: LucideIcon }[] = [
-  { page: 'decisions', label: 'Decision Mirror', desc: 'Weigh choices & reflect on outcomes', icon: Scale },
-  { page: 'beliefs', label: 'Beliefs & Values', desc: 'Track principles and evolution', icon: Compass },
+  { page: 'decisions', label: 'Decision Mirror', desc: 'Weigh options & arithmetic', icon: Scale },
+  { page: 'beliefs', label: 'Beliefs & Values', desc: 'Track principles & changes', icon: Compass },
   { page: 'graph', label: 'Evidence Graph', desc: 'Interactive connection map', icon: GitBranch },
-  { page: 'timeline', label: 'Timeline', desc: 'Chronological history of moments', icon: History },
-  { page: 'settings', label: 'Settings & Privacy', desc: 'Preferences, export & data control', icon: Settings },
+  { page: 'timeline', label: 'Timeline', desc: 'Chronological memory stream', icon: History },
+  { page: 'settings', label: 'Settings & Privacy', desc: 'Data export & preferences', icon: Settings },
 ];
 
 type SheetType = 'add' | 'more' | null;
@@ -131,49 +120,50 @@ export function MobileBottomBar({ route }: { route: Route }) {
           role="presentation"
           aria-hidden="true"
           onClick={() => setSheet(null)}
-          className="md:hidden fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-xs transition-opacity animate-[fadeIn_150ms_ease-out]"
+          className="md:hidden fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-sm transition-opacity animate-[fadeIn_150ms_ease-out]"
         />
       )}
 
-      {/* Quick Add Bottom Sheet */}
+      {/* Quick Record Bottom Sheet */}
       {sheet === 'add' && (
         <div
           ref={sheetContentRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Create record"
-          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-3xl border-t border-linen-dark/80 shadow-2xl p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] animate-[fadeIn_180ms_ease-out]"
+          aria-label="Quick record"
+          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-[28px] border-t border-linen-dark/80 shadow-2xl p-6 pb-[max(2rem,env(safe-area-inset-bottom))] animate-[slideUp_200ms_ease-out]"
         >
-          <div className="w-10 h-1 bg-linen-dark rounded-full mx-auto mb-4" />
-          <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-1.5 bg-linen-dark/80 rounded-full mx-auto mb-5" />
+          
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-base font-serif font-semibold text-charcoal">Quick Record</h2>
-              <p className="text-xs text-slateink-light">Capture an experience, belief, or decision</p>
+              <h2 className="text-lg font-serif font-bold text-charcoal">Quick Record</h2>
+              <p className="text-xs text-slateink-light mt-0.5">Capture evidence for your personal model</p>
             </div>
             <button
               onClick={() => setSheet(null)}
-              className="p-1.5 rounded-full text-slateink hover:text-charcoal hover:bg-linen/60"
+              className="p-2 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {OPTIONS.map((opt) => {
               const Icon = opt.icon;
               return (
                 <button
                   key={opt.kind}
                   onClick={() => chooseAdd(opt)}
-                  className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl bg-white border border-linen-dark/60 shadow-xs hover:border-terracotta active:scale-[0.98] transition-all text-left"
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white border border-linen-dark/70 shadow-xs hover:border-terracotta hover:shadow-card active:scale-[0.98] transition-all text-left group"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta-deep">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta-deep group-hover:bg-terracotta group-hover:text-paper transition-colors">
                     <Icon className="w-5 h-5" />
                   </span>
                   <div className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-charcoal">{opt.label}</span>
-                    <span className="block text-xs text-slateink-light truncate">{opt.hint}</span>
+                    <span className="block text-xs text-slateink-light mt-0.5">{opt.hint}</span>
                   </div>
                 </button>
               );
@@ -189,24 +179,25 @@ export function MobileBottomBar({ route }: { route: Route }) {
           role="dialog"
           aria-modal="true"
           aria-label="Explore and tools"
-          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-3xl border-t border-linen-dark/80 shadow-2xl p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] animate-[fadeIn_180ms_ease-out]"
+          className="md:hidden fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto bg-paper rounded-t-[28px] border-t border-linen-dark/80 shadow-2xl p-6 pb-[max(2rem,env(safe-area-inset-bottom))] animate-[slideUp_200ms_ease-out]"
         >
-          <div className="w-10 h-1 bg-linen-dark rounded-full mx-auto mb-4" />
-          <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-1.5 bg-linen-dark/80 rounded-full mx-auto mb-5" />
+          
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-base font-serif font-semibold text-charcoal">Explore & Tools</h2>
-              <p className="text-xs text-slateink-light">Access your models, graph, and preferences</p>
+              <h2 className="text-lg font-serif font-bold text-charcoal">Explore & Tools</h2>
+              <p className="text-xs text-slateink-light mt-0.5">Deep inspection of your personal model</p>
             </div>
             <button
               onClick={() => setSheet(null)}
-              className="p-1.5 rounded-full text-slateink hover:text-charcoal hover:bg-linen/60"
+              className="p-2 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-5">
             {MORE_TOOLS.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.page;
@@ -214,22 +205,22 @@ export function MobileBottomBar({ route }: { route: Route }) {
                 <button
                   key={item.page}
                   onClick={() => goPage(item.page)}
-                  className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                  className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
                     isActive
                       ? 'bg-terracotta/10 border-terracotta text-terracotta-deep shadow-xs'
                       : 'bg-white border-linen-dark/60 text-charcoal hover:bg-linen/40'
                   }`}
                 >
                   <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
                       isActive ? 'bg-terracotta text-paper' : 'bg-linen text-slateink-dark'
                     }`}
                   >
-                    <Icon className="w-4.5 h-4.5" />
+                    <Icon className="w-5 h-5" />
                   </span>
                   <div className="flex-1 min-w-0">
                     <span className="block text-xs font-semibold leading-snug">{item.label}</span>
-                    <span className="block text-[11px] text-slateink-light truncate">{item.desc}</span>
+                    <span className="block text-[11px] text-slateink-light mt-0.5 truncate">{item.desc}</span>
                   </div>
                 </button>
               );
@@ -237,41 +228,46 @@ export function MobileBottomBar({ route }: { route: Route }) {
           </div>
 
           {/* Account Footer in More Sheet */}
-          <div className="pt-3 border-t border-linen-dark/50 flex items-center justify-between gap-3">
+          <div className="pt-4 border-t border-linen-dark/60 flex items-center justify-between gap-3">
             {user ? (
               <>
-                <div className="flex items-center gap-2 min-w-0">
-                  <UserCircle2 className="w-4 h-4 text-slateink-light shrink-0" />
-                  <span className="text-xs text-slateink-dark truncate">{user.email}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-terracotta/15 text-terracotta-deep font-semibold text-xs uppercase shrink-0">
+                    {user.email?.charAt(0) ?? 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-charcoal truncate">{user.email}</p>
+                    <p className="text-[10px] text-slateink-light">Private Workspace</p>
+                  </div>
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-clayred-DEFAULT hover:text-clayred-dark px-2.5 py-1.5 rounded-lg hover:bg-clayred-light/30 transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-clayred-DEFAULT hover:text-clayred-dark px-3 py-2 rounded-xl hover:bg-clayred-light/30 transition-colors"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                   <span>Sign out</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={() => goPage('signin')}
-                className="w-full text-center py-2.5 rounded-xl bg-terracotta text-paper text-xs font-medium hover:bg-terracotta-dark transition-colors"
+                className="w-full text-center py-3 rounded-2xl bg-terracotta text-paper text-xs font-semibold hover:bg-terracotta-dark shadow-sm transition-colors"
               >
-                Sign in to save your workspace
+                Sign in to save your private workspace
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Main 5-Slot Bottom Bar */}
+      {/* Floating Luxury Mobile Navigation Dock */}
       <nav
-        aria-label="Mobile navigation"
-        className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-paper/90 backdrop-blur-xl border-t border-linen-dark/70 shadow-[0_-4px_24px_rgba(32,35,33,0.06)] h-15 pb-[env(safe-area-inset-bottom)]"
+        aria-label="Mobile Navigation Dock"
+        className="md:hidden fixed bottom-4 inset-x-4 max-w-sm sm:max-w-md mx-auto z-40 bg-paper/95 backdrop-blur-2xl border border-linen-dark/80 rounded-2xl shadow-[0_10px_35px_rgba(32,35,33,0.12)] h-16 px-1.5"
       >
-        <div className="grid grid-cols-5 items-center h-full max-w-md mx-auto px-1">
+        <div className="grid grid-cols-5 items-center h-full">
           {/* Tab 1: Home */}
-          <TabButton
+          <DockTabButton
             label="Home"
             icon={Home}
             active={currentPage === 'home'}
@@ -279,7 +275,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
           />
 
           {/* Tab 2: Memories */}
-          <TabButton
+          <DockTabButton
             label="Memories"
             icon={BookOpen}
             active={currentPage === 'memories'}
@@ -293,16 +289,16 @@ export function MobileBottomBar({ route }: { route: Route }) {
               onClick={() => setSheet((s) => (s === 'add' ? null : 'add'))}
               aria-expanded={sheet === 'add'}
               aria-label={sheet === 'add' ? 'Close quick record' : 'Quick record'}
-              className={`flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-paper shadow-lifted ring-3 ring-paper transition-all duration-200 active:scale-95 ${
-                sheet === 'add' ? 'rotate-45 bg-charcoal' : 'hover:bg-terracotta-dark'
+              className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-terracotta-deep via-terracotta to-terracotta-light text-paper shadow-lifted ring-4 ring-paper -translate-y-2.5 transition-all duration-200 active:scale-95 ${
+                sheet === 'add' ? 'rotate-45 bg-charcoal' : 'hover:scale-105'
               }`}
             >
-              <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+              <Plus className="w-6 h-6 stroke-[2.5]" aria-hidden="true" />
             </button>
           </div>
 
           {/* Tab 4: Twin Chat */}
-          <TabButton
+          <DockTabButton
             label="Twin"
             icon={MessageCircle}
             active={currentPage === 'chat'}
@@ -310,7 +306,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
           />
 
           {/* Tab 5: More Tools */}
-          <TabButton
+          <DockTabButton
             label="More"
             icon={LayoutGrid}
             active={isMorePageActive || sheet === 'more'}
@@ -322,7 +318,7 @@ export function MobileBottomBar({ route }: { route: Route }) {
   );
 }
 
-function TabButton({
+function DockTabButton({
   label,
   icon: Icon,
   active,
@@ -338,20 +334,20 @@ function TabButton({
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex flex-col items-center justify-center gap-1 py-1 h-full rounded-xl transition-all ${
+      className={`flex flex-col items-center justify-center gap-1 py-1 h-full rounded-xl transition-all duration-150 ${
         active
           ? 'text-terracotta-deep font-semibold'
           : 'text-slateink hover:text-charcoal active:scale-95'
       }`}
     >
       <span
-        className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
-          active ? 'bg-terracotta/12' : ''
+        className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
+          active ? 'bg-terracotta/15' : ''
         }`}
       >
-        <Icon className={`w-4.5 h-4.5 ${active ? 'text-terracotta-deep' : 'text-slateink'}`} aria-hidden="true" />
+        <Icon className={`w-5 h-5 ${active ? 'text-terracotta-deep' : 'text-slateink'}`} aria-hidden="true" />
       </span>
-      <span className="text-[10px] tracking-tight leading-none">{label}</span>
+      <span className="text-[10px] tracking-tight leading-none font-medium">{label}</span>
     </button>
   );
 }

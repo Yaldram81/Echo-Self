@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
   Sparkles,
+  MoreHorizontal,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -39,6 +40,7 @@ const PRIMARY_NAV: NavItem[] = [
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const [tabletMoreOpen, setTabletMoreOpen] = useState(false);
   const { user, loading } = useAuth();
   const signedIn = !loading && !!user;
 
@@ -47,22 +49,28 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   const go = (p: PageId) => {
     navigateTo(p);
     setAccountOpen(false);
+    setTabletMoreOpen(false);
   };
 
   useEffect(() => {
     setAccountOpen(false);
+    setTabletMoreOpen(false);
   }, [route]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setAccountOpen(false);
+        setTabletMoreOpen(false);
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Element | null;
       if (accountOpen && target && !target.closest('[data-account-menu]')) {
         setAccountOpen(false);
+      }
+      if (tabletMoreOpen && target && !target.closest('[data-tablet-more]')) {
+        setTabletMoreOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -71,7 +79,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [accountOpen]);
+  }, [accountOpen, tabletMoreOpen]);
 
   async function handleSignOut() {
     setAccountOpen(false);
@@ -90,7 +98,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
     : 'Account';
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper">
+    <div className="min-h-screen flex flex-col bg-paper text-charcoal">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:shadow-card"
@@ -98,29 +106,33 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         Skip to content
       </a>
 
-      {/* Main Top Header */}
-      <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-md border-b border-linen-dark/50 transition-all duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-3">
-          {/* Brand Logo */}
+      {/* Top Header - Spacious, breathable, and elegant */}
+      <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-xl border-b border-linen-dark/40 transition-all duration-200">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 h-16 md:h-20 flex items-center justify-between gap-4">
+          
+          {/* Brand Logo & Editorial Title */}
           <button
             onClick={() => go('home')}
-            className="group shrink-0 flex items-center gap-2.5 rounded-xl py-1 px-1.5 -ml-1.5 hover:bg-linen/40 transition-colors"
+            className="group shrink-0 flex items-center gap-3 rounded-xl py-1 px-1 -ml-1 transition-transform active:scale-98"
             aria-label="EchoSelf home"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-terracotta text-paper shadow-xs group-hover:scale-105 group-hover:bg-terracotta-dark transition-all">
-              <Feather className="w-4 h-4" aria-hidden />
+            <span className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-terracotta to-terracotta-dark text-paper shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all duration-200">
+              <Feather className="w-5 h-5" aria-hidden />
             </span>
-            <div className="flex flex-col items-start leading-none">
-              <span className="font-serif text-xl font-semibold tracking-tight text-charcoal">
+            <div className="flex items-center gap-3">
+              <span className="font-serif text-2xl font-bold tracking-tight text-charcoal group-hover:text-terracotta transition-colors">
                 EchoSelf
+              </span>
+              <span className="hidden xl:inline-block pl-3 border-l border-linen-dark/70 text-[11px] font-sans tracking-widest uppercase text-slateink-light/80 font-medium">
+                Personal Model
               </span>
             </div>
           </button>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation (Wide screens >= 1024px) */}
           <nav
-            className="hidden md:flex items-center gap-1 bg-linen/35 p-1 rounded-full border border-linen-dark/40 shadow-xs"
-            aria-label="Main"
+            className="hidden lg:flex items-center gap-1.5"
+            aria-label="Main Navigation"
           >
             {PRIMARY_NAV.map((item) => {
               const Icon = item.icon;
@@ -135,15 +147,15 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                     go(item.id);
                   }}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs lg:text-[13px] font-medium leading-none transition-all duration-150 ${
+                  className={`group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
                     isActive
-                      ? 'bg-white text-charcoal font-semibold shadow-xs ring-1 ring-charcoal/5'
-                      : 'text-slateink hover:text-charcoal hover:bg-white/50'
+                      ? 'bg-linen/80 text-charcoal font-semibold shadow-xs'
+                      : 'text-slateink-dark hover:text-charcoal hover:bg-linen/40'
                   }`}
                 >
                   <Icon
-                    className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                      isActive ? 'text-terracotta-deep' : 'text-slateink-light group-hover:text-charcoal'
+                    className={`w-4 h-4 transition-colors ${
+                      isActive ? 'text-terracotta-deep' : 'text-slateink group-hover:text-charcoal'
                     }`}
                     aria-hidden
                   />
@@ -153,9 +165,83 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             })}
           </nav>
 
+          {/* Tablet Navigation (768px - 1023px) - Clean 4 items + More dropdown */}
+          <nav
+            className="hidden md:flex lg:hidden items-center gap-1"
+            aria-label="Tablet Navigation"
+          >
+            {PRIMARY_NAV.slice(0, 4).map((item) => {
+              const Icon = item.icon;
+              const isActive = page === item.id;
+              return (
+                <a
+                  key={item.id}
+                  href={hrefFor(item.id)}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    e.preventDefault();
+                    go(item.id);
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-linen/80 text-charcoal font-semibold'
+                      : 'text-slateink-dark hover:text-charcoal hover:bg-linen/40'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-terracotta-deep' : 'text-slateink'}`} />
+                  <span>{item.label}</span>
+                </a>
+              );
+            })}
+
+            {/* Tablet More dropdown for Graph & Timeline */}
+            <div className="relative" data-tablet-more>
+              <button
+                onClick={() => setTabletMoreOpen((o) => !o)}
+                aria-expanded={tabletMoreOpen}
+                aria-label="More views"
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  page === 'graph' || page === 'timeline'
+                    ? 'bg-linen/80 text-charcoal font-semibold'
+                    : 'text-slateink-dark hover:text-charcoal hover:bg-linen/40'
+                }`}
+              >
+                <span>More</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${tabletMoreOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {tabletMoreOpen && (
+                <div className="absolute left-0 top-9 w-44 rounded-xl border border-linen-dark/80 bg-white shadow-lifted p-1 z-50 animate-[fadeIn_100ms_ease-out]">
+                  {PRIMARY_NAV.slice(4).map((item) => {
+                    const Icon = item.icon;
+                    const isActive = page === item.id;
+                    return (
+                      <a
+                        key={item.id}
+                        href={hrefFor(item.id)}
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                          e.preventDefault();
+                          go(item.id);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          isActive ? 'bg-linen text-charcoal font-semibold' : 'text-slateink-dark hover:bg-linen/50'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 text-slateink" />
+                        <span>{item.label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </nav>
+
           {/* Right Action Area */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Twin Chat Quick Access (Desktop) */}
+          <div className="flex items-center gap-3">
+            {/* Desktop Twin Chat Button */}
             <a
               href={hrefFor('chat')}
               onClick={(e) => {
@@ -164,26 +250,26 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                 go('chat');
               }}
               aria-current={page === 'chat' ? 'page' : undefined}
-              className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold tracking-tight transition-all duration-150 shadow-xs ${
+              className={`hidden sm:inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 whitespace-nowrap shadow-xs ${
                 page === 'chat'
-                  ? 'bg-terracotta text-paper ring-2 ring-terracotta/20'
-                  : 'bg-charcoal text-paper hover:bg-charcoal/85 active:scale-95'
+                  ? 'bg-terracotta text-paper ring-2 ring-terracotta/30 shadow-md'
+                  : 'bg-charcoal text-paper hover:bg-charcoal/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amberclay-light" aria-hidden />
               <span>Twin Chat</span>
             </a>
 
-            {/* Account / Auth */}
+            {/* Account / User Menu */}
             {signedIn ? (
               <div className="relative" data-account-menu>
                 <button
                   onClick={() => setAccountOpen((o) => !o)}
                   aria-expanded={accountOpen}
                   aria-label="Account menu"
-                  className="inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-full border border-linen-dark/70 bg-white/70 hover:bg-white text-charcoal text-xs font-medium transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 h-9 md:h-10 pl-2 pr-3 rounded-full border border-linen-dark/70 bg-white/70 hover:bg-white hover:border-linen-darker text-charcoal text-xs font-medium transition-all shadow-xs"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta/15 text-terracotta-deep font-semibold text-[11px] uppercase">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-terracotta to-terracotta-dark text-paper font-semibold text-xs uppercase shadow-xs">
                     {userDisplayName.charAt(0)}
                   </span>
                   <span className="hidden sm:inline max-w-28 truncate font-medium">
@@ -199,7 +285,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
                 {accountOpen && (
                   <div
-                    className="absolute right-0 top-11 w-64 rounded-2xl border border-linen-dark/80 bg-white shadow-lifted p-1.5 z-50 animate-[fadeIn_120ms_ease-out]"
+                    className="absolute right-0 top-12 w-64 rounded-2xl border border-linen-dark/80 bg-white shadow-lifted p-2 z-50 animate-[fadeIn_120ms_ease-out]"
                     role="menu"
                   >
                     <div className="px-3 py-2.5 border-b border-linen-dark/40 mb-1">
@@ -219,18 +305,18 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         go('settings');
                       }}
                       role="menuitem"
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2 transition-colors"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-charcoal hover:bg-linen/60 flex items-center gap-2.5 transition-colors"
                     >
-                      <Settings className="w-3.5 h-3.5 text-slateink-light" aria-hidden />
+                      <Settings className="w-4 h-4 text-slateink-light" aria-hidden />
                       <span>Settings & Privacy</span>
                     </a>
 
                     <button
                       role="menuitem"
                       onClick={handleSignOut}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light/30 flex items-center gap-2 transition-colors mt-0.5"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light/30 flex items-center gap-2.5 transition-colors mt-0.5"
                     >
-                      <LogOut className="w-3.5 h-3.5 text-clayred-DEFAULT" aria-hidden />
+                      <LogOut className="w-4 h-4 text-clayred-DEFAULT" aria-hidden />
                       <span>Sign out</span>
                     </button>
                   </div>
@@ -240,9 +326,9 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               <button
                 onClick={() => go('signin')}
                 aria-label="Sign in"
-                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-terracotta text-paper text-xs font-medium hover:bg-terracotta-dark active:scale-95 transition-all shadow-xs"
+                className="inline-flex items-center gap-1.5 h-9 md:h-10 px-4 md:px-5 rounded-full border border-linen-dark/80 bg-white/70 hover:bg-white hover:border-linen-darker text-charcoal text-xs font-semibold transition-all shadow-xs active:scale-95 whitespace-nowrap"
               >
-                <UserCircle2 className="w-3.5 h-3.5" aria-hidden />
+                <UserCircle2 className="w-4 h-4 text-slateink-light" aria-hidden />
                 <span>Sign in</span>
               </button>
             )}
@@ -250,38 +336,38 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-6 md:py-10 pb-24 md:pb-12">
+      {/* Main Content Area with Generous Bottom Clearance for Mobile Dock */}
+      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12 pb-32 md:pb-16">
         {children}
       </main>
 
       {/* Desktop Footer */}
       <footer className="hidden md:block border-t border-linen-dark/50 mt-auto">
-        <div className="max-w-6xl mx-auto shell-pad py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <p className="text-xs text-slateink">
+        <div className="max-w-6xl mx-auto shell-pad py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <p className="text-xs text-slateink leading-relaxed">
             EchoSelf: a personal knowledge and decision-support tool. Claims about you trace
             back to recorded evidence.
           </p>
-          <p className="text-xs text-slateink-light">
+          <p className="text-xs text-slateink-light whitespace-nowrap">
             {signedIn ? 'Your private workspace' : 'A quiet space for self-examination.'}
           </p>
         </div>
       </footer>
 
-      {/* Modern Mobile Bottom Navigation (Shown only on small screens) */}
+      {/* Luxury Mobile Navigation Dock (Hidden on >= md) */}
       <MobileBottomBar route={route} />
 
-      {/* Floating Sample Data Toast */}
+      {/* Floating Sample Data Notice for Visitors */}
       {!signedIn && !loading && <SampleDataToast />}
 
-      {/* Desktop Floating Twin Chat Button (Hidden on Mobile because Twin is in the bottom bar) */}
+      {/* Desktop Floating Twin Chat Button */}
       {route.kind === 'app' && route.page !== 'chat' && (
         <button
           onClick={() => go('chat')}
           aria-label="Open Twin Chat"
-          className="hidden lg:inline-flex fixed z-40 items-center justify-center h-13 w-13 rounded-full bg-charcoal text-paper shadow-lifted hover:bg-charcoal/90 hover:scale-105 active:scale-95 transition-all bottom-6 right-6"
+          className="hidden lg:inline-flex fixed z-40 items-center justify-center h-14 w-14 rounded-full bg-charcoal text-paper shadow-lifted hover:bg-charcoal/90 hover:scale-105 active:scale-95 transition-all bottom-8 right-8"
         >
-          <MessageCircle className="w-5 h-5 text-paper" aria-hidden />
+          <MessageCircle className="w-6 h-6 text-paper" aria-hidden />
         </button>
       )}
     </div>
