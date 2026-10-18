@@ -40,12 +40,28 @@ interface NavItem {
 }
 
 const PRIMARY_WORKSPACE_NAV: NavItem[] = [
-  { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'memories', label: 'Memories', icon: BookOpen },
   { id: 'decisions', label: 'Decisions', icon: Scale },
   { id: 'beliefs', label: 'Beliefs', icon: Compass },
   { id: 'graph', label: 'Graph', icon: GitBranch },
   { id: 'timeline', label: 'Timeline', icon: History },
+];
+
+interface SubNavItem {
+  id: PageId;
+  label: string;
+  shortLabel?: string;
+  icon: LucideIcon;
+}
+
+const PROFILE_SHELL_NAV: SubNavItem[] = [
+  { id: 'profile', label: 'My Profile', shortLabel: 'Profile', icon: User },
+  { id: 'inbox', label: 'Capture Inbox', shortLabel: 'Capture', icon: Inbox },
+  { id: 'review', label: 'Review Center', shortLabel: 'Review', icon: CheckSquare },
+  { id: 'insights', label: 'Insights & Patterns', shortLabel: 'Insights', icon: Lightbulb },
+  { id: 'reflect', label: 'Weekly Review', shortLabel: 'Reflect', icon: PenLine },
+  { id: 'settings', label: 'Settings & AI Keys', shortLabel: 'Settings', icon: Settings },
+  { id: 'privacy', label: 'Privacy & Data', shortLabel: 'Privacy', icon: ShieldCheck },
 ];
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
@@ -57,6 +73,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
   const page: PageId = route.kind === 'app' ? route.page : 'signin';
   const isLandingPage = route.kind === 'app' && route.page === 'home';
+  const isProfileShellActive = PROFILE_SHELL_NAV.some((item) => item.id === page);
 
   // Detect newly registered users and prompt first-run onboarding
   useEffect(() => {
@@ -451,7 +468,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                 className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2"
                 aria-label="Workspace Navigation"
               >
-                {(signedIn ? PRIMARY_WORKSPACE_NAV : PRIMARY_WORKSPACE_NAV.filter((item) => item.id !== 'inbox')).map((item) => {
+                {PRIMARY_WORKSPACE_NAV.map((item) => {
                   const Icon = item.icon;
                   const isActive = page === item.id;
                   return (
@@ -482,7 +499,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                 })}
               </nav>
 
-              {/* Right Action Area: Sample Indicator, Twin Chat, Profile */}
+              {/* Right Action Area: Sample Indicator, Twin Chat, My Profile, Account */}
               <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
                 {/* Sample Persona Context Badge (Visible when unauthenticated in workspace) */}
                 {!signedIn && (
@@ -498,94 +515,6 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   >
                     <Eye className="w-3 h-3 shrink-0" aria-hidden="true" />
                     <span>Demo Mode (Jordan)</span>
-                  </a>
-                )}
-
-                {/* Quick Capture Fast Action (Only visible when signed in) */}
-                {signedIn && (
-                  <a
-                    href={hrefFor('inbox')}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      go('inbox');
-                    }}
-                    aria-current={page === 'inbox' ? 'page' : undefined}
-                    className={`hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                      page === 'inbox'
-                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
-                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                    }`}
-                    title="Capture Inbox"
-                  >
-                    <Feather className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                    <span>Capture</span>
-                  </a>
-                )}
-
-                {/* Review Center Fast Action (Only visible when signed in) */}
-                {signedIn && (
-                  <a
-                    href={hrefFor('review')}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      go('review');
-                    }}
-                    aria-current={page === 'review' ? 'page' : undefined}
-                    className={`hidden lg:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                      page === 'review'
-                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
-                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                    }`}
-                    title="Review Center"
-                  >
-                    <CheckSquare className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                    <span>Review</span>
-                  </a>
-                )}
-
-                {/* Insights Fast Action (Only visible when signed in) */}
-                {signedIn && (
-                  <a
-                    href={hrefFor('insights')}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      go('insights');
-                    }}
-                    aria-current={page === 'insights' ? 'page' : undefined}
-                    className={`hidden xl:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                      page === 'insights'
-                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
-                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                    }`}
-                    title="Insights & Patterns"
-                  >
-                    <Lightbulb className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                    <span>Insights</span>
-                  </a>
-                )}
-
-                {/* Reflection Fast Action (Only visible when signed in) */}
-                {signedIn && (
-                  <a
-                    href={hrefFor('reflect')}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      go('reflect');
-                    }}
-                    aria-current={page === 'reflect' ? 'page' : undefined}
-                    className={`hidden xl:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
-                      page === 'reflect'
-                        ? 'bg-linen border-terracotta text-terracotta-deep shadow-xs'
-                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
-                    }`}
-                    title="Weekly Review"
-                  >
-                    <PenLine className="w-3.5 h-3.5 text-terracotta" aria-hidden="true" />
-                    <span>Reflect</span>
                   </a>
                 )}
 
@@ -607,6 +536,28 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   <Sparkles className="w-3.5 h-3.5 text-amberclay-light" aria-hidden="true" />
                   <span>Twin Chat</span>
                 </a>
+
+                {/* My Profile Action - Opens the Profile Sub-Navbar Shell (Defaults to My Profile) */}
+                {signedIn && (
+                  <a
+                    href={hrefFor('profile')}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      go('profile');
+                    }}
+                    aria-current={isProfileShellActive ? 'page' : undefined}
+                    className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-150 whitespace-nowrap shadow-2xs cursor-pointer border ${
+                      isProfileShellActive
+                        ? 'bg-terracotta text-paper border-terracotta shadow-xs font-bold'
+                        : 'bg-white/80 border-linen-dark/80 text-charcoal hover:bg-white hover:border-terracotta/60'
+                    }`}
+                    title="Open My Profile and Workspace Management Tools"
+                  >
+                    <User className={`w-3.5 h-3.5 ${isProfileShellActive ? 'text-paper' : 'text-terracotta'}`} aria-hidden="true" />
+                    <span>My Profile</span>
+                  </a>
+                )}
 
                 {/* Profile & Account Menu */}
                 {signedIn ? (
@@ -771,6 +722,46 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             </>
           )}
         </div>
+
+        {/* Secondary Sub-Navbar for Profile & Management Shell (Opens when user clicks My Profile) */}
+        {signedIn && isProfileShellActive && (
+          <nav
+            role="navigation"
+            aria-label="Profile and Workspace Management Sub-Navigation"
+            className="border-t border-linen-dark/60 bg-paper-soft/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 shadow-2xs transition-all animate-[fadeIn_150ms_ease-out]"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 py-2 overflow-x-auto no-scrollbar">
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-slateink-light mr-1 hidden sm:inline-block shrink-0">
+                Profile Tools:
+              </span>
+              {PROFILE_SHELL_NAV.map((item) => {
+                const Icon = item.icon;
+                const isActive = page === item.id;
+                return (
+                  <a
+                    key={item.id}
+                    href={hrefFor(item.id)}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      go(item.id);
+                    }}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-medium shrink-0 transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-terracotta text-paper font-semibold shadow-xs'
+                        : 'bg-white/60 text-slateink-dark hover:text-charcoal hover:bg-white border border-linen-dark/60'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-paper' : 'text-slateink'}`} aria-hidden="true" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="sm:hidden">{item.shortLabel || item.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* Main Content Area */}
