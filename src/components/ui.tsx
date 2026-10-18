@@ -136,6 +136,7 @@ export function SampleDataToast() {
   return (
     <div
       role="status"
+      aria-live="polite"
       className="fixed left-1/2 -translate-x-1/2 bottom-[5.5rem] lg:bottom-6 z-40 flex items-center gap-2.5 rounded-full bg-charcoal/95 text-paper shadow-lifted pl-3.5 pr-2 py-2 max-w-[calc(100vw-2rem)]"
     >
       <Info className="w-4 h-4 shrink-0 text-amberclay-light" aria-hidden />

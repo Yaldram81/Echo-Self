@@ -63,7 +63,7 @@ for (const s of SUITES) {
   }
   const args = s.script.endsWith('.mts') && s.kind === 'live-service' ? ['--env-file=.env', s.script] : [s.script];
   try {
-    const out = execFileSync('npx', ['tsx', ...args], { encoding: 'utf8', timeout: 300_000, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = execFileSync('npx', ['tsx', ...args], { encoding: 'utf8', timeout: 300_000, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
     const allOut = out;
     const m = allOut.match(/(\d+)\s*passed(?:[,\s]*(\d+)\s*failed)?/);
     const p = m ? parseInt(m[1], 10) : 0;
