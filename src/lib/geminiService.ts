@@ -273,7 +273,7 @@ Be realistic, psychologically nuanced, and objective. Never hallucinate irreleva
           }
 
           const data = (await res.json()) as {
-            candidates?: { content?: { parts?: { text?: string } } }[];
+            candidates?: { content?: { parts?: { text?: string }[] } }[];
           };
 
           const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
