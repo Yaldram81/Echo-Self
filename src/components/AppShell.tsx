@@ -5,6 +5,11 @@ import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { NAV_PAGES, PROTECTED_PAGES, hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
+
+/** Labeled nav links shown in the top bar (Overview removed — the logo goes home). */
+const LABELED_NAV: PageId[] = ['memories', 'decisions', 'beliefs', 'graph'];
+/** Icon-only nav links grouped after the labeled ones. */
+const ICON_NAV: PageId[] = ['chat', 'timeline', 'settings'];
 import { MobileBottomBar } from '@/components/MobileBottomBar';
 import { SampleDataToast } from '@/components/ui';
 
@@ -118,7 +123,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1.5"
             aria-label="Main"
           >
-            {NAV_PAGES.map((item) => {
+            {LABELED_NAV.map((item) => {
               const Icon = NAV_ICONS[item];
               return (
                 <a
@@ -139,6 +144,33 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                     aria-hidden
                   />
                   {labelFor(item)}
+                </a>
+              );
+            })}
+
+            <span className="mx-1 h-5 w-px bg-linen-dark/80" aria-hidden />
+
+            {ICON_NAV.map((item) => {
+              const Icon = NAV_ICONS[item];
+              return (
+                <a
+                  key={item}
+                  href={hrefFor(item)}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    e.preventDefault();
+                    go(item);
+                  }}
+                  aria-current={page === item ? 'page' : undefined}
+                  aria-label={labelFor(item)}
+                  className={navLinkClass(page === item)}
+                >
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      page === item ? '' : 'text-slateink-light group-hover:text-slateink-dark transition-colors'
+                    }`}
+                    aria-hidden
+                  />
                 </a>
               );
             })}
