@@ -17,7 +17,7 @@ export function PublicFooter() {
 
   return (
     <footer className="w-full border-t border-linen-dark/60 bg-paper text-charcoal pt-10 pb-8 mt-12">
-      <div className="max-w-6xl mx-auto shell-pad space-y-8">
+      <div className="max-w-7xl mx-auto shell-pad space-y-8">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 md:gap-12">
           {/* Brand & Ethos */}
           <div className="space-y-2 max-w-sm">

@@ -555,12 +555,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Main Content Area */}
       <main
         id="main-content"
-        className={`flex-1 w-full max-w-6xl mx-auto shell-pad ${
+        className={`flex-1 w-full mx-auto shell-pad ${
           isLandingPage
-            ? 'py-4 md:py-8 pb-8'
+            ? 'max-w-7xl py-6 md:py-12 pb-12'
             : page === 'chat'
-            ? 'pt-2 pb-24 md:py-6'
-            : 'py-6 md:py-10 pb-28 md:pb-16'
+            ? 'max-w-6xl pt-2 pb-24 md:py-6'
+            : 'max-w-6xl py-6 md:py-10 pb-28 md:pb-16'
         }`}
       >
         {children}
