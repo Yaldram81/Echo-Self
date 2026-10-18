@@ -138,7 +138,7 @@ export function HomePage() {
             </h1>
 
             <p className="text-sm sm:text-base lg:text-lg text-slateink leading-relaxed font-sans max-w-xl">
-              Your memories, confirmed values, and past decisions organized into a transparent personal model. Ask questions, test dilemmas, and verify every cited piece of evidence behind its words.
+              Your memories, values, and decisions organized into a transparent personal model. Ask questions, test dilemmas, and verify every cited piece of evidence behind its words.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
