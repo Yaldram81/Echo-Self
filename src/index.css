@@ -9,6 +9,9 @@
   }
   body {
     @apply bg-paper text-charcoal font-sans;
+    /* Long URLs, record IDs, and raw model output must wrap instead of
+       stretching a card or the page sideways. */
+    overflow-wrap: break-word;
   }
   ::selection {
     @apply bg-terracotta/20;
@@ -34,5 +37,16 @@
   }
   .card-surface {
     @apply bg-white/70 border border-linen-dark/70 rounded-2xl shadow-card;
+    min-width: 0;
+  }
+  /* Fluid page gutters: comfortable on a 320px phone, generous on desktop. */
+  .shell-pad {
+    padding-inline: clamp(1.25rem, 4vw, 2rem);
+  }
+  /* Editorial serif scale that grows with the viewport but never overwhelms
+     a narrow phone. */
+  .h1-fluid {
+    font-size: clamp(2rem, 1.4rem + 3vw, 3rem);
+    line-height: 1.1;
   }
 }

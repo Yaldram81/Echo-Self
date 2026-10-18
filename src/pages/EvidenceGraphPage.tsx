@@ -154,7 +154,7 @@ export function EvidenceGraphPage() {
             key={t}
             onClick={() => toggleType(t)}
             aria-pressed={types.includes(t)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[36px] text-xs font-medium transition-colors ${
               types.includes(t)
                 ? 'bg-charcoal text-paper'
                 : 'bg-linen-light/70 text-slateink-dark hover:bg-linen'
@@ -170,7 +170,7 @@ export function EvidenceGraphPage() {
           id="graph-period"
           value={period}
           onChange={(e) => setPeriod(e.target.value as typeof period)}
-          className="rounded-full border border-linen-dark bg-white/80 px-3 py-1.5 text-xs text-charcoal"
+          className="rounded-full border border-linen-dark bg-white/80 px-3 py-2 min-h-[36px] text-xs text-charcoal"
         >
           <option value="all">All time</option>
           <option value="365">Last year</option>
@@ -180,7 +180,7 @@ export function EvidenceGraphPage() {
         <button
           onClick={() => setShowInferred((s) => !s)}
           aria-pressed={showInferred}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[36px] text-xs font-medium transition-colors ${
             showInferred ? 'bg-charcoal text-paper' : 'bg-linen-light/70 text-slateink-dark hover:bg-linen'
           }`}
         >
@@ -192,7 +192,7 @@ export function EvidenceGraphPage() {
           id="graph-decision"
           value={decisionFilter}
           onChange={(e) => setDecisionFilter(e.target.value)}
-          className="rounded-full border border-linen-dark bg-white/80 px-3 py-1.5 text-xs text-charcoal max-w-[220px]"
+          className="rounded-full border border-linen-dark bg-white/80 px-3 py-2 min-h-[36px] text-xs text-charcoal max-w-full sm:max-w-[220px]"
         >
           <option value="all">All decisions</option>
           {(decisions.data ?? []).map((d) => (
@@ -202,7 +202,7 @@ export function EvidenceGraphPage() {
         {(types.length > 0 || period !== 'all' || decisionFilter !== 'all') && (
           <button
             onClick={() => { setTypes([]); setPeriod('all'); setDecisionFilter('all'); }}
-            className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark"
+            className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark px-2 py-2 min-h-[36px]"
           >
             Reset filters
           </button>
@@ -623,13 +623,13 @@ function NodeInspector({
                     <span className="text-slateink-light">This connection is a suggestion:</span>
                     <button
                       onClick={() => onDecide(e.id, 'confirmed')}
-                      className="rounded-full bg-sage-light px-2.5 py-1 text-[10px] font-medium text-sage-dark hover:brightness-95 transition"
+                      className="rounded-full bg-sage-light px-3 py-1.5 min-h-[32px] text-[10px] font-medium text-sage-dark hover:brightness-95 transition"
                     >
                       Confirm
                     </button>
                     <button
                       onClick={() => onDecide(e.id, 'dismissed')}
-                      className="rounded-full px-2.5 py-1 text-[10px] font-medium text-slateink-dark hover:bg-linen transition"
+                      className="rounded-full px-3 py-1.5 min-h-[32px] text-[10px] font-medium text-slateink-dark hover:bg-linen transition"
                     >
                       Not a connection
                     </button>

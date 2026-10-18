@@ -206,7 +206,7 @@ export function MemoryForm({
           max={100}
           value={confidence}
           onChange={(e) => setConfidence(Number(e.target.value))}
-          className="w-full accent-terracotta"
+          className="w-full accent-terracotta py-2.5"
         />
         <p className="mt-1 text-[11px] text-slateink-light">
           Reliability of the record — how clearly you remember it. Not the same as how much
@@ -243,18 +243,18 @@ export function MemoryForm({
         </p>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col-reverse sm:flex-row gap-3">
         <button
           type="submit"
           disabled={!valid || saving}
-          className="rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto rounded-full bg-terracotta px-5 py-2.5 min-h-[44px] text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Save memory'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 min-h-[44px] text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
         >
           <X className="w-3.5 h-3.5" aria-hidden />
           Cancel

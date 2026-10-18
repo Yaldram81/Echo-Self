@@ -60,7 +60,7 @@ export function DecisionMirrorPage() {
             setEditing(null);
             setShowForm(true);
           }}
-          className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-2.5 min-h-[44px] text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
         >
           <Plus className="w-4 h-4" aria-hidden />
           Start a new decision
@@ -170,14 +170,14 @@ function DecisionCard({
           <a
             href={`/decision/${decision.id}`}
             aria-label={`Open decision: ${decision.title}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
             <ChevronRight className="w-4 h-4" aria-hidden />
           </a>
           <button
             onClick={onDelete}
             aria-label={`Delete decision: ${decision.title}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-4 h-4" aria-hidden />
           </button>

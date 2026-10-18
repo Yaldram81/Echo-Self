@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight } from 'lucide-react';
+import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { MEMORY_CATEGORIES, type Memory, type MemoryCategory } from '@/lib/types';
@@ -44,6 +44,7 @@ export function MemoriesPage() {
   const [tag, setTag] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<'all' | '30' | '90' | '365'>('all');
   const [showForm, setShowForm] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [editing, setEditing] = useState<Memory | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -100,22 +101,34 @@ export function MemoriesPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search text and tags…"
             aria-label="Search memories"
-            className="w-full rounded-full border border-linen-dark bg-white/70 pl-9 pr-4 py-2.5 text-sm placeholder:text-slateink-light focus:border-terracotta"
+            className="w-full rounded-full border border-linen-dark bg-white/70 pl-9 pr-4 py-2.5 min-h-[44px] text-sm placeholder:text-slateink-light focus:border-terracotta"
           />
         </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
-        >
-          <Plus className="w-4 h-4" aria-hidden />
-          Record a memory
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+            className="md:hidden inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-linen-dark bg-white/70 px-4 text-sm font-medium text-slateink-dark hover:border-terracotta transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4" aria-hidden />
+            Filters
+          </button>
+          <button
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+            className="inline-flex flex-1 md:flex-none min-h-[44px] items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
+          >
+            <Plus className="w-4 h-4" aria-hidden />
+            Record a memory
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2.5">
+      {/* Filters are always visible where there is room; collapsible on phones
+          so they don't consume the whole first screen. */}
+      <div className={`${showFilters ? 'block' : 'hidden'} md:block space-y-2.5`}>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
           <FilterChip active={category === 'all'} onClick={() => setCategory('all')}>
             All categories
@@ -229,7 +242,7 @@ function FilterChip({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+      className={`rounded-full px-3.5 py-2 min-h-[36px] text-xs font-medium capitalize transition-colors ${
         active
           ? 'bg-charcoal text-paper'
           : 'bg-linen/70 text-slateink-dark hover:bg-linen'
@@ -264,14 +277,14 @@ function MemoryCard({
           <a
             href={`/memory/${memory.id}`}
             aria-label={`Open memory: ${memory.title}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
             <ChevronRight className="w-4 h-4" aria-hidden />
           </a>
           <button
             onClick={onDelete}
             aria-label={`Delete memory: ${memory.title}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-4 h-4" aria-hidden />
           </button>
@@ -307,7 +320,7 @@ function MemoryCard({
         </p>
         <button
           onClick={onEdit}
-          className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark"
+          className="text-xs font-medium text-terracotta-deep hover:text-terracotta-dark px-2 py-2 -my-1.5 min-h-[36px]"
         >
           Edit
         </button>

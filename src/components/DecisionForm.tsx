@@ -239,18 +239,18 @@ export function DecisionForm({
         </p>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col-reverse sm:flex-row gap-3">
         <button
           type="submit"
           disabled={!valid || saving}
-          className="rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto rounded-full bg-terracotta px-5 py-2.5 min-h-[44px] text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Open decision'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full px-5 py-2.5 text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
+          className="w-full sm:w-auto rounded-full px-5 py-2.5 min-h-[44px] text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
         >
           Cancel
         </button>

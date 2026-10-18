@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Menu, X, Feather, LogOut, UserCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
@@ -18,6 +18,27 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
     setMenuOpen(false);
     setAccountOpen(false);
   };
+
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const firstDrawerLinkRef = useRef<HTMLAnchorElement>(null);
+
+  // Route changes (including back/forward navigation) close the drawer so it
+  // never traps the user behind stale content.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [route]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    // Freeze background scrolling and land focus inside the drawer.
+    document.body.style.overflow = 'hidden';
+    firstDrawerLinkRef.current?.focus();
+    const menuButton = menuButtonRef.current;
+    return () => {
+      document.body.style.overflow = '';
+      menuButton?.focus();
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -74,7 +95,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       </a>
 
       <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur border-b border-linen-dark/60">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto shell-pad h-16 flex items-center justify-between gap-3">
           <button
             onClick={() => go('home')}
             className="flex items-center gap-2.5 rounded-lg"
@@ -159,6 +180,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             </div>
 
             <button
+              ref={menuButtonRef}
               className="lg:hidden inline-flex items-center justify-center h-11 w-11 rounded-full text-charcoal hover:bg-linen"
               onClick={() => setMenuOpen((o) => !o)}
               aria-expanded={menuOpen}
@@ -170,40 +192,55 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </div>
 
         {menuOpen && (
-          <nav
-            className="lg:hidden border-t border-linen-dark/60 bg-paper px-5 py-3 flex flex-col"
-            aria-label="Mobile"
-          >
-            {NAV_PAGES.map((item) => (
-              <a
-                key={item}
-                href={hrefFor(item)}
-                onClick={(e) => {
-                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                  e.preventDefault();
-                  go(item);
-                }}
-                aria-current={page === item ? 'page' : undefined}
-                className={navMobileClass(page === item)}
-              >
-                {labelFor(item)}
-              </a>
-            ))}
-            {signedIn && (
-              <button onClick={handleSignOut} className="text-left px-3 py-2.5 rounded-lg text-sm text-clayred-DEFAULT">
-                Sign out
-              </button>
-            )}
-          </nav>
+          <>
+            {/* Scrim: tap outside or Escape to dismiss; click-through blocked. */}
+            <div
+              className="lg:hidden fixed inset-0 top-16 z-30 bg-charcoal/20"
+              aria-hidden
+              onClick={() => setMenuOpen(false)}
+            />
+            <nav
+              className="lg:hidden fixed top-16 inset-x-0 bottom-0 z-40 overflow-y-auto bg-paper border-t border-linen-dark/60 shell-pad py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              aria-label="Mobile"
+            >
+              <ul className="flex flex-col gap-1">
+                {NAV_PAGES.map((item, i) => (
+                  <li key={item}>
+                    <a
+                      ref={i === 0 ? firstDrawerLinkRef : undefined}
+                      href={hrefFor(item)}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        go(item);
+                      }}
+                      aria-current={page === item ? 'page' : undefined}
+                      className={`${navMobileClass(page === item)} min-h-[44px] flex items-center`}
+                    >
+                      {labelFor(item)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {signedIn && (
+                <button
+                  onClick={handleSignOut}
+                  className="mt-4 w-full text-left px-3 min-h-[44px] flex items-center rounded-lg text-sm text-clayred-DEFAULT"
+                >
+                  Sign out
+                </button>
+              )}
+            </nav>
+          </>
         )}
       </header>
 
-      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
+      <main id="main-content" className="flex-1 w-full max-w-6xl mx-auto shell-pad py-8 md:py-12">
         {children}
       </main>
 
       <footer className="border-t border-linen-dark/60 mt-8">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto shell-pad py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-slateink">
             EchoSelf: a personal knowledge and decision-support tool. Claims about you trace
             back to recorded evidence.

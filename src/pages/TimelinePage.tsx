@@ -162,7 +162,7 @@ export function TimelinePage() {
             key={k}
             onClick={() => setKindFilter(k)}
             aria-pressed={kindFilter === k}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3.5 py-2 min-h-[36px] text-xs font-medium transition-colors ${
               kindFilter === k ? 'bg-charcoal text-paper' : 'bg-linen/70 text-slateink-dark hover:bg-linen'
             }`}
           >

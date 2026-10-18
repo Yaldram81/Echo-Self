@@ -166,7 +166,7 @@ export function TwinChatPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={() => { memories.reload(); beliefs.reload(); }} />
       ) : (
-        <div className="card-surface flex flex-col h-[70vh] min-h-[460px]">
+        <div className="card-surface flex flex-col h-[calc(100dvh-13rem)] min-h-[420px] lg:h-[70vh] lg:min-h-[460px]">
           <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-4">
@@ -181,7 +181,7 @@ export function TwinChatPage() {
                     <button
                       key={q}
                       onClick={() => send(q)}
-                      className="rounded-full border border-linen-dark bg-linen-light px-4 py-2 text-xs text-slateink-dark hover:border-terracotta hover:text-terracotta-deep transition-colors"
+                      className="rounded-full border border-linen-dark bg-linen-light px-4 py-2.5 text-xs text-slateink-dark hover:border-terracotta hover:text-terracotta-deep transition-colors"
                     >
                       {q}
                     </button>
@@ -248,7 +248,7 @@ export function TwinChatPage() {
               e.preventDefault();
               send(input);
             }}
-            className="border-t border-linen-dark/60 p-4 flex items-end gap-3"
+            className="border-t border-linen-dark/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-end gap-3"
           >
             <label htmlFor="chat-input" className="sr-only">
               Ask your twin
@@ -299,7 +299,7 @@ export function TwinChatPage() {
 
       {flagging && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 px-5"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-charcoal/40 px-0 sm:px-5"
           role="dialog"
           aria-modal="true"
           aria-label="Flag an interpretation"
@@ -309,7 +309,7 @@ export function TwinChatPage() {
         >
           <div
             ref={flagDialogRef}
-            className="w-full max-w-md rounded-2xl bg-paper p-6 shadow-lifted border border-linen-dark"
+            className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
           >
             <div className="flex items-start gap-3 mb-4">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amberclay-light text-amberclay-DEFAULT">
@@ -359,17 +359,17 @@ export function TwinChatPage() {
                 Could not save the correction. Please try again.
               </p>
             )}
-            <div className="mt-5 flex justify-end gap-3">
+            <div className="mt-5 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => setFlagging(null)}
-                className="rounded-full px-5 py-2.5 text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
+                className="rounded-full px-5 min-h-[44px] text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
               >
                 Close
               </button>
               <button
                 onClick={submitFlag}
                 disabled={!flagNote.trim() || flagState === 'saving'}
-                className="rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-full bg-terracotta px-5 min-h-[44px] text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {flagState === 'saving' ? 'Saving…' : 'Save correction'}
               </button>
@@ -610,7 +610,7 @@ function TwinMessage({
             <button
               onClick={onToggleEvidence}
               aria-expanded={evidenceOpen}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-terracotta-deep hover:text-terracotta-dark"
+              className="inline-flex items-center gap-1.5 -ml-1 px-2 py-2 min-h-[36px] rounded-lg text-xs font-medium text-terracotta-deep hover:text-terracotta-dark hover:bg-terracotta/5"
             >
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${evidenceOpen ? 'rotate-180' : ''}`}

@@ -24,7 +24,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 px-5"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-charcoal/40 sm:px-5"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
@@ -35,7 +35,7 @@ export function ConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="w-full max-w-md rounded-2xl bg-paper p-6 shadow-lifted border border-linen-dark"
+        className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lifted border border-linen-dark"
       >
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clayred-light text-clayred-DEFAULT">
@@ -50,16 +50,16 @@ export function ConfirmDialog({
             </p>
           </div>
         </div>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
           <button
             onClick={onCancel}
-            className="rounded-full px-5 py-2.5 text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
+            className="rounded-full px-5 py-2.5 min-h-[44px] text-sm font-medium text-slateink-dark hover:bg-linen transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="rounded-full bg-clayred-DEFAULT px-5 py-2.5 text-sm font-medium text-white hover:bg-clayred-dark transition-colors"
+            className="rounded-full bg-clayred-DEFAULT px-5 py-2.5 min-h-[44px] text-sm font-medium text-white hover:bg-clayred-dark transition-colors"
           >
             {confirmLabel}
           </button>

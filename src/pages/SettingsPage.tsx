@@ -156,14 +156,14 @@ export function SettingsPage() {
           <button
             onClick={handleReview}
             disabled={reviewing}
-            className="rounded-full border border-linen-dark bg-linen-light px-4 py-2 text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
+            className="rounded-full border border-linen-dark bg-linen-light px-4 py-2.5 min-h-[44px] text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
           >
             {reviewing ? 'Counting…' : 'Review stored records'}
           </button>
           <button
             onClick={() => handleExport('json')}
             disabled={exporting !== null}
-            className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark bg-linen-light px-4 py-2 text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark bg-linen-light px-4 py-2.5 min-h-[44px] text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
           >
             <FileJson className="w-3.5 h-3.5" aria-hidden />
             {exporting === 'json' ? 'Exporting…' : 'Export all (JSON)'}
@@ -171,7 +171,7 @@ export function SettingsPage() {
           <button
             onClick={() => handleExport('csv')}
             disabled={exporting !== null}
-            className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark bg-linen-light px-4 py-2 text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark bg-linen-light px-4 py-2.5 min-h-[44px] text-xs font-medium text-slateink-dark hover:border-terracotta transition-colors disabled:opacity-50"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" aria-hidden />
             {exporting === 'csv' ? 'Exporting…' : 'Export all (CSV)'}
@@ -181,7 +181,7 @@ export function SettingsPage() {
               setWipeDone(false);
               setConfirmWipe(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-clayred-light px-4 py-2 text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-clayred-light px-4 py-2.5 min-h-[44px] text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden />
             Delete everything
@@ -297,14 +297,12 @@ function SettingToggle({
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative mt-1 h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-          checked ? 'bg-terracotta' : 'bg-linen-dark'
+        className={`relative shrink-0 mt-0.5 -mr-2 h-11 w-16 flex items-center rounded-full px-1 transition-colors duration-200 ${
+          checked ? 'bg-terracotta justify-end' : 'bg-linen-dark justify-start'
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5'
-          }`}
+          className="h-8 w-8 rounded-full bg-white shadow transition-transform duration-200"
         />
       </button>
     </div>

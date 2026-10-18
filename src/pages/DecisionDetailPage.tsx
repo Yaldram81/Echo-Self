@@ -779,14 +779,17 @@ function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-[11px] font-medium text-terracotta-deep hover:text-terracotta-dark"
+        className="inline-flex items-center gap-1 px-1 py-1.5 -mx-1 rounded text-[11px] font-medium text-terracotta-deep hover:text-terracotta-dark"
       >
         <Calculator className="w-3 h-3" aria-hidden />
         {open ? 'Hide the arithmetic' : 'Show the arithmetic behind this score'}
       </button>
       {open && (
         <div className="mt-2 rounded-xl bg-linen-light/60 border border-linen-dark px-4 py-3">
-          <table className="w-full text-[11px] tabular-nums">
+          {/* The arithmetic trace is dense tabular data; a scoped horizontal
+              scroll keeps every column readable on a phone. */}
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full min-w-[420px] text-[11px] tabular-nums">
             <thead>
               <tr className="text-left text-slateink-light">
                 <th className="py-1 pr-2 font-medium">Value</th>
@@ -812,6 +815,7 @@ function ScoreTraceView({ trace }: { trace: Report['optionAlignments'][number]['
               </tr>
             </tbody>
           </table>
+          </div>
           <p className="mt-2 text-[10px] leading-relaxed text-slateink-light">
             Counts include your explicit pros/cons ({trace.lines.reduce((a, l) => a + l.explicitCount, 0)}),
             keyword-inferred classifications ({trace.lines.reduce((a, l) => a + l.inferredCount, 0)} correctable),
@@ -912,8 +916,8 @@ function OptionComparison({
               (a) => a.coverage.unassessedValues.includes(v)
             );
             return (
-              <div key={v} className="flex items-center gap-3">
-                <span className="w-24 text-xs capitalize text-charcoal">
+              <div key={v} className="flex items-center gap-2 sm:gap-3 py-1">
+                <span className="w-20 sm:w-24 shrink-0 text-xs capitalize text-charcoal">
                   {v}
                   {unassessedEverywhere && (
                     <span className="ml-1.5 rounded bg-amberclay-light px-1.5 py-0.5 text-[9px] font-medium text-amberclay-DEFAULT" title="No directional evidence on this value for any option; it does not affect any score">
@@ -932,9 +936,9 @@ function OptionComparison({
                   onTouchEnd={() => onWeightsCommit(weights)}
                   onKeyUp={() => onWeightsCommit(weights)}
                   aria-label={`Weight for value ${v}`}
-                  className="flex-1 accent-terracotta"
+                  className="flex-1 min-w-0 accent-terracotta py-2.5"
                 />
-                <span className="w-10 text-right text-xs tabular-nums text-slateink">{w.toFixed(1)}</span>
+                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-slateink">{w.toFixed(1)}</span>
               </div>
             );
           })}
@@ -970,7 +974,7 @@ function ClassificationReview({
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="text-[11px] font-medium text-terracotta-deep hover:text-terracotta-dark"
+        className="px-1 py-1.5 -mx-1 rounded text-[11px] font-medium text-terracotta-deep hover:text-terracotta-dark"
       >
         {open ? 'Hide classifications' : `Review ${classifications.length} classification${classifications.length === 1 ? '' : 's'}`}
       </button>
@@ -1000,7 +1004,7 @@ function ClassificationReview({
                     {c.origin === 'inferred' && (
                       <button
                         onClick={() => onOverride(key, c.classification === 'unknown' ? 'neutral' : c.classification)}
-                        className="rounded-full bg-sage-light/60 px-2 py-0.5 text-[10px] font-medium text-sage-dark hover:bg-sage-light transition-colors"
+                        className="rounded-full bg-sage-light/60 px-2.5 py-1.5 min-h-[32px] text-[10px] font-medium text-sage-dark hover:bg-sage-light transition-colors"
                         title="I have read this proposed classification and agree with it"
                       >
                         Looks right
@@ -1011,7 +1015,7 @@ function ClassificationReview({
                       <button
                         key={opt}
                         onClick={() => onOverride(key, opt)}
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        className={`rounded-full px-2.5 py-1.5 min-h-[32px] text-[10px] font-medium transition-colors ${
                           c.origin === 'override' && c.classification === opt
                             ? 'bg-sage-light text-sage-dark'
                             : 'bg-linen/70 text-slateink-dark hover:bg-terracotta/10 hover:text-terracotta-deep'

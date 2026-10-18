@@ -80,14 +80,14 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditing(true)}
-                  className="rounded-full border border-linen-dark bg-linen-light px-4 py-1.5 text-xs font-medium text-slateink-dark hover:border-terracotta hover:text-terracotta-deep transition-colors"
+                  className="rounded-full border border-linen-dark bg-linen-light px-4 py-2 min-h-[38px] text-xs font-medium text-slateink-dark hover:border-terracotta hover:text-terracotta-deep transition-colors"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => setConfirmDelete(true)}
                   aria-label="Delete memory"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-clayred-light px-4 py-1.5 text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-clayred-light px-4 py-2 min-h-[38px] text-xs font-medium text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" aria-hidden />
                   Delete

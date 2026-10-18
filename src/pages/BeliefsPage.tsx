@@ -121,13 +121,13 @@ export function BeliefsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => handleConfirmSuggestion(s.id)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-sage-light px-4 py-1.5 text-xs font-medium text-sage-dark hover:bg-sage hover:text-paper transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-sage-light px-4 py-2.5 min-h-[44px] text-xs font-medium text-sage-dark hover:bg-sage hover:text-paper transition-colors"
                 >
                   <Check className="w-3.5 h-3.5" aria-hidden /> Confirm: this is true of me
                 </button>
                 <button
                   onClick={() => setPendingDismiss(s)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark px-4 py-1.5 text-xs font-medium text-slateink-dark hover:border-clayred-DEFAULT hover:text-clayred-DEFAULT transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linen-dark px-4 py-2.5 min-h-[44px] text-xs font-medium text-slateink-dark hover:border-clayred-DEFAULT hover:text-clayred-DEFAULT transition-colors"
                 >
                   <X className="w-3.5 h-3.5" aria-hidden /> Dismiss
                 </button>
@@ -149,7 +149,7 @@ export function BeliefsPage() {
               key={f}
               onClick={() => setFilter(f)}
               aria-pressed={filter === f}
-              className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-full px-4 py-2 min-h-[36px] text-xs font-medium transition-colors ${
                 filter === f ? 'bg-charcoal text-paper' : 'bg-linen/70 text-slateink-dark hover:bg-linen'
               }`}
             >
@@ -162,7 +162,7 @@ export function BeliefsPage() {
               key={k}
               onClick={() => setKindFilter(k)}
               aria-pressed={kindFilter === k}
-              className={`rounded-full px-4 py-1.5 text-xs font-medium capitalize transition-colors ${
+              className={`rounded-full px-4 py-2 min-h-[36px] text-xs font-medium capitalize transition-colors ${
                 kindFilter === k ? 'bg-terracotta text-paper' : 'bg-linen/70 text-slateink-dark hover:bg-linen'
               }`}
             >
@@ -173,7 +173,7 @@ export function BeliefsPage() {
         <button
           onClick={() => setShowForm((s) => !s)}
           aria-expanded={showForm}
-          className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-2.5 min-h-[44px] text-sm font-medium text-paper hover:bg-terracotta-dark transition-colors"
         >
           <Plus className="w-4 h-4" aria-hidden />
           Add a statement
@@ -288,14 +288,14 @@ function BeliefCard({
           <button
             onClick={onEdit}
             aria-label={`Edit statement: ${belief.statement}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-terracotta-deep hover:bg-terracotta/10 transition-colors"
           >
             <Edit3 className="w-4 h-4" aria-hidden />
           </button>
           <button
             onClick={onDelete}
             aria-label={`Delete statement: ${belief.statement}`}
-            className="rounded-full p-2.5 text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
+            className="rounded-full p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light transition-colors"
           >
             <Trash2 className="w-4 h-4" aria-hidden />
           </button>
@@ -315,7 +315,7 @@ function BeliefCard({
           <button
             onClick={onToggleHistory}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-1.5 text-xs text-terracotta-deep hover:text-terracotta-dark font-medium"
+            className="inline-flex items-center gap-1.5 px-1.5 py-2 -my-1 min-h-[36px] text-xs text-terracotta-deep hover:text-terracotta-dark font-medium"
           >
             <History className="w-3.5 h-3.5" aria-hidden />
             {belief.history.length} reflection{belief.history.length === 1 ? '' : 's'}
