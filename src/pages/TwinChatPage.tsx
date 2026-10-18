@@ -1130,8 +1130,8 @@ export function TwinChatPage() {
                 }}
                 className="max-w-3xl mx-auto w-full relative"
               >
-                {/* Rounded Pill Capsule Container */}
-                <div className="rounded-3xl border border-linen-dark/90 bg-white shadow-lifted focus-within:border-terracotta/80 focus-within:ring-2 focus-within:ring-terracotta/20 transition-all p-2.5 sm:p-3 flex flex-col gap-2">
+                {/* Single-Row Pill Capsule Container */}
+                <div className="rounded-full border border-linen-dark/90 bg-white shadow-lifted focus-within:border-terracotta/80 focus-within:ring-2 focus-within:ring-terracotta/20 transition-all pl-4 pr-1.5 py-1.5 sm:py-2 flex items-center gap-2">
                   <label htmlFor="twin-chat-input" className="sr-only">
                     Message your digital twin
                   </label>
@@ -1143,33 +1143,21 @@ export function TwinChatPage() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask about priorities, decisions, contradictions in beliefs…"
-                    className="w-full resize-none bg-transparent px-2 text-xs sm:text-sm leading-relaxed text-charcoal placeholder:text-slateink-light focus:outline-none max-h-36 overflow-y-auto"
+                    className="flex-1 min-w-0 resize-none bg-transparent text-xs sm:text-sm leading-relaxed text-charcoal placeholder:text-slateink-light focus:outline-none max-h-32 overflow-y-auto py-1"
                   />
 
-                  {/* Actions Row Inside Capsule */}
-                  <div className="flex items-center justify-between pt-1 border-t border-linen-dark/40">
-                    <div className="flex items-center gap-1.5 text-xs text-slateink-light">
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-slateink">
-                        <Sparkles className="w-3 h-3 text-terracotta" />
-                        Grounded Mode
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="submit"
-                        disabled={!input.trim() || thinking}
-                        aria-label="Send message"
-                        className={`inline-flex h-8 w-8 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-full transition-all shadow-xs cursor-pointer ${
-                          input.trim() && !thinking
-                            ? 'bg-charcoal text-paper hover:bg-terracotta scale-100'
-                            : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
-                        }`}
-                      >
-                        <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || thinking}
+                    aria-label="Send message"
+                    className={`inline-flex h-8 w-8 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-full transition-all shadow-xs cursor-pointer ${
+                      input.trim() && !thinking
+                        ? 'bg-charcoal text-paper hover:bg-terracotta scale-100'
+                        : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                  </button>
                 </div>
 
                 {/* Subtle Disclaimer under input */}
