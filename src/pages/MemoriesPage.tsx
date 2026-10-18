@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, Trash2, BookOpen, Mic, Camera, MessageSquare, PenLine, StickyNote, ChevronRight, ChevronDown, Tag as TagIcon, Calendar, FolderOpen } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { MEMORY_CATEGORIES, type Memory, type MemoryCategory } from '@/lib/types';
@@ -133,39 +133,47 @@ export function MemoriesPage() {
         </div>
       </div>
 
-      {/* Filters are always visible where there is room; collapsible on phones
-          so they don't consume the whole first screen. */}
-      <div className={`${showFilters ? 'block' : 'hidden'} md:block space-y-2.5`}>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-          <FilterChip active={category === 'all'} onClick={() => setCategory('all')}>
-            All categories
-          </FilterChip>
-          {MEMORY_CATEGORIES.map((c) => (
-            <FilterChip key={c} active={category === c} onClick={() => setCategory(c)}>
-              {c.replace('_', ' ')}
-            </FilterChip>
-          ))}
+      {/* Filters: category and date are compact dropdowns; tags stay free as
+          chips so you can scan and toggle them at a glance. Collapsible on
+          phones so they don't consume the whole first screen. */}
+      <div className={`${showFilters ? 'block' : 'hidden'} md:block space-y-3`}>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <FilterSelect
+            icon={<FolderOpen className="w-3.5 h-3.5" aria-hidden />}
+            label="Category"
+            value={category}
+            onChange={(v) => setCategory(v as 'all' | MemoryCategory)}
+            options={[{ value: 'all', label: 'All categories' }, ...MEMORY_CATEGORIES.map((c) => ({ value: c, label: c.replace('_', ' ') }))]}
+          />
+          <FilterSelect
+            icon={<Calendar className="w-3.5 h-3.5" aria-hidden />}
+            label="When"
+            value={dateRange}
+            onChange={(v) => setDateRange(v as 'all' | '30' | '90' | '365')}
+            options={[
+              { value: 'all', label: 'All time' },
+              { value: '30', label: 'Last 30 days' },
+              { value: '90', label: 'Last 90 days' },
+              { value: '365', label: 'Past year' },
+            ]}
+          />
         </div>
-        <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Filter by tag and date">
-          <span className="text-[11px] uppercase tracking-wider text-slateink-light mr-1">Tags</span>
-          <FilterChip active={tag === null} onClick={() => setTag(null)}>
-            Any
-          </FilterChip>
-          {allTags.map((t) => (
-            <FilterChip key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>
-              #{t}
+
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Filter by tag">
+            <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-slateink-light mr-0.5">
+              <TagIcon className="w-3 h-3" aria-hidden /> Tags
+            </span>
+            <FilterChip active={tag === null} onClick={() => setTag(null)}>
+              Any
             </FilterChip>
-          ))}
-          <span className="w-px self-stretch bg-linen-dark mx-1" aria-hidden />
-          <span className="text-[11px] uppercase tracking-wider text-slateink-light mr-1">When</span>
-          {([['all', 'All time'], ['30', 'Last 30 days'], ['90', 'Last 90 days'], ['365', 'Past year']] as const).map(
-            ([v, label]) => (
-              <FilterChip key={v} active={dateRange === v} onClick={() => setDateRange(v)}>
-                {label}
+            {allTags.map((t) => (
+              <FilterChip key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>
+                #{t}
               </FilterChip>
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {(showForm || editing) && (
@@ -233,6 +241,47 @@ export function MemoriesPage() {
         onCancel={() => setPendingDelete(null)}
       />
     </div>
+  );
+}
+
+function FilterSelect({
+  icon,
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  const selected = options.find((o) => o.value === value);
+  return (
+    <label className="relative inline-flex items-center min-h-[40px] rounded-full border border-linen-dark bg-white/70 pl-3 pr-2 text-sm text-slateink-dark hover:border-terracotta transition-colors focus-within:border-terracotta">
+      <span className="flex items-center gap-1.5 text-slateink-light">
+        {icon}
+        <span className="text-[11px] uppercase tracking-wider">{label}</span>
+      </span>
+      <span className="mx-1.5 w-px self-stretch bg-linen-dark" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={`Filter by ${label.toLowerCase()}`}
+        className="appearance-none bg-transparent pr-5 py-1.5 text-sm capitalize text-charcoal focus:outline-none cursor-pointer"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="capitalize">
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slateink-light" aria-hidden />
+      {selected && value !== 'all' && (
+        <span className="sr-only">Current: {selected.label}</span>
+      )}
+    </label>
   );
 }
 
