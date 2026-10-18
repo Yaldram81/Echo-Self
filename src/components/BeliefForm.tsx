@@ -3,7 +3,7 @@ import { X, Loader2 } from 'lucide-react';
 import { beliefsService } from '@/lib/services';
 import type { Belief, BeliefInput } from '@/lib/types';
 
-const POPULAR_CATEGORIES = ['personal', 'career', 'relationships', 'health', 'finance', 'creative', 'family'];
+const POPULAR_CATEGORIES = ['personal', 'career', 'relationships', 'health', 'creative'];
 
 export function BeliefForm({
   existing,
@@ -71,62 +71,60 @@ export function BeliefForm({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-charcoal/50 backdrop-blur-xs animate-[fadeIn_150ms_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-charcoal/50 backdrop-blur-xs animate-[fadeIn_150ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[calc(100dvh-1.5rem)] flex flex-col rounded-2xl sm:rounded-3xl bg-paper border border-linen-dark/80 shadow-2xl overflow-hidden">
         {/* Fixed Header */}
-        <div className="px-5 py-4 border-b border-linen-dark/60 flex items-center justify-between shrink-0 bg-paper">
+        <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-linen-dark/60 flex items-center justify-between shrink-0 bg-paper">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-terracotta-deep">
               {existing ? 'Recalibrate' : 'New Principle'}
             </span>
-            <h3 className="font-serif text-lg sm:text-xl font-bold text-charcoal leading-tight">
+            <h3 className="font-serif text-base sm:text-lg font-bold text-charcoal leading-tight">
               {existing ? 'Edit statement' : 'Add a belief or value'}
             </h3>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            className="p-1.5 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
+            className="p-1 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
             aria-label="Close form"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Form Container with Scrollable Body */}
+        {/* Form Body - Scrollable & Flex-Shrinkable */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          <div className="px-5 py-4 overflow-y-auto space-y-3.5 flex-1 overscroll-contain">
-            {/* Kind Toggle (Belief vs Value) */}
-            <div>
-              <label className="block text-xs font-semibold text-charcoal mb-1">Statement Type</label>
-              <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-linen/60 border border-linen-dark/60">
+          <div className="px-4 sm:px-5 py-3 sm:py-4 overflow-y-auto space-y-3 flex-1 min-h-0 overscroll-contain">
+            {/* Inline Kind Selector (Belief vs Value) */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-charcoal">Statement Type:</span>
+              <div className="inline-flex p-0.5 rounded-full bg-linen/70 border border-linen-dark/60">
                 <button
                   type="button"
                   onClick={() => setKind('belief')}
-                  className={`py-1.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                     kind === 'belief'
                       ? 'bg-paper text-charcoal shadow-2xs'
                       : 'text-slateink hover:text-charcoal'
                   }`}
                 >
-                  <span>💡</span>
-                  <span>Belief (I believe…)</span>
+                  💡 Belief (I believe…)
                 </button>
                 <button
                   type="button"
                   onClick={() => setKind('value')}
-                  className={`py-1.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                     kind === 'value'
                       ? 'bg-terracotta text-paper shadow-2xs'
                       : 'text-slateink hover:text-charcoal'
                   }`}
                 >
-                  <span>🧭</span>
-                  <span>Value (I prize…)</span>
+                  🧭 Value (I prize…)
                 </button>
               </div>
             </div>
@@ -146,7 +144,7 @@ export function BeliefForm({
                 required
                 rows={2}
                 maxLength={280}
-                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
+                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs"
                 placeholder={kind === 'belief' ? 'e.g. Long-term craft matters more than temporary acclaim.' : 'e.g. Intellectual honesty in relationships.'}
                 autoFocus
               />
@@ -162,49 +160,51 @@ export function BeliefForm({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-xs"
+                className="w-full rounded-xl border border-linen-dark bg-white/95 p-2.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all shadow-2xs"
                 placeholder="Where did this originate? What does it look like in practice?"
               />
             </div>
 
             {/* Category with Quick Tag Chips */}
             <div>
-              <label htmlFor="b-category" className="block text-xs font-semibold text-charcoal mb-1">
-                Category
-              </label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label htmlFor="b-category" className="text-xs font-semibold text-charcoal">
+                  Category
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {POPULAR_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] transition-all cursor-pointer ${
+                        category.toLowerCase() === cat
+                          ? 'bg-terracotta/15 text-terracotta-deep font-semibold border border-terracotta/30'
+                          : 'bg-linen/60 text-slateink hover:bg-linen hover:text-charcoal'
+                      }`}
+                    >
+                      #{cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <input
                 id="b-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-9 rounded-xl border border-linen-dark bg-white/95 px-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none mb-1.5"
+                className="w-full h-8 sm:h-9 rounded-xl border border-linen-dark bg-white/95 px-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
                 placeholder="e.g. personal, career, creative…"
               />
-              <div className="flex flex-wrap items-center gap-1.5">
-                {POPULAR_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`px-2 py-0.5 rounded-full text-[11px] transition-all cursor-pointer ${
-                      category.toLowerCase() === cat
-                        ? 'bg-terracotta/15 text-terracotta-deep font-semibold border border-terracotta/30'
-                        : 'bg-linen/60 text-slateink hover:bg-linen hover:text-charcoal'
-                    }`}
-                  >
-                    #{cat}
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {/* Strength Slider & Reviewed Date in 2 columns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
-              <div className="p-2.5 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1">
+            {/* Strength Slider & Reviewed Date in compact row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+              <div className="p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-1">
                 <div className="flex items-center justify-between">
                   <label htmlFor="b-strength" className="text-[11px] font-semibold text-charcoal">
-                    Conviction Strength
+                    Conviction Strength:
                   </label>
-                  <span className="text-xs font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-2 py-0.2 rounded-full">
+                  <span className="text-[11px] font-bold text-terracotta-deep tabular-nums bg-terracotta/10 px-1.5 py-0.2 rounded-full">
                     {strength}/100
                   </span>
                 </div>
@@ -216,16 +216,11 @@ export function BeliefForm({
                   step={5}
                   value={strength}
                   onChange={(e) => setStrength(Number(e.target.value))}
-                  className="w-full accent-terracotta cursor-pointer"
+                  className="w-full accent-terracotta cursor-pointer h-1.5"
                 />
-                <div className="flex justify-between text-[9px] text-slateink-light">
-                  <span>Emerging</span>
-                  <span>Moderate</span>
-                  <span>Core Pillar</span>
-                </div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-paper-soft border border-linen-dark/60 space-y-1">
+              <div className="p-2 rounded-xl bg-linen/40 border border-linen-dark/60 space-y-1">
                 <label htmlFor="b-reviewed" className="block text-[11px] font-semibold text-charcoal">
                   Date Grounded / Reviewed
                 </label>
@@ -234,9 +229,8 @@ export function BeliefForm({
                   type="date"
                   value={reviewed}
                   onChange={(e) => setReviewed(e.target.value)}
-                  className="w-full h-8 rounded-xl border border-linen-dark bg-white px-2.5 text-xs text-charcoal focus:border-terracotta focus:outline-none"
+                  className="w-full h-7 rounded-lg border border-linen-dark bg-white px-2 text-xs text-charcoal focus:border-terracotta focus:outline-none"
                 />
-                <p className="text-[9px] text-slateink-light">Marks your latest reflection point.</p>
               </div>
             </div>
 
@@ -247,19 +241,19 @@ export function BeliefForm({
             )}
           </div>
 
-          {/* Fixed Footer */}
-          <div className="px-5 py-3.5 border-t border-linen-dark/60 bg-paper-soft/80 flex items-center justify-end gap-2.5 shrink-0">
+          {/* Fixed Footer - GUARANTEED VISIBLE ALWAYS */}
+          <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-t border-linen-dark/70 bg-paper-soft/95 shrink-0 flex items-center justify-end gap-2.5 z-10">
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full px-4 py-2 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
+              className="rounded-full px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!valid || saving}
-              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-full bg-terracotta px-5 sm:px-6 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98 cursor-pointer"
+              className="inline-flex h-8 sm:h-9 items-center justify-center gap-1.5 rounded-full bg-terracotta px-4 sm:px-5 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-98 cursor-pointer"
             >
               {saving ? (
                 <>
