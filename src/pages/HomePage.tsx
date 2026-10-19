@@ -19,8 +19,11 @@ import {
   Check,
 } from 'lucide-react';
 import { navigateTo } from '@/lib/router';
+import { useAuth } from '@/lib/useAuth';
 
 export function HomePage() {
+  const { user } = useAuth();
+  const signedIn = !!user;
   // Section 1: Evidence Inspector Active Tab
   const [inspectorTab, setInspectorTab] = useState<'support' | 'conflict' | 'unknown'>('support');
 
@@ -178,7 +181,7 @@ export function HomePage() {
                   Twin Synthesis
                 </span>
                 <span className="text-[11px] bg-sage/15 text-sage-dark font-medium px-2 py-0.5 rounded-full">
-                  Sample Persona (Jordan)
+                  {signedIn ? 'Preview Demo' : 'Sample Persona (Jordan)'}
                 </span>
               </div>
 

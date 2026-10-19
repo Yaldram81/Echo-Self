@@ -316,10 +316,16 @@ export const reflectionService = {
   async list(): Promise<ReflectionItem[]> {
     const userId = await getCurrentUserId();
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('reflections')
         .select('*')
         .order('period_start', { ascending: false });
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+      const { data, error } = await query;
 
       if (!error && data) {
         const items = data as ReflectionItem[];
@@ -338,12 +344,17 @@ export const reflectionService = {
   async getByPeriod(periodStart: string, periodEnd: string): Promise<ReflectionItem | null> {
     const userId = await getCurrentUserId();
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('reflections')
         .select('*')
         .eq('period_start', periodStart)
-        .eq('period_end', periodEnd)
-        .maybeSingle();
+        .eq('period_end', periodEnd);
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+      const { data, error } = await query.maybeSingle();
 
       if (!error && data) return data as ReflectionItem;
     } catch {}

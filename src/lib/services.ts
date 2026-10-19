@@ -27,6 +27,19 @@ async function unwrap<T>(query: PromiseLike<DbResult<T>>): Promise<T> {
   return data as T;
 }
 
+/**
+ * Returns the currently authenticated user's ID, or null if signed out / guest.
+ * Used across services to strictly isolate authenticated users from public demo seed data.
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** A user's confirm/dismiss decision on an inferred graph edge. */
 export interface EdgeConfirmation {
   id: string;
@@ -41,9 +54,12 @@ export interface EdgeConfirmation {
 export const edgeConfirmationsService = {
   /** Confirmed/dismissed edges for the signed-in user. Empty for signed-out visitors. */
   async list(): Promise<EdgeConfirmation[]> {
+    const userId = await getCurrentUserId();
+    if (!userId) return [];
     const { data, error } = await supabase
       .from('graph_edge_confirmations')
-      .select('*');
+      .select('*')
+      .eq('user_id', userId);
     if (error) {
       // Signed-out visitors have no confirmations (RLS allows none); the graph
       // still renders with its derived edges.
@@ -57,9 +73,11 @@ export const edgeConfirmationsService = {
    * (user, edge) pair: re-confirming or dismissing later replaces the record.
    */
   async decide(edge: Omit<EdgeConfirmation, 'id' | 'created_at'>): Promise<void> {
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...edge, user_id: userId } : edge;
     const { error } = await supabase
       .from('graph_edge_confirmations')
-      .upsert(edge, { onConflict: 'user_id,edge_key' });
+      .upsert(payload, { onConflict: 'user_id,edge_key' });
     if (error) throw new Error(error.message);
   },
 };
@@ -76,25 +94,33 @@ export const flagsService = {
     correction_note: string;
     topic?: string;
   }): Promise<InterpretationFlag> {
+    const userId = await getCurrentUserId();
+    const payload = {
+      memory_id: input.memory_id,
+      answer_excerpt: input.answer_excerpt,
+      correction_note: input.correction_note,
+      topic: input.topic?.trim() || null,
+      status: 'proposed' as const,
+      ...(userId ? { user_id: userId } : {}),
+    };
     return unwrap(
       supabase
         .from('interpretation_flags')
-        .insert({
-          memory_id: input.memory_id,
-          answer_excerpt: input.answer_excerpt,
-          correction_note: input.correction_note,
-          topic: input.topic?.trim() || null,
-          status: 'proposed',
-        })
+        .insert(payload)
         .select()
         .maybeSingle()
     ) as Promise<InterpretationFlag>;
   },
-  /** Saved corrections, newest first. RLS scopes these to the signed-in user. */
+  /** Saved corrections, newest first. Scopes strictly to current account, or demo if signed out. */
   async list(): Promise<InterpretationFlag[]> {
-    return unwrap(
-      supabase.from('interpretation_flags').select('*').order('created_at', { ascending: false })
-    );
+    const userId = await getCurrentUserId();
+    let query = supabase.from('interpretation_flags').select('*').order('created_at', { ascending: false });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query);
   },
   /**
    * Change a correction's status. 'superseded' records which correction
@@ -146,18 +172,30 @@ export const flagsService = {
 
 export const memoriesService = {
   async list(orderBy: 'occurred_at' | 'created_at' = 'occurred_at'): Promise<Memory[]> {
-    return unwrap(
-      supabase.from('memories').select('*').order(orderBy, { ascending: false })
-    );
+    const userId = await getCurrentUserId();
+    let query = supabase.from('memories').select('*').order(orderBy, { ascending: false });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query);
   },
   async get(id: string): Promise<Memory | null> {
-    return unwrap(
-      supabase.from('memories').select('*').eq('id', id).maybeSingle()
-    ) as Promise<Memory | null>;
+    const userId = await getCurrentUserId();
+    let query = supabase.from('memories').select('*').eq('id', id);
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query.maybeSingle()) as Promise<Memory | null>;
   },
   async create(input: MemoryInput): Promise<Memory> {
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...input, user_id: userId } : input;
     const memory = await unwrap(
-      supabase.from('memories').insert(input).select().maybeSingle()
+      supabase.from('memories').insert(payload).select().maybeSingle()
     ) as Memory;
     // Fire-and-forget: indexing must never block or fail a user's save.
     void memoryEmbeddingService.indexMemories([memory]).catch(() => {});
@@ -179,29 +217,39 @@ export const memoriesService = {
 
 export const beliefsService = {
   async listWithHistory(): Promise<Belief[]> {
-    const beliefs = await unwrap(
-      supabase.from('beliefs').select('*').order('last_reflected_at', { ascending: false })
-    );
-    const history = await unwrap(
-      supabase
-        .from('beliefs_history')
-        .select('*')
-        .order('recorded_at', { ascending: true })
-    );
+    const userId = await getCurrentUserId();
+    let bQuery = supabase.from('beliefs').select('*').order('last_reflected_at', { ascending: false });
+    let hQuery = supabase.from('beliefs_history').select('*').order('recorded_at', { ascending: true });
+    if (userId) {
+      bQuery = bQuery.eq('user_id', userId);
+      hQuery = hQuery.eq('user_id', userId);
+    } else {
+      bQuery = bQuery.is('user_id', null);
+      hQuery = hQuery.is('user_id', null);
+    }
+    const beliefs = await unwrap(bQuery);
+    const history = await unwrap(hQuery);
     return (beliefs as Belief[]).map((b) => ({
       ...b,
       history: (history as BeliefHistoryPoint[]).filter((h) => h.belief_id === b.id),
     }));
   },
   async get(id: string): Promise<Belief | null> {
-    return unwrap(
-      supabase.from('beliefs').select('*').eq('id', id).maybeSingle()
-    ) as Promise<Belief | null>;
+    const userId = await getCurrentUserId();
+    let query = supabase.from('beliefs').select('*').eq('id', id);
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query.maybeSingle()) as Promise<Belief | null>;
   },
   async create(input: BeliefInput): Promise<Belief> {
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...input, origin: 'user', user_id: userId } : { ...input, origin: 'user' };
     const { data, error } = await supabase
       .from('beliefs')
-      .insert({ ...input, origin: 'user' })
+      .insert(payload)
       .select()
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -211,10 +259,12 @@ export const beliefsService = {
     const { error } = await supabase.from('beliefs').update(input).eq('id', id);
     if (error) throw new Error(error.message);
     try {
+      const userId = await getCurrentUserId();
       await supabase.from('beliefs_history').insert({
         belief_id: id,
         strength: input.strength ?? 75,
         note: input.note || (input.statement ? `Updated: ${input.statement}` : 'Updated belief'),
+        ...(userId ? { user_id: userId } : {}),
       });
     } catch {
       // Non-blocking
@@ -241,18 +291,30 @@ export const beliefsService = {
 
 export const decisionsService = {
   async list(): Promise<Decision[]> {
-    return unwrap(
-      supabase.from('decisions').select('*').order('created_at', { ascending: false })
-    );
+    const userId = await getCurrentUserId();
+    let query = supabase.from('decisions').select('*').order('created_at', { ascending: false });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query);
   },
   async get(id: string): Promise<Decision | null> {
-    return unwrap(
-      supabase.from('decisions').select('*').eq('id', id).maybeSingle()
-    ) as Promise<Decision | null>;
+    const userId = await getCurrentUserId();
+    let query = supabase.from('decisions').select('*').eq('id', id);
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query.maybeSingle()) as Promise<Decision | null>;
   },
   async create(input: DecisionInput): Promise<Decision> {
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...input, user_id: userId } : input;
     return unwrap(
-      supabase.from('decisions').insert(input).select().maybeSingle()
+      supabase.from('decisions').insert(payload).select().maybeSingle()
     ) as Promise<Decision>;
   },
   async update(id: string, patch: Partial<Decision>): Promise<void> {
@@ -353,10 +415,12 @@ export const decisionsService = {
 
     // Record in beliefs_history
     try {
+      const userId = await getCurrentUserId();
       await supabase.from('beliefs_history').insert({
         belief_id: proposal.beliefId,
         strength: nextStrength,
         note: `Adjusted via Review Center from decision proposal`,
+        ...(userId ? { user_id: userId } : {}),
       });
     } catch {
       // Non-blocking
@@ -368,13 +432,20 @@ export const decisionsService = {
 
 export const timelineService = {
   async list(): Promise<TimelineEvent[]> {
-    return unwrap(
-      supabase.from('timeline_events').select('*').order('occurred_at', { ascending: false })
-    );
+    const userId = await getCurrentUserId();
+    let query = supabase.from('timeline_events').select('*').order('occurred_at', { ascending: false });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query);
   },
   async create(input: Omit<TimelineEvent, 'id' | 'created_at'>): Promise<TimelineEvent> {
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...input, user_id: userId } : input;
     return unwrap(
-      supabase.from('timeline_events').insert(input).select().maybeSingle()
+      supabase.from('timeline_events').insert(payload).select().maybeSingle()
     ) as Promise<TimelineEvent>;
   },
   async remove(id: string): Promise<void> {
@@ -406,9 +477,14 @@ export type StatementRelationshipRow = {
  */
 export const relationshipsService = {
   async list(): Promise<StatementRelationshipRow[]> {
-    return unwrap(
-      supabase.from('statement_relationships').select('*').order('created_at', { ascending: false })
-    ) as Promise<StatementRelationshipRow[]>;
+    const userId = await getCurrentUserId();
+    let query = supabase.from('statement_relationships').select('*').order('created_at', { ascending: false });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.is('user_id', null);
+    }
+    return unwrap(query) as Promise<StatementRelationshipRow[]>;
   },
   async saveCandidate(input: {
     a_type: 'belief' | 'memory';
@@ -419,11 +495,11 @@ export const relationshipsService = {
     explanation: string;
     source: 'pattern' | 'model';
   }): Promise<StatementRelationshipRow> {
-    // Keep user decisions on an existing pair: overwrite only the judgment
-    // fields, never flip a dismissed/confirmed row back to candidate.
+    const userId = await getCurrentUserId();
+    const payload = userId ? { ...input, user_id: userId } : input;
     const { data, error } = await supabase
       .from('statement_relationships')
-      .upsert(input, { onConflict: 'user_id,a_id,b_id' })
+      .upsert(payload, { onConflict: 'user_id,a_id,b_id' })
       .select()
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -1019,36 +1095,73 @@ function setLocalCaptures(items: CaptureItem[]) {
 export const capturesService = {
   /** List captures, optionally filtered by status ('inbox' | 'promoted' | 'archived') */
   async list(status?: CaptureStatus): Promise<CaptureItem[]> {
+    const userId = await getCurrentUserId();
     try {
       let query = supabase.from('captures').select('*').order('created_at', { ascending: false });
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
       if (status) {
         query = query.eq('status', status);
       }
       const { data, error } = await query;
       if (error) throw error;
-      if (data && data.length > 0) {
-        return data as CaptureItem[];
+      if (data) {
+        if (userId) {
+          const local = getLocalCaptures().filter(
+            (c) => c.user_id === userId && !c.id.startsWith('local-cap-sample')
+          );
+          const combined = [...(data as CaptureItem[])];
+          for (const l of local) {
+            if (!combined.some((item) => item.id === l.id)) {
+              combined.push(l);
+            }
+          }
+          return status ? combined.filter((c) => c.status === status) : combined;
+        }
+        return status ? (data as CaptureItem[]).filter((c) => c.status === status) : (data as CaptureItem[]);
       }
       const local = getLocalCaptures();
-      return status ? local.filter((c) => c.status === status) : local;
+      const filteredLocal = userId
+        ? local.filter((c) => c.user_id === userId && !c.id.startsWith('local-cap-sample'))
+        : local;
+      return status ? filteredLocal.filter((c) => c.status === status) : filteredLocal;
     } catch {
       const local = getLocalCaptures();
-      return status ? local.filter((c) => c.status === status) : local;
+      const filteredLocal = userId
+        ? local.filter((c) => c.user_id === userId && !c.id.startsWith('local-cap-sample'))
+        : local;
+      return status ? filteredLocal.filter((c) => c.status === status) : filteredLocal;
     }
   },
 
   /** Get a single capture by ID */
   async get(id: string): Promise<CaptureItem | null> {
+    const userId = await getCurrentUserId();
     try {
-      const { data, error } = await supabase.from('captures').select('*').eq('id', id).maybeSingle();
+      let query = supabase.from('captures').select('*').eq('id', id);
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+      const { data, error } = await query.maybeSingle();
       if (error || !data) {
         const local = getLocalCaptures();
-        return local.find((c) => c.id === id) ?? null;
+        const filteredLocal = userId
+          ? local.filter((c) => c.user_id === userId && !c.id.startsWith('local-cap-sample'))
+          : local;
+        return filteredLocal.find((c) => c.id === id) ?? null;
       }
       return data as CaptureItem;
     } catch {
       const local = getLocalCaptures();
-      return local.find((c) => c.id === id) ?? null;
+      const filteredLocal = userId
+        ? local.filter((c) => c.user_id === userId && !c.id.startsWith('local-cap-sample'))
+        : local;
+      return filteredLocal.find((c) => c.id === id) ?? null;
     }
   },
 

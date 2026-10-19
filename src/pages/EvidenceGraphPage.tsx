@@ -85,11 +85,11 @@ const PERIOD_LABELS: Record<'all' | '30' | '90' | '365', string> = {
 };
 
 export function EvidenceGraphPage() {
-  const memories = useAsyncData(() => memoriesService.list(), []);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
-  const decisions = useAsyncData(() => decisionsService.list(), []);
-  const confirmations = useAsyncData(() => edgeConfirmationsService.list(), []);
   const { user } = useAuth();
+  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
+  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
+  const decisions = useAsyncData(() => decisionsService.list(), [user?.id]);
+  const confirmations = useAsyncData(() => edgeConfirmationsService.list(), [user?.id]);
 
   const loading = memories.loading || beliefs.loading || decisions.loading || confirmations.loading;
   const error = memories.error || beliefs.error || decisions.error || confirmations.error;

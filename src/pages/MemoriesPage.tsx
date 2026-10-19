@@ -32,6 +32,7 @@ import {
   ErrorState,
   EmptyState,
 } from '@/components/ui';
+import { useAuth } from '@/lib/useAuth';
 
 const SOURCE_ICONS: Record<Memory['source'], typeof BookOpen> = {
   journal: PenLine,
@@ -55,7 +56,8 @@ function withinDays(iso: string, days: number | null): boolean {
 }
 
 export function MemoriesPage() {
-  const { data, loading, error, reload } = useAsyncData(() => memoriesService.list(), []);
+  const { user } = useAuth();
+  const { data, loading, error, reload } = useAsyncData(() => memoriesService.list(), [user?.id]);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | MemoryCategory>('all');
   const [tag, setTag] = useState<string | null>(null);

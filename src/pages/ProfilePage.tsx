@@ -159,7 +159,7 @@ export function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.id]);
 
   // Sync state whenever auth user changes or load from database profiles table
   useEffect(() => {

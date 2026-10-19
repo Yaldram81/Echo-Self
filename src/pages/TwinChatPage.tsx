@@ -119,9 +119,9 @@ function persistSessions(sessions: ChatSession[]) {
 }
 
 export function TwinChatPage() {
-  const memories = useAsyncData(() => memoriesService.list(), []);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
   const { user, loading: authLoading } = useAuth();
+  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
+  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
   const preferredUserName = useMemo(() => {
     return (
       user?.user_metadata?.preferred_name ||

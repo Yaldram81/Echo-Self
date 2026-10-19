@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { memoriesService, decisionsService, beliefsService } from '@/lib/services';
 import { useAsyncData } from '@/hooks/useAsyncData';
+import { useAuth } from '@/lib/useAuth';
 import type { Belief, Decision, Memory, TimelineEntry } from '@/lib/types';
 import {
   SectionHeading,
@@ -163,9 +164,10 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
 }
 
 export function TimelinePage() {
-  const memories = useAsyncData(() => memoriesService.list(), []);
-  const decisions = useAsyncData(() => decisionsService.list(), []);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
+  const { user } = useAuth();
+  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
+  const decisions = useAsyncData(() => decisionsService.list(), [user?.id]);
+  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
 
   const loading = memories.loading || decisions.loading || beliefs.loading;
   const error = memories.error || decisions.error || beliefs.error;

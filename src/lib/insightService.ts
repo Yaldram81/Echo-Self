@@ -57,6 +57,11 @@ export const insightService = {
     const userId = await getCurrentUserId();
     try {
       let query = supabase.from('insights').select('*').order('generated_at', { ascending: false });
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
       if (statusFilter) {
         query = query.eq('status', statusFilter);
       }
@@ -80,7 +85,13 @@ export const insightService = {
   async get(id: string): Promise<InsightItem | null> {
     const userId = await getCurrentUserId();
     try {
-      const { data, error } = await supabase.from('insights').select('*').eq('id', id).maybeSingle();
+      let query = supabase.from('insights').select('*').eq('id', id);
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+      const { data, error } = await query.maybeSingle();
       if (!error && data) return data as InsightItem;
     } catch {}
     const cached = getCachedInsights(userId);

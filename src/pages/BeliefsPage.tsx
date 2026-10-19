@@ -28,10 +28,12 @@ import {
   EmptyState,
   StrengthMeter,
 } from '@/components/ui';
+import { useAuth } from '@/lib/useAuth';
 
 export function BeliefsPage() {
-  const { data, loading, error, reload } = useAsyncData(() => beliefsService.listWithHistory(), []);
-  const { data: memories } = useAsyncData(() => memoriesService.list(), []);
+  const { user } = useAuth();
+  const { data, loading, error, reload } = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
+  const { data: memories } = useAsyncData(() => memoriesService.list(), [user?.id]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'user' | 'suggestions'>('all');
