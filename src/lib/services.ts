@@ -1033,6 +1033,64 @@ export const profilesService = {
       onboarding_step: 1,
     });
   },
+
+  /**
+   * Ensure a profile row exists for the current user.
+   * Call on login/signup to cover pre-migration users who may lack a profile row.
+   * Uses upsert so it's safe to call repeatedly (idempotent).
+   */
+  async ensureProfile(): Promise<UserProfile | null> {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
+    try {
+      // Check if profile already exists
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (existing) return existing as UserProfile;
+
+      // Profile missing (pre-migration user) — create it
+      const { data: sessionData } = await supabase.auth.getSession();
+      const meta = sessionData?.session?.user?.user_metadata ?? {};
+      const email = sessionData?.session?.user?.email ?? '';
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          display_name: meta.display_name || email.split('@')[0] || 'User',
+          preferred_name: meta.preferred_name || '',
+          bio: '',
+          avatar_color: 'terracotta',
+        }, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as UserProfile;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Fetch aggregated user stats in a single DB round-trip via server-side RPC.
+   * Returns an object with count keys (memories_count, beliefs_count, etc.)
+   * or empty object for unauthenticated users.
+   */
+  async getStats(): Promise<Record<string, number | string>> {
+    try {
+      const { data, error } = await supabase.rpc('get_user_stats');
+      if (error) throw new Error(error.message);
+      return (data as Record<string, number | string>) ?? {};
+    } catch {
+      return {};
+    }
+  },
 };
 
 const CAPTURES_STORAGE_KEY = 'echoself_local_captures_v1';

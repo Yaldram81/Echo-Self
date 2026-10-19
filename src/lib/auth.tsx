@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { AuthContext, type AuthState } from './authContext';
+import { profilesService } from './services';
 
 /** Provides the verified session to the app. Hook: useAuth() from ./useAuth. */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -18,6 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (!cancelled) {
           setState({ session: data.session, user: data.session?.user ?? null, loading: false });
+          // Ensure profile exists for pre-migration users
+          if (data.session?.user) {
+            profilesService.ensureProfile().catch(console.warn);
+          }
         }
       })
       .catch(() => {
@@ -26,6 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setState({ session, user: session?.user ?? null, loading: false });
+      // Ensure profile exists on login/signup
+      if (session?.user) {
+        profilesService.ensureProfile().catch(console.warn);
+      }
     });
 
     return () => {
@@ -36,3 +45,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
+
