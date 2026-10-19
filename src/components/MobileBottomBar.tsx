@@ -9,6 +9,7 @@ import {
   History,
   Settings,
   LayoutGrid,
+  LayoutDashboard,
   LogOut,
   User,
   Sparkles,
@@ -32,7 +33,7 @@ interface TrayDestination {
 
 /**
  * 9 distinct workspace destinations for signed-in users.
- * Does NOT duplicate the 4 primary tabs on the bottom bar: Home, Memories, Twin Chat, Decisions.
+ * Does NOT duplicate the 4 primary tabs on the bottom bar: Home, Memories, Twin Chat, Dashboard.
  * Forms a perfect 3x3 grid (grid-cols-3) with zero redundancy.
  */
 const WORKSPACE_DESTINATIONS: TrayDestination[] = [
@@ -43,7 +44,7 @@ const WORKSPACE_DESTINATIONS: TrayDestination[] = [
   { page: 'insights', label: 'Insights', icon: Lightbulb },
   { page: 'reflect', label: 'Reflect', icon: PenLine },
   { page: 'review', label: 'Review', icon: CheckSquare },
-  { page: 'profile', label: 'Profile', icon: User },
+  { page: 'decisions', label: 'Decisions', icon: Scale },
   { page: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -143,9 +144,13 @@ export function MobileBottomBar({
     navigateTo('home');
   };
 
+  const primaryPages = signedIn
+    ? ['home', 'memories', 'chat', 'profile']
+    : ['home', 'memories', 'chat', 'decisions'];
+
   const isMorePageActive =
     currentPage !== null &&
-    !['home', 'memories', 'chat', 'decisions'].includes(currentPage);
+    !primaryPages.includes(currentPage);
 
   return (
     <>
@@ -484,14 +489,24 @@ export function MobileBottomBar({
             onClick={() => goPage('chat')}
           />
 
-          {/* Col 4: Decisions */}
-          <DockTab
-            href="/decisions"
-            label="Decisions"
-            icon={Scale}
-            active={currentPage === 'decisions'}
-            onClick={() => goPage('decisions')}
-          />
+          {/* Col 4: Dashboard (signed-in) or Decisions (guest) */}
+          {signedIn ? (
+            <DockTab
+              href="/profile"
+              label="Dashboard"
+              icon={LayoutDashboard}
+              active={currentPage === 'profile'}
+              onClick={() => goPage('profile')}
+            />
+          ) : (
+            <DockTab
+              href="/decisions"
+              label="Decisions"
+              icon={Scale}
+              active={currentPage === 'decisions'}
+              onClick={() => goPage('decisions')}
+            />
+          )}
 
           {/* Col 5: More (Toggles popup tray floating directly above) */}
           <button
