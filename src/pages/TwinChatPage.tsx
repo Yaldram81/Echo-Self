@@ -992,7 +992,7 @@ export function TwinChatPage() {
 
               {/* ChatGPT Empty Welcome Hero */}
               {messages.length === 0 ? (
-                <div className="h-full min-h-[380px] flex flex-col items-center justify-center text-center px-4 max-w-2xl mx-auto py-8 animate-[fadeIn_150ms_ease-out]">
+                <div className="h-full min-h-[380px] flex flex-col items-center justify-center text-center px-4 max-w-3xl xl:max-w-4xl mx-auto py-8 animate-[fadeIn_150ms_ease-out]">
                   {/* Avatar Icon */}
                   <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-terracotta/15 to-terracotta/5 border border-terracotta/30 flex items-center justify-center text-terracotta-deep mb-4 shadow-xs">
                     <Sparkles className="w-7 h-7 text-terracotta" />
@@ -1042,7 +1042,7 @@ export function TwinChatPage() {
                 </div>
               ) : (
                 /* Active Message Stream */
-                <div className="max-w-3xl mx-auto w-full space-y-6 pb-4">
+                <div className="max-w-4xl xl:max-w-5xl mx-auto w-full space-y-6 pb-4">
                   {messages.map((m) =>
                     m.role === 'user' ? (
                       /* USER MESSAGE */
@@ -1129,7 +1129,7 @@ export function TwinChatPage() {
             {sendError && (
               <div
                 role="alert"
-                className="max-w-2xl mx-auto mb-2 rounded-xl bg-clayred-light/70 border border-clayred-light px-3.5 py-2 text-xs text-clayred-DEFAULT flex items-center justify-between shadow-xs"
+                className="max-w-3xl mx-auto mb-2 rounded-xl bg-clayred-light/70 border border-clayred-light px-3.5 py-2 text-xs text-clayred-DEFAULT flex items-center justify-between shadow-xs"
               >
                 <span>{sendError}</span>
                 <button
@@ -1146,42 +1146,48 @@ export function TwinChatPage() {
             {/* =========================================================================
                 4. CHATGPT-STYLE FLOATING BOTTOM ACTION AREA (Composer)
                 ========================================================================= */}
-            <div className="shrink-0 p-2 sm:p-3 bg-gradient-to-t from-paper via-paper to-transparent">
+            <div className="shrink-0 p-2.5 sm:p-4 bg-gradient-to-t from-paper via-paper to-transparent">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   send(input);
                 }}
-                className="max-w-3xl mx-auto w-full relative"
+                className="max-w-4xl xl:max-w-5xl mx-auto w-full relative"
               >
-                {/* Single-Row Pill Capsule Container without focus rings/outlines */}
-                <div className="rounded-full border border-linen-dark/90 bg-white shadow-lifted pl-4 pr-1.5 py-1.5 sm:py-2 flex items-center gap-2 outline-none focus-within:outline-none focus-within:ring-0">
+                {/* Spacious Modern Query Card Container */}
+                <div className="rounded-2xl sm:rounded-3xl border border-linen-dark/90 bg-white shadow-lifted p-2.5 sm:p-3.5 flex flex-col gap-2 transition-all focus-within:border-terracotta/70 focus-within:shadow-[0_4px_24px_rgba(184,117,89,0.12)]">
                   <label htmlFor="twin-chat-input" className="sr-only">
                     Message your digital twin
                   </label>
                   <textarea
                     id="twin-chat-input"
                     ref={textareaRef}
-                    rows={1}
+                    rows={2}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask about priorities, decisions, contradictions in beliefs…"
-                    className="flex-1 min-w-0 resize-none bg-transparent text-xs sm:text-sm leading-relaxed text-charcoal placeholder:text-slateink-light outline-none focus:outline-none focus:ring-0 border-none shadow-none max-h-32 overflow-y-auto py-1"
+                    className="w-full resize-none bg-transparent text-xs sm:text-sm md:text-base leading-relaxed text-charcoal placeholder:text-slateink-light/80 outline-none focus:outline-none focus:ring-0 border-none shadow-none min-h-[46px] sm:min-h-[54px] max-h-48 overflow-y-auto px-1.5 py-1"
                   />
 
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || thinking}
-                    aria-label="Send message"
-                    className={`inline-flex h-8 w-8 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-full transition-all shadow-xs cursor-pointer ${
-                      input.trim() && !thinking
-                        ? 'bg-charcoal text-paper hover:bg-terracotta scale-100'
-                        : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
-                    }`}
-                  >
-                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                  </button>
+                  <div className="flex items-center justify-between pt-1 border-t border-linen-dark/40">
+                    <span className="text-[10px] sm:text-[11px] text-slateink-light">
+                      Press <kbd className="font-mono text-[9px] bg-linen px-1 py-0.5 rounded text-charcoal">Enter</kbd> to send, <kbd className="font-mono text-[9px] bg-linen px-1 py-0.5 rounded text-charcoal">Shift+Enter</kbd> for new line
+                    </span>
+
+                    <button
+                      type="submit"
+                      disabled={!input.trim() || thinking}
+                      aria-label="Send message"
+                      className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl sm:rounded-full transition-all shadow-xs cursor-pointer ${
+                        input.trim() && !thinking
+                          ? 'bg-charcoal text-paper hover:bg-terracotta hover:scale-105 active:scale-95'
+                          : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
+                      }`}
+                    >
+                      <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Subtle Disclaimer under input */}

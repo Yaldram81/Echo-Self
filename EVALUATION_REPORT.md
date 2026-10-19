@@ -1,6 +1,6 @@
 # EchoSelf Evaluation Report
 
-Generated: 2026-10-19T10:04:35.049Z
+Generated: 2026-10-19T11:07:51.710Z
 
 ## How to read this report
 
@@ -11,7 +11,7 @@ Generated: 2026-10-19T10:04:35.049Z
 
 ## Summary
 
-- Deterministic: **521 passed, 0 failed** across 9 suites.
+- Deterministic: **522 passed, 0 failed** across 9 suites.
 - Live-service: **86 passed, 0 failed** across 3 executed suites.
 - Skipped: 0 suite(s).
 - Crashed: 0 suite(s).
@@ -28,7 +28,7 @@ Generated: 2026-10-19T10:04:35.049Z
 | Robustness (malformed AI, garbage inputs, credentials) | deterministic | `npx tsx scripts/run-robustness-tests.mts` | passed | 18 | 0 |
 | Relationship analysis (counterevidence candidates) | deterministic | `npx tsx scripts/run-relationship-tests.mts` | passed | 25 | 0 |
 | Semantic claim review (labels, coercion, downgrades, fallbacks) | deterministic | `npx tsx scripts/run-claim-review-tests.mts` | passed | 67 | 0 |
-| Static verification (routes, links, SEO, robots, a11y invariants) | deterministic | `npx tsx scripts/run-static-checks.mts` | passed | 86 | 0 |
+| Static verification (routes, links, SEO, robots, a11y invariants) | deterministic | `npx tsx scripts/run-static-checks.mts` | passed | 87 | 0 |
 | Evidence graph | live-service | `npx tsx --env-file=.env scripts/run-graph-tests.mts` | passed | 26 | 0 |
 | Workspace isolation (two-account RLS) | live-service | `npx tsx --env-file=.env scripts/run-workspace-tests.mts` | passed | 37 | 0 |
 | E2E journey | live-service | `npx tsx --env-file=.env scripts/run-e2e-journey.mts` | passed | 23 | 0 |

@@ -328,7 +328,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         e.preventDefault();
                         go('signin');
                       }}
-                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-linen-dark/80 bg-white/80 hover:bg-white text-charcoal text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-linen-dark/80 bg-white/90 hover:bg-white text-charcoal text-xs font-semibold transition-all shadow-2xs cursor-pointer"
                     >
                       <UserCircle2 className="w-3.5 h-3.5 text-slateink-light" />
                       <span>Sign in</span>
@@ -361,25 +361,35 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                 </button>
               </div>
 
-              {/* Public Mobile Menu Drawer */}
+              {/* Backdrop Dim Overlay for Public Mobile Menu */}
               {publicMenuOpen && (
                 <div
-                  className="md:hidden absolute top-16 inset-x-0 bg-paper/98 backdrop-blur-xl border-b border-linen-dark shadow-lifted p-4 space-y-3 animate-[slideDown_150ms_ease-out] z-50"
+                  className="md:hidden fixed inset-0 z-40 bg-charcoal/40 backdrop-blur-2xs transition-opacity animate-[fadeIn_150ms_ease-out]"
+                  onClick={() => setPublicMenuOpen(false)}
+                  aria-hidden="true"
+                />
+              )}
+
+              {/* Public Mobile Menu Drawer (Solid Opaque Paper Background) */}
+              {publicMenuOpen && (
+                <div
+                  className="md:hidden fixed top-16 inset-x-0 bg-[#F7F3EB] border-b border-linen-dark shadow-2xl p-5 space-y-4 animate-[slideDown_150ms_ease-out] z-50 max-h-[calc(100dvh-64px)] overflow-y-auto"
                   role="dialog"
-                  aria-label="Mobile menu"
+                  aria-modal="true"
+                  aria-label="Mobile navigation menu"
                 >
-                  <nav className="flex flex-col space-y-1">
+                  <nav className="flex flex-col space-y-1.5">
                     <button
                       type="button"
                       onClick={() => scrollToAnchor('how-it-works')}
-                      className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-charcoal hover:bg-linen/60 transition-colors"
+                      className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
                     >
                       How it works
                     </button>
                     <button
                       type="button"
                       onClick={() => scrollToAnchor('decision-mirror')}
-                      className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-charcoal hover:bg-linen/60 transition-colors"
+                      className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
                     >
                       Decision Mirror
                     </button>
@@ -390,14 +400,26 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                         e.preventDefault();
                         go('memories');
                       }}
+                      className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-charcoal hover:bg-linen/60 transition-colors flex items-center justify-between"
+                    >
+                      <span>Explore Demo Memories</span>
+                      <ArrowRight className="w-4 h-4 text-terracotta" />
+                    </a>
+                    <a
+                      href="/chat"
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        go('chat');
+                      }}
                       className="text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold text-terracotta-deep hover:bg-terracotta/10 transition-colors flex items-center justify-between"
                     >
-                      <span>Explore Demo Persona</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <span>Twin AI Chat</span>
+                      <Sparkles className="w-4 h-4 text-terracotta" />
                     </a>
                   </nav>
 
-                  <div className="pt-2 border-t border-linen-dark/60 flex items-center gap-2">
+                  <div className="pt-3 border-t border-linen-dark/60 flex items-center gap-2.5">
                     {signedIn ? (
                       <div className="w-full flex items-center justify-between">
                         <span className="text-xs text-slateink truncate max-w-[180px]">{user!.email}</span>
@@ -418,7 +440,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                             e.preventDefault();
                             go('signin');
                           }}
-                          className="flex-1 text-center py-2 rounded-xl border border-linen-dark bg-white text-xs font-semibold text-charcoal hover:bg-linen"
+                          className="flex-1 text-center py-2.5 rounded-xl border border-linen-dark bg-white text-xs font-semibold text-charcoal hover:bg-linen transition-colors shadow-2xs"
                         >
                           Sign In
                         </a>
@@ -429,7 +451,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                             e.preventDefault();
                             go('signup');
                           }}
-                          className="flex-1 text-center py-2 rounded-xl bg-charcoal text-paper text-xs font-semibold hover:bg-slateink-dark"
+                          className="flex-1 text-center py-2.5 rounded-xl bg-charcoal text-paper text-xs font-semibold hover:bg-slateink-dark transition-colors shadow-xs"
                         >
                           Create Account
                         </a>
@@ -482,7 +504,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
               {/* Right Action Area: Sample Indicator, Twin Chat, My Profile, Account */}
               <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
-                {/* Sample Persona Context Badge (Visible when unauthenticated in workspace) */}
+                {/* Sample Persona Context Badge (Visible on mobile & desktop in workspace) */}
                 {!signedIn && (
                   <a
                     href="/signin"
@@ -492,10 +514,11 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                       go('signin');
                     }}
                     title="You are browsing the fictional sample persona 'Jordan'. Click to sign in or create your own private workspace."
-                    className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amberclay-light/40 border border-amberclay-DEFAULT/30 text-[11px] font-medium text-amberclay-DEFAULT hover:bg-amberclay-light/60 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amberclay-light/50 border border-amberclay-DEFAULT/30 text-[11px] font-medium text-amberclay-DEFAULT hover:bg-amberclay-light transition-colors"
                   >
                     <Eye className="w-3 h-3 shrink-0" aria-hidden="true" />
-                    <span>Demo Mode (Jordan)</span>
+                    <span className="hidden sm:inline">Demo Mode (Jordan)</span>
+                    <span className="sm:hidden">Demo</span>
                   </a>
                 )}
 
