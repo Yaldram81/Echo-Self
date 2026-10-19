@@ -45,14 +45,23 @@ const TRAY_DESTINATIONS: TrayDestination[] = [
   { page: 'settings', label: 'Settings', icon: Settings },
 ];
 
-export function MobileBottomBar({ route }: { route: Route }) {
+export function MobileBottomBar({
+  route,
+  signedIn: propSignedIn,
+}: {
+  route: Route;
+  signedIn?: boolean;
+}) {
   const { user, loading } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  const signedIn = !loading && !!user;
+  const signedIn = propSignedIn !== undefined ? propSignedIn : (!loading && !!user);
   // Show bar on all app routes when signed in; or on non-landing preview pages when guest
-  const showBar = !loading && route.kind === 'app' && route.page !== 'onboarding' && (signedIn || route.page !== 'home');
+  const showBar =
+    route.kind === 'app' &&
+    route.page !== 'onboarding' &&
+    (signedIn || (!loading && route.page !== 'home'));
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
 
   useEffect(() => {
@@ -154,20 +163,52 @@ export function MobileBottomBar({ route }: { route: Route }) {
             </button>
           </div>
 
-          {/* Quick Add Action Row */}
+          {/* Quick Actions (Strict 3-Column Grid View) */}
           <div className="space-y-1.5">
             <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
-              Quick Add
+              Quick Actions
             </p>
-            <div className="grid grid-cols-4 gap-1.5">
-              <QuickAddBtn label="Memory" onClick={() => handleQuickAdd('memory')} />
-              <QuickAddBtn label="Decision" onClick={() => handleQuickAdd('decision')} />
-              <QuickAddBtn label="Belief" onClick={() => handleQuickAdd('belief')} />
-              <QuickAddBtn label="Capture" onClick={() => handleQuickAdd('capture')} />
+            <div className="grid grid-cols-3 gap-2">
+              <QuickActionBtn
+                label="Memory"
+                icon={BookOpen}
+                onClick={() => handleQuickAdd('memory')}
+              />
+              <QuickActionBtn
+                label="Decision"
+                icon={Scale}
+                onClick={() => handleQuickAdd('decision')}
+              />
+              <QuickActionBtn
+                label="Belief"
+                icon={Compass}
+                onClick={() => handleQuickAdd('belief')}
+              />
+              <QuickActionBtn
+                label="Capture"
+                icon={Inbox}
+                onClick={() => handleQuickAdd('capture')}
+              />
+              <QuickActionBtn
+                label="Reflect"
+                icon={PenLine}
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigateTo('reflect');
+                }}
+              />
+              <QuickActionBtn
+                label="Ask Twin"
+                icon={Sparkles}
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigateTo('chat');
+                }}
+              />
             </div>
           </div>
 
-          {/* 3-Column Grid View of Destinations */}
+          {/* Destinations (Strict 3-Column Grid View) */}
           <div className="space-y-1.5">
             <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
               Destinations
@@ -361,21 +402,27 @@ function DockTab({
   );
 }
 
-function QuickAddBtn({
+function QuickActionBtn({
   label,
+  icon: Icon,
   onClick,
 }: {
   label: string;
+  icon: LucideIcon;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-linen-dark/70 bg-white/70 hover:bg-white hover:border-terracotta text-xs font-medium text-charcoal hover:text-terracotta-deep transition-all shadow-2xs group cursor-pointer"
+      className="group flex flex-col items-center justify-center p-2 rounded-2xl border border-linen-dark/70 bg-white/80 hover:bg-white hover:border-terracotta hover:shadow-2xs transition-all text-center shadow-2xs cursor-pointer"
     >
-      <Plus className="w-3 h-3 text-terracotta group-hover:scale-110 transition-transform" />
-      <span className="text-[11px]">{label}</span>
+      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-linen/80 text-charcoal group-hover:bg-terracotta/10 group-hover:text-terracotta-deep group-hover:scale-105 transition-all mb-1">
+        <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+      </span>
+      <span className="text-[11px] font-medium text-charcoal group-hover:text-terracotta-deep leading-tight truncate max-w-full">
+        {label}
+      </span>
     </button>
   );
 }
