@@ -1154,40 +1154,34 @@ export function TwinChatPage() {
                 }}
                 className="max-w-4xl xl:max-w-5xl mx-auto w-full relative"
               >
-                {/* Spacious Modern Query Card Container */}
-                <div className="rounded-2xl sm:rounded-3xl border border-linen-dark/90 bg-white shadow-lifted p-2.5 sm:p-3.5 flex flex-col gap-2 transition-all focus-within:border-terracotta/70 focus-within:shadow-[0_4px_24px_rgba(184,117,89,0.12)]">
+                {/* Single-Row Pill Capsule with Increased Height */}
+                <div className="rounded-full border border-linen-dark/90 bg-white shadow-lifted pl-5 sm:pl-6 pr-2 sm:pr-2.5 h-14 sm:h-16 flex items-center gap-3 transition-all focus-within:border-terracotta/70 focus-within:shadow-[0_6px_28px_rgba(184,117,89,0.14)]">
                   <label htmlFor="twin-chat-input" className="sr-only">
                     Message your digital twin
                   </label>
                   <textarea
                     id="twin-chat-input"
                     ref={textareaRef}
-                    rows={2}
+                    rows={1}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask about priorities, decisions, contradictions in beliefs…"
-                    className="w-full resize-none bg-transparent text-xs sm:text-sm md:text-base leading-relaxed text-charcoal placeholder:text-slateink-light/80 outline-none focus:outline-none focus:ring-0 border-none shadow-none min-h-[46px] sm:min-h-[54px] max-h-48 overflow-y-auto px-1.5 py-1"
+                    className="flex-1 min-w-0 resize-none bg-transparent text-sm sm:text-base leading-normal text-charcoal placeholder:text-slateink-light/80 outline-none focus:outline-none focus:ring-0 border-none shadow-none py-1 max-h-32 overflow-y-auto"
                   />
 
-                  <div className="flex items-center justify-between pt-1 border-t border-linen-dark/40">
-                    <span className="text-[10px] sm:text-[11px] text-slateink-light">
-                      Press <kbd className="font-mono text-[9px] bg-linen px-1 py-0.5 rounded text-charcoal">Enter</kbd> to send, <kbd className="font-mono text-[9px] bg-linen px-1 py-0.5 rounded text-charcoal">Shift+Enter</kbd> for new line
-                    </span>
-
-                    <button
-                      type="submit"
-                      disabled={!input.trim() || thinking}
-                      aria-label="Send message"
-                      className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl sm:rounded-full transition-all shadow-xs cursor-pointer ${
-                        input.trim() && !thinking
-                          ? 'bg-charcoal text-paper hover:bg-terracotta hover:scale-105 active:scale-95'
-                          : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || thinking}
+                    aria-label="Send message"
+                    className={`inline-flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full transition-all shadow-xs cursor-pointer ${
+                      input.trim() && !thinking
+                        ? 'bg-charcoal text-paper hover:bg-terracotta hover:scale-105 active:scale-95'
+                        : 'bg-linen text-slateink-light opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+                  </button>
                 </div>
 
                 {/* Subtle Disclaimer under input */}
