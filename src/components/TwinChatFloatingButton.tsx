@@ -97,9 +97,10 @@ export function TwinChatFloatingButton({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Hide when on the chat page itself, onboarding, or auth screens
+  // Hide when on the chat page itself, onboarding, auth screens, or active form editor
   if (route.kind !== 'app') return null;
   if (route.page === 'chat' || route.page === 'onboarding') return null;
+  if (route.action === 'new' || route.action === 'edit') return null;
 
   const handleClick = (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

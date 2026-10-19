@@ -80,11 +80,16 @@ export function MobileBottomBar({
   const [moreOpen, setMoreOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  const signedIn = propSignedIn !== undefined ? propSignedIn : (!loading && !!user);
-  // Show bar on all app routes when signed in; or on non-landing preview pages when guest
+  const isFormEditor =
+    route.kind === 'app' &&
+    (route.action === 'new' || route.action === 'edit');
+
+  // Show bar on all app routes when signed in; or on non-landing preview pages when guest,
+  // except when actively inside a full-page editor (new/edit decision) where the editor has its own action dock.
   const showBar =
     route.kind === 'app' &&
     route.page !== 'onboarding' &&
+    !isFormEditor &&
     (signedIn || (!loading && route.page !== 'home'));
   const currentPage: PageId | null = route.kind === 'app' ? route.page : null;
 

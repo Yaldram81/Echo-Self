@@ -373,36 +373,38 @@ export function DecisionEditorPage({
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 pb-20">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 pb-28 sm:pb-16">
       {/* Top Breadcrumb & Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-linen-dark/60 pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 border-b border-linen-dark/60 pb-3 sm:pb-4">
+        <div className="flex items-center gap-2 min-w-0">
           <a
             href={mode === 'edit' && decisionId ? `/decision/${decisionId}` : '/decisions'}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slateink hover:text-charcoal transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>{mode === 'edit' ? 'Back to deliberation' : 'Back to Decision Mirror'}</span>
+            <span className="hidden sm:inline">{mode === 'edit' ? 'Back to deliberation' : 'Back to Decision Mirror'}</span>
+            <span className="sm:hidden">Decisions</span>
           </a>
           <span className="text-slateink-light/40">/</span>
-          <span className="text-xs sm:text-sm font-semibold text-charcoal">
+          <span className="text-xs sm:text-sm font-semibold text-charcoal truncate">
             {mode === 'edit' ? 'Edit Setup' : 'New Decision'}
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5 self-end sm:self-auto">
+        <div className="flex items-center gap-2 shrink-0">
           {/* AI Mode Toggle Button */}
           <button
             type="button"
             onClick={() => setShowAiMode((v) => !v)}
-            className={`inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-full border px-4 text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer ${
+            className={`inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-full border px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer ${
               showAiMode
                 ? 'border-terracotta bg-terracotta text-paper shadow-sm'
                 : 'border-terracotta/40 bg-terracotta/10 text-terracotta-deep hover:bg-terracotta/20 hover:border-terracotta'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>AI Deliberation Assistant</span>
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">AI Deliberation Assistant</span>
+            <span className="sm:hidden">AI Assist</span>
           </button>
         </div>
       </div>
@@ -417,7 +419,7 @@ export function DecisionEditorPage({
           <button
             type="button"
             onClick={() => setAiSuccessMessage(null)}
-            className="p-1 hover:text-charcoal"
+            className="p-1 hover:text-charcoal cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -426,25 +428,25 @@ export function DecisionEditorPage({
 
       {/* AI Assistant Mode Card (Expands when clicked) */}
       {showAiMode && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-linear-to-br from-paper-soft via-white to-linen/30 border-2 border-terracotta/40 shadow-xl space-y-4 animate-[fadeIn_150ms_ease-out]">
+        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-linear-to-br from-paper-soft via-white to-linen/30 border-2 border-terracotta/40 shadow-xl space-y-4 animate-[fadeIn_150ms_ease-out]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-terracotta/15 text-terracotta-deep flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-terracotta/15 text-terracotta-deep flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <h3 className="font-serif text-lg font-bold text-charcoal">Gemini Deliberation Assistant</h3>
+                <h3 className="font-serif text-base sm:text-lg font-bold text-charcoal">Gemini Deliberation Assistant</h3>
                 <p className="text-xs text-slateink">
-                  Brain-dump your raw thoughts, doubts, and stakes. Gemini will structure your dilemma into options, pros/cons, constraints, and values for your review.
+                  Brain-dump your raw thoughts and stakes. Gemini structures them into options, trade-offs, and constraints.
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowAiMode(false)}
-              className="p-1.5 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors"
+              className="p-1.5 rounded-full text-slateink-light hover:text-charcoal hover:bg-linen/60 transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
@@ -454,20 +456,20 @@ export function DecisionEditorPage({
               onChange={(e) => setAiPrompt(e.target.value)}
               rows={4}
               placeholder="e.g. I got offered a job in another state with higher pay, but my family is rooted here. My current company has good stability, but I feel underpaid. I don't know how to choose between career acceleration and family continuity..."
-              className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-inner"
+              className="w-full rounded-xl sm:rounded-2xl border border-linen-dark bg-white/95 p-3 sm:p-3.5 text-base sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-inner"
             />
           </div>
 
           {/* Quick Starter Prompts */}
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-slateink-light uppercase tracking-wider">Or try a sample dilemma:</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {SAMPLE_PROMPTS.map((sample, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setAiPrompt(sample.prompt)}
-                  className="rounded-full bg-white border border-linen-dark/80 px-3 py-1 text-xs text-slateink hover:border-terracotta hover:text-charcoal transition-all text-left"
+                  className="rounded-full bg-white border border-linen-dark/80 px-2.5 py-1 text-xs text-slateink hover:border-terracotta hover:text-charcoal transition-all text-left cursor-pointer"
                 >
                   💡 {sample.title}
                 </button>
@@ -475,7 +477,7 @@ export function DecisionEditorPage({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slateink-light pt-1 border-t border-linen-dark/40">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] sm:text-xs text-slateink-light pt-1 border-t border-linen-dark/40">
             <span>Powered by Google Gemini · Auto-rotates keys on quota exhaustion</span>
             <a href="/settings" className="text-terracotta hover:underline font-medium">
               Manage keys in Settings ({geminiService.getApiKeys().length} configured) →
@@ -497,7 +499,7 @@ export function DecisionEditorPage({
             <button
               type="button"
               onClick={() => setShowAiMode(false)}
-              className="px-4 py-2 text-xs font-medium text-slateink hover:text-charcoal"
+              className="px-3.5 py-2 text-xs font-medium text-slateink hover:text-charcoal cursor-pointer"
             >
               Cancel
             </button>
@@ -505,16 +507,16 @@ export function DecisionEditorPage({
               type="button"
               onClick={handleAiStructure}
               disabled={!aiPrompt.trim() || aiLoading}
-              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-paper hover:bg-terracotta-dark disabled:opacity-50 transition-all shadow-xs cursor-pointer"
             >
               {aiLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                   <span>Structuring with Gemini…</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span>Analyze & Populate Fields</span>
                 </>
               )}
@@ -530,22 +532,22 @@ export function DecisionEditorPage({
       )}
 
       {/* Main Full-Page 2-Column Responsive Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* Left Column (7 cols): Dilemma, Domain, Tension, Reality Checks & Success */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-4 sm:space-y-6">
           {/* Card 1: Core Dilemma & Emotional Stakes */}
-          <section className="rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-5 sm:p-7 shadow-xs space-y-4">
+          <section className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-4 sm:p-7 shadow-xs space-y-3.5 sm:space-y-4">
             <div className="flex items-center justify-between border-b border-linen-dark/50 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
-                  <Scale className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
+                  <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <h2 className="font-serif text-lg font-bold text-charcoal">The Dilemma & The Core Tension</h2>
-                  <p className="text-[11px] text-slateink-light">State what you are deciding and what makes it difficult.</p>
+                <div className="min-w-0">
+                  <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal truncate">The Dilemma & Tension</h2>
+                  <p className="text-[11px] text-slateink-light truncate">State what you are deciding and what makes it difficult.</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-terracotta-deep bg-terracotta/10 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-terracotta-deep bg-terracotta/10 px-2 sm:px-2.5 py-0.5 rounded-full shrink-0">
                 Primary
               </span>
             </div>
@@ -564,7 +566,7 @@ export function DecisionEditorPage({
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 maxLength={140}
-                className="w-full rounded-2xl border border-linen-dark bg-white/95 px-4 py-3 text-sm font-medium text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs"
+                className="w-full rounded-xl sm:rounded-2xl border border-linen-dark bg-white/95 px-3.5 py-2.5 sm:px-4 sm:py-3 text-base sm:text-sm font-medium text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs"
                 placeholder="e.g. Take the Seattle director promotion or keep building the platform team?"
               />
             </div>
@@ -579,7 +581,7 @@ export function DecisionEditorPage({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-linen-dark bg-white px-3 text-xs text-charcoal font-medium focus:border-terracotta focus:outline-none cursor-pointer"
+                  className="w-full h-11 sm:h-10 rounded-xl border border-linen-dark bg-white px-3 text-base sm:text-xs text-charcoal font-medium focus:border-terracotta focus:outline-none cursor-pointer"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -597,7 +599,7 @@ export function DecisionEditorPage({
                 <select
                   value={timeline}
                   onChange={(e) => setTimeline(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-linen-dark bg-white px-3 text-xs text-charcoal font-medium focus:border-terracotta focus:outline-none cursor-pointer"
+                  className="w-full h-11 sm:h-10 rounded-xl border border-linen-dark bg-white px-3 text-base sm:text-xs text-charcoal font-medium focus:border-terracotta focus:outline-none cursor-pointer"
                 >
                   {TIMELINES.map((time) => (
                     <option key={time} value={time}>
@@ -612,14 +614,14 @@ export function DecisionEditorPage({
             <div>
               <label htmlFor="d-stakeholders" className="block text-xs font-semibold text-charcoal mb-1.5 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-slateink-light" />
-                <span>Key Stakeholders <span className="text-slateink-light font-normal">(Who else has skin in the game?)</span></span>
+                <span>Key Stakeholders <span className="text-slateink-light font-normal text-[11px]">(Who else has skin in the game?)</span></span>
               </label>
               <input
                 id="d-stakeholders"
                 value={stakeholders}
                 onChange={(e) => setStakeholders(e.target.value)}
                 placeholder="e.g. Partner, daughter, 4 platform engineers, leadership"
-                className="w-full rounded-xl border border-linen-dark bg-white px-3.5 py-2 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
+                className="w-full h-11 sm:h-10 rounded-xl border border-linen-dark bg-white px-3.5 text-base sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
               />
             </div>
 
@@ -634,49 +636,49 @@ export function DecisionEditorPage({
                 onChange={(e) => setContext(e.target.value)}
                 required
                 rows={4}
-                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs"
+                className="w-full rounded-xl sm:rounded-2xl border border-linen-dark bg-white/95 p-3 sm:p-3.5 text-base sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:ring-1 focus:ring-terracotta/20 focus:outline-none transition-all shadow-2xs min-h-[100px]"
                 placeholder="What is at stake? What are the conflicting loyalties, emotional pressures, financial realities, or fears driving this dilemma?"
               />
             </div>
           </section>
 
           {/* Card 2: Constraints & Uncertainties */}
-          <section className="rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-5 sm:p-7 shadow-xs space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-linen-dark/50 pb-3">
-              <div className="w-8 h-8 rounded-full bg-amberclay/15 text-amberclay-DEFAULT flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-4 h-4" />
+          <section className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-4 sm:p-7 shadow-xs space-y-3.5 sm:space-y-4">
+            <div className="flex items-center gap-2 sm:gap-2.5 border-b border-linen-dark/50 pb-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amberclay/15 text-amberclay-DEFAULT flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div>
-                <h2 className="font-serif text-lg font-bold text-charcoal">Reality Checks</h2>
+                <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal">Reality Checks</h2>
                 <p className="text-[11px] text-slateink-light">Distinguish immutable constraints from controllable risks.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1.5">
                 <label htmlFor="d-constraints" className="block text-xs font-semibold text-charcoal">
-                  Hard Constraints <span className="text-slateink-light font-normal">(Non-negotiables)</span>
+                  Hard Constraints <span className="text-slateink-light font-normal text-[11px]">(Non-negotiables)</span>
                 </label>
                 <textarea
                   id="d-constraints"
                   value={constraints}
                   onChange={(e) => setConstraints(e.target.value)}
                   rows={3}
-                  className="w-full rounded-xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-linen-dark bg-white/95 p-3 text-base sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
                   placeholder="Firm deadlines, financial floors, physical health limits, contractual obligations…"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="d-uncertainties" className="block text-xs font-semibold text-charcoal">
-                  Uncertainties & Assumptions <span className="text-slateink-light font-normal">(Unknowns)</span>
+                  Uncertainties & Assumptions <span className="text-slateink-light font-normal text-[11px]">(Unknowns)</span>
                 </label>
                 <textarea
                   id="d-uncertainties"
                   value={uncertainties}
                   onChange={(e) => setUncertainties(e.target.value)}
                   rows={3}
-                  className="w-full rounded-xl border border-linen-dark bg-white/95 p-3 text-xs sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-linen-dark bg-white/95 p-3 text-base sm:text-sm text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
                   placeholder="What don't you know? What assumptions could be wrong? What depends on other people?"
                 />
               </div>
@@ -684,13 +686,13 @@ export function DecisionEditorPage({
           </section>
 
           {/* Card 3: Success Definition (The Pre-Mortem) */}
-          <section className="rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-5 sm:p-7 shadow-xs space-y-3.5">
-            <div className="flex items-center gap-2.5 border-b border-linen-dark/50 pb-3">
-              <div className="w-8 h-8 rounded-full bg-sage/20 text-sage-dark flex items-center justify-center shrink-0">
-                <Eye className="w-4 h-4" />
+          <section className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-4 sm:p-7 shadow-xs space-y-3 sm:space-y-3.5">
+            <div className="flex items-center gap-2 sm:gap-2.5 border-b border-linen-dark/50 pb-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sage/20 text-sage-dark flex items-center justify-center shrink-0">
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div>
-                <h2 className="font-serif text-lg font-bold text-charcoal">Definition of Success (The Pre-Mortem)</h2>
+                <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal">Definition of Success (The Pre-Mortem)</h2>
                 <p className="text-[11px] text-slateink-light">Clarify your evaluation criteria before emotions cloud hindsight.</p>
               </div>
             </div>
@@ -704,7 +706,7 @@ export function DecisionEditorPage({
                 value={success}
                 onChange={(e) => setSuccess(e.target.value)}
                 rows={3}
-                className="w-full rounded-2xl border border-linen-dark bg-white/95 p-3.5 text-xs sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
+                className="w-full rounded-xl sm:rounded-2xl border border-linen-dark bg-white/95 p-3 sm:p-3.5 text-base sm:text-sm text-charcoal leading-relaxed placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none transition-all"
                 placeholder="Imagine it is one year in the future. What concrete signals or inner peace tell you that this was the right path, regardless of normal friction?"
               />
             </div>
@@ -712,17 +714,17 @@ export function DecisionEditorPage({
         </div>
 
         {/* Right Column (5 cols): Options on Scale & Guiding Values */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5 space-y-4 sm:space-y-6">
           {/* Card 4: Competing Options on the Scale */}
-          <section className="rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-5 sm:p-7 shadow-xs space-y-4">
+          <section className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-4 sm:p-7 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-linen-dark/50 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
-                  <Layers className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
+                  <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <h2 className="font-serif text-lg font-bold text-charcoal">Options on the Scale</h2>
-                  <p className="text-[11px] text-slateink-light">At least 2 competing paths required.</p>
+                <div className="min-w-0">
+                  <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal truncate">Options on the Scale</h2>
+                  <p className="text-[11px] text-slateink-light truncate">At least 2 competing paths required.</p>
                 </div>
               </div>
 
@@ -730,36 +732,37 @@ export function DecisionEditorPage({
                 <button
                   type="button"
                   onClick={addOption}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-terracotta hover:text-terracotta-dark"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-terracotta hover:text-terracotta-dark p-1 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add
+                  <Plus className="w-3.5 h-3.5" /> <span>Add</span>
                 </button>
               )}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5 sm:space-y-4">
               {options.map((opt, optIdx) => (
                 <div
                   key={optIdx}
-                  className="rounded-2xl border border-linen-dark/80 bg-white/90 p-4 space-y-3 shadow-2xs hover:border-linen-dark transition-all"
+                  className="rounded-xl sm:rounded-2xl border border-linen-dark/80 bg-white/95 p-3.5 sm:p-4 space-y-3 shadow-2xs hover:border-linen-dark transition-all"
                 >
                   {/* Option Title Row */}
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-paper border border-linen-dark flex items-center justify-center text-xs font-bold text-terracotta-deep font-mono shrink-0 shadow-2xs">
+                    <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-paper border border-linen-dark flex items-center justify-center text-xs font-bold text-terracotta-deep font-mono shrink-0 shadow-2xs">
                       {String.fromCharCode(65 + optIdx)}
                     </span>
                     <input
                       value={opt.label}
                       onChange={(e) => updateOptionLabel(optIdx, e.target.value)}
-                      className="flex-1 rounded-xl border border-linen-dark bg-white px-3 py-1.5 text-xs sm:text-sm font-semibold text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
+                      className="flex-1 h-11 sm:h-10 rounded-xl border border-linen-dark bg-white px-3 text-base sm:text-sm font-semibold text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
                       placeholder={`Option ${String.fromCharCode(65 + optIdx)} title`}
                     />
                     {options.length > 2 && (
                       <button
                         type="button"
                         onClick={() => removeOption(optIdx)}
-                        className="p-1 rounded-lg text-slateink-light hover:text-clayred-DEFAULT transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-slateink-light hover:text-clayred-DEFAULT hover:bg-clayred-light/30 transition-colors cursor-pointer"
                         title="Remove option"
+                        aria-label={`Remove Option ${String.fromCharCode(65 + optIdx)}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -767,31 +770,34 @@ export function DecisionEditorPage({
                   </div>
 
                   {/* Upsides / Pros */}
-                  <div className="rounded-xl bg-sage/10 border border-sage/25 p-2.5 space-y-1.5">
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-sage-dark">
-                      <ThumbsUp className="w-3 h-3 text-sage-dark" />
+                  <div className="rounded-xl bg-sage/10 border border-sage/25 p-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-sage-dark">
+                      <ThumbsUp className="w-3.5 h-3.5 text-sage-dark" />
                       <span>Key Upsides (Pros)</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1">
-                      {opt.pros.map((pro, pIdx) => (
-                        <span
-                          key={pIdx}
-                          className="inline-flex items-center gap-1 rounded-md bg-white border border-sage/30 px-2 py-0.5 text-[10px] text-sage-dark font-medium"
-                        >
-                          {pro}
-                          <button
-                            type="button"
-                            onClick={() => removePro(optIdx, pIdx)}
-                            className="hover:text-clayred-DEFAULT"
+                    {opt.pros.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {opt.pros.map((pro, pIdx) => (
+                          <span
+                            key={pIdx}
+                            className="inline-flex items-center gap-1 rounded-lg bg-white border border-sage/40 px-2.5 py-1 text-xs text-sage-dark font-medium shadow-2xs"
                           >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                            <span>{pro}</span>
+                            <button
+                              type="button"
+                              onClick={() => removePro(optIdx, pIdx)}
+                              className="hover:text-clayred-DEFAULT p-0.5 cursor-pointer"
+                              aria-label={`Remove upside ${pro}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                    <div className="flex gap-1 pt-0.5">
+                    <div className="flex gap-1.5 pt-0.5">
                       <input
                         value={proInputs[optIdx] ?? ''}
                         onChange={(e) => setProInputs({ ...proInputs, [optIdx]: e.target.value })}
@@ -802,12 +808,12 @@ export function DecisionEditorPage({
                           }
                         }}
                         placeholder="+ Add upside…"
-                        className="flex-1 h-6 rounded-md border border-sage/30 bg-white px-2 text-[10px] text-charcoal placeholder:text-slateink-light focus:outline-none"
+                        className="flex-1 h-10 sm:h-9 rounded-xl border border-sage/30 bg-white px-3 text-base sm:text-xs text-charcoal placeholder:text-slateink-light focus:border-sage focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => addPro(optIdx)}
-                        className="h-6 px-2 rounded-md bg-sage/30 text-sage-dark text-[10px] font-semibold hover:bg-sage/40"
+                        className="h-10 sm:h-9 px-3.5 rounded-xl bg-sage/20 hover:bg-sage/30 text-sage-dark text-xs font-semibold transition-colors shrink-0 cursor-pointer"
                       >
                         Add
                       </button>
@@ -815,31 +821,34 @@ export function DecisionEditorPage({
                   </div>
 
                   {/* Downsides / Cons */}
-                  <div className="rounded-xl bg-clayred-light/35 border border-clayred-light/60 p-2.5 space-y-1.5">
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-clayred-DEFAULT">
-                      <ThumbsDown className="w-3 h-3 text-clayred-DEFAULT" />
+                  <div className="rounded-xl bg-clayred-light/35 border border-clayred-light/60 p-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-clayred-DEFAULT">
+                      <ThumbsDown className="w-3.5 h-3.5 text-clayred-DEFAULT" />
                       <span>Key Trade-offs (Cons)</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1">
-                      {opt.cons.map((con, cIdx) => (
-                        <span
-                          key={cIdx}
-                          className="inline-flex items-center gap-1 rounded-md bg-white border border-clayred-light px-2 py-0.5 text-[10px] text-clayred-DEFAULT font-medium"
-                        >
-                          {con}
-                          <button
-                            type="button"
-                            onClick={() => removeCon(optIdx, cIdx)}
-                            className="hover:text-charcoal"
+                    {opt.cons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {opt.cons.map((con, cIdx) => (
+                          <span
+                            key={cIdx}
+                            className="inline-flex items-center gap-1 rounded-lg bg-white border border-clayred-light px-2.5 py-1 text-xs text-clayred-DEFAULT font-medium shadow-2xs"
                           >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                            <span>{con}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCon(optIdx, cIdx)}
+                              className="hover:text-charcoal p-0.5 cursor-pointer"
+                              aria-label={`Remove downside ${con}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                    <div className="flex gap-1 pt-0.5">
+                    <div className="flex gap-1.5 pt-0.5">
                       <input
                         value={conInputs[optIdx] ?? ''}
                         onChange={(e) => setConInputs({ ...conInputs, [optIdx]: e.target.value })}
@@ -850,12 +859,12 @@ export function DecisionEditorPage({
                           }
                         }}
                         placeholder="+ Add trade-off…"
-                        className="flex-1 h-6 rounded-md border border-clayred-light bg-white px-2 text-[10px] text-charcoal placeholder:text-slateink-light focus:outline-none"
+                        className="flex-1 h-10 sm:h-9 rounded-xl border border-clayred-light bg-white px-3 text-base sm:text-xs text-charcoal placeholder:text-slateink-light focus:border-clayred-DEFAULT focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => addCon(optIdx)}
-                        className="h-6 px-2 rounded-md bg-clayred-light text-clayred-DEFAULT text-[10px] font-semibold hover:bg-clayred-light/70"
+                        className="h-10 sm:h-9 px-3.5 rounded-xl bg-clayred-light hover:bg-clayred-light/70 text-clayred-DEFAULT text-xs font-semibold transition-colors shrink-0 cursor-pointer"
                       >
                         Add
                       </button>
@@ -868,7 +877,7 @@ export function DecisionEditorPage({
                 <button
                   type="button"
                   onClick={addOption}
-                  className="w-full py-2.5 rounded-2xl border border-dashed border-linen-dark hover:border-terracotta bg-white/50 hover:bg-white text-xs font-semibold text-terracotta transition-all flex items-center justify-center gap-1.5"
+                  className="w-full h-11 sm:h-10 rounded-xl sm:rounded-2xl border border-dashed border-linen-dark hover:border-terracotta bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-terracotta transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add another option (up to 4)
                 </button>
@@ -877,32 +886,32 @@ export function DecisionEditorPage({
           </section>
 
           {/* Card 5: Guiding Personal Values */}
-          <section className="rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-5 sm:p-7 shadow-xs space-y-4">
+          <section className="rounded-2xl sm:rounded-3xl border border-linen-dark/80 bg-paper-soft/90 p-4 sm:p-7 shadow-xs space-y-3.5 sm:space-y-4">
             <div className="flex items-center justify-between border-b border-linen-dark/50 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
-                  <Compass className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center shrink-0">
+                  <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <h2 className="font-serif text-lg font-bold text-charcoal">Guiding Personal Values</h2>
-                  <p className="text-[11px] text-slateink-light">Principles that dictate your priority weighting.</p>
+                <div className="min-w-0">
+                  <h2 className="font-serif text-base sm:text-lg font-bold text-charcoal truncate">Guiding Personal Values</h2>
+                  <p className="text-[11px] text-slateink-light truncate">Principles that dictate your priority weighting.</p>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold text-terracotta-deep">{values.length}/6 linked</span>
+              <span className="text-[11px] font-semibold text-terracotta-deep shrink-0">{values.length}/6 linked</span>
             </div>
 
             {/* Selected Values Display */}
-            <div className="flex flex-wrap gap-1.5 min-h-[36px] items-center p-2.5 rounded-2xl bg-linen/25 border border-linen-dark/60">
+            <div className="flex flex-wrap gap-1.5 min-h-[36px] items-center p-2.5 rounded-xl sm:rounded-2xl bg-linen/25 border border-linen-dark/60">
               {values.map((v) => (
                 <span
                   key={v}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-terracotta/15 border border-terracotta/25 px-3 py-1 text-xs text-terracotta-deep font-semibold"
+                  className="h-8 inline-flex items-center gap-1.5 rounded-full bg-terracotta/15 border border-terracotta/25 px-3 text-xs text-terracotta-deep font-semibold"
                 >
                   #{v}
                   <button
                     type="button"
                     onClick={() => toggleValue(v)}
-                    className="hover:text-clayred-DEFAULT p-0.5 rounded-full"
+                    className="hover:text-clayred-DEFAULT p-0.5 rounded-full cursor-pointer"
                     aria-label={`Remove value ${v}`}
                   >
                     <X className="w-3 h-3" />
@@ -926,7 +935,7 @@ export function DecisionEditorPage({
                         key={val}
                         type="button"
                         onClick={() => toggleValue(val)}
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                        className={`min-h-[32px] rounded-full px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                           active
                             ? 'bg-terracotta text-paper shadow-2xs font-semibold'
                             : 'bg-white border border-linen-dark/80 text-slateink hover:border-terracotta hover:text-charcoal'
@@ -948,13 +957,13 @@ export function DecisionEditorPage({
                   value={newValueInput}
                   onChange={(e) => setNewValueInput(e.target.value)}
                   placeholder="Add custom value (e.g. autonomy, family)…"
-                  className="w-full rounded-xl border border-linen-dark bg-white pl-7 pr-3 py-2 text-xs text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
+                  className="w-full h-11 sm:h-10 rounded-xl border border-linen-dark bg-white pl-7 pr-3 text-base sm:text-xs text-charcoal placeholder:text-slateink-light/70 focus:border-terracotta focus:outline-none"
                 />
               </div>
               <button
                 type="submit"
                 disabled={!newValueInput.trim() || values.length >= 6}
-                className="inline-flex items-center gap-1 rounded-xl border border-linen-dark bg-white px-3.5 py-2 text-xs font-semibold text-charcoal hover:border-terracotta disabled:opacity-40 transition-colors shadow-2xs"
+                className="h-11 sm:h-10 inline-flex items-center gap-1 rounded-xl border border-linen-dark bg-white px-3.5 text-xs font-semibold text-charcoal hover:border-terracotta disabled:opacity-40 transition-colors shadow-2xs cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" /> Add
               </button>
@@ -963,17 +972,21 @@ export function DecisionEditorPage({
         </div>
       </div>
 
-      {/* End-of-Form Action Dock (Scrolls into view naturally, never hidden by bottom bar) */}
-      <div className="pt-6 pb-24 sm:pb-12 border-t border-linen-dark/60">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-paper-soft/90 border border-linen-dark/80 shadow-xs">
+      {/* =========================================================================
+          DESKTOP ACTION DOCK (hidden on mobile, visible on sm+)
+          Standard end-of-form footer card
+         ========================================================================= */}
+      <div className="hidden sm:block pt-6 pb-12 border-t border-linen-dark/60">
+        <div className="flex items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-paper-soft/90 border border-linen-dark/80 shadow-xs">
           <div className="text-xs text-slateink">
             {!valid ? (
-              <span className="text-clayred-DEFAULT font-medium">
-                Requires dilemma title, context, and at least 2 named options.
+              <span className="text-clayred-DEFAULT font-medium flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-clayred-DEFAULT shrink-0" />
+                <span>Requires dilemma title, context, and at least 2 named options.</span>
               </span>
             ) : (
               <span className="text-sage-dark font-medium flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-sage-dark" />
+                <Check className="w-4 h-4 text-sage-dark shrink-0" />
                 <span>Ready to weigh ({options.filter((o) => o.label.trim()).length} options, {values.length} values)</span>
               </span>
             )}
@@ -1006,6 +1019,54 @@ export function DecisionEditorPage({
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          STICKY MOBILE ACTION DOCK (visible on mobile < sm, hidden on desktop)
+          Fixed at bottom of screen with status, cancel, and save buttons within thumb reach
+         ========================================================================= */}
+      <aside aria-label="Decision form actions" className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-paper/95 backdrop-blur-xl border-t border-linen-dark/80 px-3.5 py-2.5 shadow-[0_-8px_24px_rgba(32,35,33,0.14)] space-y-2">
+        {/* Status Line */}
+        <div className="flex items-center justify-between text-[11px] px-1">
+          {!valid ? (
+            <span className="text-clayred-DEFAULT font-medium flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>Requires title, context & 2 options</span>
+            </span>
+          ) : (
+            <span className="text-sage-dark font-medium flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 shrink-0" />
+              <span>Ready ({options.filter((o) => o.label.trim()).length} options, {values.length} values)</span>
+            </span>
+          )}
+        </div>
+
+        {/* Buttons Row */}
+        <div className="flex items-center gap-2">
+          <a
+            href={mode === 'edit' && decisionId ? `/decision/${decisionId}` : '/decisions'}
+            className="h-11 px-4 rounded-full border border-linen-dark/80 bg-white text-xs font-semibold text-slateink hover:text-charcoal flex items-center justify-center transition-colors"
+          >
+            Cancel
+          </a>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={!valid || saving}
+            className="flex-1 h-11 rounded-full bg-terracotta px-4 text-xs font-bold text-paper hover:bg-terracotta-dark transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving…</span>
+              </>
+            ) : mode === 'edit' ? (
+              'Save changes'
+            ) : (
+              'Open decision'
+            )}
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }
