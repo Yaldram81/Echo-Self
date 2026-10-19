@@ -32,6 +32,7 @@ import { MobileBottomBar } from '@/components/MobileBottomBar';
 import { SampleDataToast } from '@/components/ui';
 import { PublicFooter } from '@/components/PublicFooter';
 import { OnboardingFlow } from '@/components/OnboardingFlow';
+import { TwinChatFloatingButton } from '@/components/TwinChatFloatingButton';
 import { profilesService } from '@/lib/services';
 
 interface NavItem {
@@ -725,6 +726,9 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
       {/* Floating Sample Data Toast for Unauthenticated in-app visitors */}
       {!isLandingPage && !signedIn && !loading && <SampleDataToast />}
+
+      {/* Floating Twin Chat Action Button (Bespoke Epistemic Resonator for EchoSelf) */}
+      <TwinChatFloatingButton route={route} signedIn={signedIn} />
 
       {/* First-Run Onboarding Modal for Authenticated Users */}
       {signedIn && onboardingOpen && page !== 'onboarding' && (
