@@ -80,6 +80,8 @@ export function MobileBottomBar({
   const [moreOpen, setMoreOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
+  const signedIn = propSignedIn !== undefined ? propSignedIn : (!loading && !!user);
+
   const isFormEditor =
     route.kind === 'app' &&
     (route.action === 'new' || route.action === 'edit');
