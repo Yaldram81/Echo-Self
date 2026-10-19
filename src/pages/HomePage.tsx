@@ -150,7 +150,7 @@ export function HomePage() {
                 onClick={() => navigateTo('memories')}
                 className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-charcoal text-paper font-semibold text-xs sm:text-sm hover:bg-slateink-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
               >
-                <span>{signedIn ? 'Open Personal Workspace' : 'Explore Jordan Demo'}</span>
+                <span>{signedIn ? 'Open My Memories' : 'Explore Demo'}</span>
                 <ArrowRight className="w-4 h-4 text-terracotta-light" aria-hidden="true" />
               </button>
 
@@ -181,7 +181,7 @@ export function HomePage() {
                   Twin Synthesis
                 </span>
                 <span className="text-[11px] bg-sage/15 text-sage-dark font-medium px-2 py-0.5 rounded-full">
-                  {signedIn ? 'Preview Demo' : 'Sample Persona (Jordan)'}
+                  {signedIn ? 'Personal Model Active' : 'Sample Persona (Jordan)'}
                 </span>
               </div>
 
@@ -853,35 +853,61 @@ export function HomePage() {
           <div className="lg:col-span-8 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-paper/10 border border-paper/20 text-xs font-semibold text-amberclay-light">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Instant Interactive Sandbox</span>
+              <span>{signedIn ? 'Private Workspace Active' : 'Instant Interactive Sandbox'}</span>
             </div>
 
             <h2 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-paper leading-[1.1]">
-              Meet the self you can examine.
+              {signedIn ? 'Your private model is ready.' : 'Meet the self you can examine.'}
             </h2>
 
             <p className="text-sm sm:text-base text-linen-light max-w-xl leading-relaxed">
-              Explore the pre-loaded fictional persona &ldquo;Jordan&rdquo; with 16 memories, 8 beliefs, and 4 evaluated decisions. No credit card or sign-up required.
+              {signedIn
+                ? 'Your memories, confirmed beliefs, and evaluated decisions are encrypted and isolated with Postgres Row-Level Security. Every claim traces back to recorded evidence.'
+                : 'Explore the pre-loaded fictional persona “Jordan” with 16 memories, 8 beliefs, and 4 evaluated decisions. No credit card or sign-up required.'}
             </p>
           </div>
 
           <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col items-stretch gap-3">
-            <button
-              type="button"
-              onClick={() => navigateTo('memories')}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-terracotta text-paper font-semibold text-sm sm:text-base hover:bg-terracotta-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
-            >
-              <span>Explore Demo Persona</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {signedIn ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('memories')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-terracotta text-paper font-semibold text-sm sm:text-base hover:bg-terracotta-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
+                >
+                  <span>Go to My Memories</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
 
-            <button
-              type="button"
-              onClick={() => navigateTo('signup')}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-linen/30 bg-white/10 hover:bg-white/20 text-paper font-medium text-sm sm:text-base transition-colors cursor-pointer"
-            >
-              <span>Create Free Account</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('chat')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-linen/30 bg-white/10 hover:bg-white/20 text-paper font-medium text-sm sm:text-base transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-terracotta-light" />
+                  <span>Consult Twin AI</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('memories')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-terracotta text-paper font-semibold text-sm sm:text-base hover:bg-terracotta-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
+                >
+                  <span>Explore Demo Persona</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigateTo('signup')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-linen/30 bg-white/10 hover:bg-white/20 text-paper font-medium text-sm sm:text-base transition-colors cursor-pointer"
+                >
+                  <span>Create Free Account</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>

@@ -658,9 +658,9 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         id="main-content"
         className={`w-full mx-auto ${
           isLandingPage
-            ? (signedIn ? 'flex-1 max-w-7xl py-6 md:py-12 pb-28 shell-pad' : 'flex-1 max-w-7xl py-6 md:py-12 pb-12 shell-pad')
+            ? (signedIn ? 'flex-1 max-w-7xl py-6 md:py-12 pb-28 md:pb-12 shell-pad' : 'flex-1 max-w-7xl py-6 md:py-12 pb-12 shell-pad')
             : page === 'chat'
-            ? 'flex-1 min-h-0 w-full overflow-hidden flex flex-col p-0 pb-20'
+            ? 'flex-1 min-h-0 w-full overflow-hidden flex flex-col p-0 pb-20 md:pb-0'
             : route.kind === 'auth'
             ? 'flex-1 min-h-0 w-full overflow-y-auto flex items-center justify-center p-3 sm:p-4'
             : 'flex-1 max-w-6xl py-6 md:py-10 pb-28 md:pb-24 shell-pad'

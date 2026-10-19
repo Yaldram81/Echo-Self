@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Plus,
   X,
   BookOpen,
   Compass,
@@ -17,6 +16,7 @@ import {
   CheckSquare,
   Lightbulb,
   PenLine,
+  Lock,
   type LucideIcon,
 } from 'lucide-react';
 import { hrefFor, navigateTo, type PageId, type Route } from '@/lib/router';
@@ -30,13 +30,36 @@ interface TrayDestination {
   icon: LucideIcon;
 }
 
-const TRAY_DESTINATIONS: TrayDestination[] = [
-  { page: 'chat', label: 'Twin AI', icon: Sparkles },
-  { page: 'memories', label: 'Memories', icon: BookOpen },
-  { page: 'decisions', label: 'Decisions', icon: Scale },
+/**
+ * 9 distinct workspace destinations for signed-in users.
+ * Does NOT duplicate the 4 primary tabs on the bottom bar: Home, Memories, Twin Chat, Decisions.
+ * Forms a perfect 3x3 grid (grid-cols-3) with zero redundancy.
+ */
+const WORKSPACE_DESTINATIONS: TrayDestination[] = [
   { page: 'beliefs', label: 'Beliefs', icon: Compass },
   { page: 'graph', label: 'Graph', icon: GitBranch },
   { page: 'timeline', label: 'Timeline', icon: History },
+  { page: 'inbox', label: 'Inbox', icon: Inbox },
+  { page: 'insights', label: 'Insights', icon: Lightbulb },
+  { page: 'reflect', label: 'Reflect', icon: PenLine },
+  { page: 'review', label: 'Review', icon: CheckSquare },
+  { page: 'profile', label: 'Profile', icon: User },
+  { page: 'settings', label: 'Settings', icon: Settings },
+];
+
+/**
+ * Public explore tools available in demo mode without signing in (3 columns).
+ */
+const GUEST_EXPLORE_TOOLS: TrayDestination[] = [
+  { page: 'beliefs', label: 'Beliefs', icon: Compass },
+  { page: 'graph', label: 'Graph', icon: GitBranch },
+  { page: 'timeline', label: 'Timeline', icon: History },
+];
+
+/**
+ * Personal workspace features locked behind authentication (6 items in 3-column grid).
+ */
+const GUEST_LOCKED_TOOLS: TrayDestination[] = [
   { page: 'inbox', label: 'Inbox', icon: Inbox },
   { page: 'insights', label: 'Insights', icon: Lightbulb },
   { page: 'reflect', label: 'Reflect', icon: PenLine },
@@ -120,27 +143,29 @@ export function MobileBottomBar({
     navigateTo('home');
   };
 
-  const isMorePageActive = currentPage !== null && currentPage !== 'home' && currentPage !== 'decisions';
+  const isMorePageActive =
+    currentPage !== null &&
+    !['home', 'memories', 'chat', 'decisions'].includes(currentPage);
 
   return (
     <>
-      {/* Backdrop overlay for More popup tray */}
+      {/* Backdrop overlay for More popup tray (Mobile Only: hidden on md+) */}
       {moreOpen && (
         <div
-          className="fixed inset-0 z-40 bg-charcoal/25 backdrop-blur-2xs transition-opacity animate-[fadeIn_150ms_ease-out]"
+          className="md:hidden fixed inset-0 z-40 bg-charcoal/30 backdrop-blur-2xs transition-opacity animate-[fadeIn_150ms_ease-out]"
           onClick={() => setMoreOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Floating Popup Tray (Anchored directly above the bottom bar) */}
+      {/* Floating Popup Tray (Anchored directly above bottom bar, Mobile Only: hidden on md+) */}
       {moreOpen && (
         <div
           ref={sheetRef}
           role="dialog"
           aria-modal="true"
           aria-label="Workspace Tools Tray"
-          className="fixed bottom-[74px] sm:bottom-[78px] inset-x-3 max-w-sm sm:max-w-md mx-auto z-50 bg-paper/95 backdrop-blur-2xl border border-linen-dark/90 rounded-3xl shadow-[0_20px_50px_rgba(43,42,38,0.22)] p-4 sm:p-5 animate-[slideUp_180ms_cubic-bezier(0.16,1,0.3,1)] max-h-[calc(100dvh-96px)] overflow-y-auto overscroll-contain space-y-4"
+          className="md:hidden fixed bottom-[72px] sm:bottom-[76px] inset-x-2.5 sm:inset-x-4 max-w-sm sm:max-w-md mx-auto z-50 bg-paper/95 backdrop-blur-2xl border border-linen-dark/90 rounded-3xl shadow-[0_20px_50px_rgba(43,42,38,0.24)] p-4 sm:p-5 animate-[slideUp_180ms_cubic-bezier(0.16,1,0.3,1)] max-h-[calc(100dvh-88px)] overflow-y-auto overscroll-contain space-y-4"
         >
           {/* Header with Title & Close button */}
           <div className="flex items-center justify-between pb-2 border-b border-linen-dark/60">
@@ -150,7 +175,9 @@ export function MobileBottomBar({
               </span>
               <div>
                 <h3 className="text-sm font-semibold text-charcoal font-serif">Workspace Tools</h3>
-                <p className="text-[10px] text-slateink-light">All destinations & quick capture</p>
+                <p className="text-[10px] text-slateink-light">
+                  {signedIn ? 'Quick actions & remaining destinations' : 'Explore demo & locked features'}
+                </p>
               </div>
             </div>
             <button
@@ -163,96 +190,217 @@ export function MobileBottomBar({
             </button>
           </div>
 
-          {/* Quick Actions (Strict 3-Column Grid View) */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
-              Quick Actions
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <QuickActionBtn
-                label="Memory"
-                icon={BookOpen}
-                onClick={() => handleQuickAdd('memory')}
-              />
-              <QuickActionBtn
-                label="Decision"
-                icon={Scale}
-                onClick={() => handleQuickAdd('decision')}
-              />
-              <QuickActionBtn
-                label="Belief"
-                icon={Compass}
-                onClick={() => handleQuickAdd('belief')}
-              />
-              <QuickActionBtn
-                label="Capture"
-                icon={Inbox}
-                onClick={() => handleQuickAdd('capture')}
-              />
-              <QuickActionBtn
-                label="Reflect"
-                icon={PenLine}
-                onClick={() => {
-                  setMoreOpen(false);
-                  navigateTo('reflect');
-                }}
-              />
-              <QuickActionBtn
-                label="Ask Twin"
-                icon={Sparkles}
-                onClick={() => {
-                  setMoreOpen(false);
-                  navigateTo('chat');
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Destinations (Strict 3-Column Grid View) */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
-              Destinations
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {TRAY_DESTINATIONS.map((dest) => {
-                const Icon = dest.icon;
-                const isActive = currentPage === dest.page;
-                return (
-                  <a
-                    key={dest.page}
-                    href={hrefFor(dest.page)}
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                      e.preventDefault();
-                      goPage(dest.page);
+          {signedIn ? (
+            /* =========================================================================
+               SIGNED-IN EXPERIENCE: Quick Actions + 9 Unlocked Destinations
+               ========================================================================= */
+            <>
+              {/* Quick Actions (Strict 3-Column Grid View) */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
+                  Quick Actions
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <QuickActionBtn
+                    label="Memory"
+                    icon={BookOpen}
+                    onClick={() => handleQuickAdd('memory')}
+                  />
+                  <QuickActionBtn
+                    label="Decision"
+                    icon={Scale}
+                    onClick={() => handleQuickAdd('decision')}
+                  />
+                  <QuickActionBtn
+                    label="Belief"
+                    icon={Compass}
+                    onClick={() => handleQuickAdd('belief')}
+                  />
+                  <QuickActionBtn
+                    label="Capture"
+                    icon={Inbox}
+                    onClick={() => handleQuickAdd('capture')}
+                  />
+                  <QuickActionBtn
+                    label="Reflect"
+                    icon={PenLine}
+                    onClick={() => {
+                      setMoreOpen(false);
+                      navigateTo('reflect');
                     }}
-                    className={`group flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all text-center cursor-pointer ${
-                      isActive
-                        ? 'bg-terracotta-light/20 border-terracotta/60 shadow-xs'
-                        : 'bg-white/80 border-linen-dark/70 hover:border-linen-dark hover:bg-white hover:shadow-2xs'
-                    }`}
+                  />
+                  <QuickActionBtn
+                    label="Ask Twin"
+                    icon={Sparkles}
+                    onClick={() => {
+                      setMoreOpen(false);
+                      navigateTo('chat');
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Destinations (Strict 3x3 Grid View without bottom-bar duplicates) */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
+                  Destinations
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {WORKSPACE_DESTINATIONS.map((dest) => {
+                    const Icon = dest.icon;
+                    const isActive = currentPage === dest.page;
+                    return (
+                      <a
+                        key={dest.page}
+                        href={hrefFor(dest.page)}
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                          e.preventDefault();
+                          goPage(dest.page);
+                        }}
+                        className={`group flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all text-center cursor-pointer ${
+                          isActive
+                            ? 'bg-terracotta-light/20 border-terracotta/60 shadow-xs'
+                            : 'bg-white/80 border-linen-dark/70 hover:border-linen-dark hover:bg-white hover:shadow-2xs'
+                        }`}
+                      >
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-xl mb-1 transition-all ${
+                            isActive
+                              ? 'bg-terracotta text-paper shadow-2xs'
+                              : 'bg-linen/80 text-charcoal group-hover:bg-linen group-hover:scale-105'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" aria-hidden="true" />
+                        </span>
+                        <span
+                          className={`text-[11px] font-medium leading-tight line-clamp-1 ${
+                            isActive ? 'text-terracotta-deep font-semibold' : 'text-charcoal'
+                          }`}
+                        >
+                          {dest.label}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* =========================================================================
+               GUEST / DEMO EXPERIENCE: Public Tools + Slogan + Locked Options
+               ========================================================================= */
+            <>
+              {/* Public Demo Destinations (3 Columns) */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
+                  Explore Demo Tools
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {GUEST_EXPLORE_TOOLS.map((dest) => {
+                    const Icon = dest.icon;
+                    const isActive = currentPage === dest.page;
+                    return (
+                      <a
+                        key={dest.page}
+                        href={hrefFor(dest.page)}
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                          e.preventDefault();
+                          goPage(dest.page);
+                        }}
+                        className={`group flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all text-center cursor-pointer ${
+                          isActive
+                            ? 'bg-terracotta-light/20 border-terracotta/60 shadow-xs'
+                            : 'bg-white/80 border-linen-dark/70 hover:border-linen-dark hover:bg-white hover:shadow-2xs'
+                        }`}
+                      >
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-xl mb-1 transition-all ${
+                            isActive
+                              ? 'bg-terracotta text-paper shadow-2xs'
+                              : 'bg-linen/80 text-charcoal group-hover:bg-linen group-hover:scale-105'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" aria-hidden="true" />
+                        </span>
+                        <span
+                          className={`text-[11px] font-medium leading-tight line-clamp-1 ${
+                            isActive ? 'text-terracotta-deep font-semibold' : 'text-charcoal'
+                          }`}
+                        >
+                          {dest.label}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Persuasive Slogan Banner */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-terracotta/10 via-linen to-paper border border-terracotta/30 text-center space-y-2 shadow-2xs">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-terracotta-deep font-serif">
+                  <Sparkles className="w-3.5 h-3.5 text-terracotta" />
+                  <span>Sign in to get personalized experience</span>
+                </div>
+                <p className="text-[11px] text-slateink leading-relaxed">
+                  Record your own memories, unlock private AI twin reasoning, and isolate your personal records with Postgres Row-Level Security.
+                </p>
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      navigateTo('signin');
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-charcoal text-paper text-xs font-semibold hover:bg-slateink-dark shadow-xs transition-colors cursor-pointer"
                   >
-                    <span
-                      className={`flex h-8 w-8 items-center justify-center rounded-xl mb-1 transition-all ${
-                        isActive
-                          ? 'bg-terracotta text-paper shadow-2xs'
-                          : 'bg-linen/80 text-charcoal group-hover:bg-linen group-hover:scale-105'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" aria-hidden="true" />
-                    </span>
-                    <span
-                      className={`text-[11px] font-medium leading-tight line-clamp-1 ${
-                        isActive ? 'text-terracotta-deep font-semibold' : 'text-charcoal'
-                      }`}
-                    >
-                      {dest.label}
-                    </span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
+                    <Lock className="w-3 h-3 text-amberclay-light" />
+                    <span>Sign In or Create Account</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Locked Personal Tools (Strict 3-Column Grid View) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-slateink-light">
+                    Personal Workspace (Locked)
+                  </p>
+                  <span className="text-[10px] text-amberclay-DEFAULT font-medium flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" /> Requires Account
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {GUEST_LOCKED_TOOLS.map((dest) => {
+                    const Icon = dest.icon;
+                    return (
+                      <button
+                        key={dest.page}
+                        type="button"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          navigateTo('signin');
+                        }}
+                        className="group relative flex flex-col items-center justify-center p-2.5 rounded-2xl border border-linen-dark/60 bg-paper/60 hover:bg-white hover:border-terracotta/60 transition-all text-center cursor-pointer shadow-2xs"
+                        title={`Sign in to unlock ${dest.label}`}
+                      >
+                        <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-linen text-slateink-light group-hover:text-terracotta group-hover:bg-terracotta/10 transition-colors">
+                          <Lock className="w-2.5 h-2.5" />
+                        </span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl mb-1 bg-linen/50 text-slateink-light group-hover:text-charcoal transition-all">
+                          <Icon className="w-4 h-4" aria-hidden="true" />
+                        </span>
+                        <span className="text-[11px] font-medium leading-tight line-clamp-1 text-slateink group-hover:text-charcoal">
+                          {dest.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Footer Area: User Status, Privacy & Logout */}
           <div className="pt-2 border-t border-linen-dark/60 flex items-center justify-between text-xs">
@@ -303,12 +451,12 @@ export function MobileBottomBar({
         </div>
       )}
 
-      {/* Floating Bottom Navigation Bar (Minimalistic 3-Column Grid) */}
+      {/* Floating Bottom Navigation Bar (5-Column Grid, Mobile-Only: hidden on md+) */}
       <nav
         aria-label="Bottom Navigation Bar"
-        className="fixed bottom-3 inset-x-3 max-w-sm sm:max-w-md mx-auto z-40 bg-paper/95 backdrop-blur-xl border border-linen-dark/80 rounded-2xl shadow-[0_8px_30px_rgba(32,35,33,0.12)] h-[58px] px-2 select-none"
+        className="md:hidden fixed bottom-3 inset-x-2.5 sm:inset-x-4 max-w-md mx-auto z-40 bg-paper/95 backdrop-blur-xl border border-linen-dark/80 rounded-2xl shadow-[0_8px_30px_rgba(32,35,33,0.12)] h-[58px] px-1 select-none"
       >
-        <div className="grid grid-cols-3 items-center h-full gap-1">
+        <div className="grid grid-cols-5 items-center h-full gap-0.5">
           {/* Col 1: Home */}
           <DockTab
             href="/home"
@@ -318,7 +466,25 @@ export function MobileBottomBar({
             onClick={() => goPage('home')}
           />
 
-          {/* Col 2: Decisions */}
+          {/* Col 2: Memories */}
+          <DockTab
+            href="/memories"
+            label="Memories"
+            icon={BookOpen}
+            active={currentPage === 'memories'}
+            onClick={() => goPage('memories')}
+          />
+
+          {/* Col 3: Twin Chat */}
+          <DockTab
+            href="/chat"
+            label="Twin Chat"
+            icon={Sparkles}
+            active={currentPage === 'chat'}
+            onClick={() => goPage('chat')}
+          />
+
+          {/* Col 4: Decisions */}
           <DockTab
             href="/decisions"
             label="Decisions"
@@ -327,7 +493,7 @@ export function MobileBottomBar({
             onClick={() => goPage('decisions')}
           />
 
-          {/* Col 3: More (Toggles popup tray floating directly above) */}
+          {/* Col 5: More (Toggles popup tray floating directly above) */}
           <button
             type="button"
             onClick={() => setMoreOpen((o) => !o)}
