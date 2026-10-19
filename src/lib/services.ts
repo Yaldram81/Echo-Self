@@ -27,14 +27,34 @@ async function unwrap<T>(query: PromiseLike<DbResult<T>>): Promise<T> {
   return data as T;
 }
 
+let _cachedActiveUserId: string | null | undefined = undefined;
+
+/**
+ * Synchronously cache the active authenticated user ID. Called by AuthProvider
+ * on session load and onAuthStateChange to eliminate async race conditions.
+ */
+export function setActiveUserId(userId: string | null): void {
+  _cachedActiveUserId = userId;
+}
+
 /**
  * Returns the currently authenticated user's ID, or null if signed out / guest.
+ * If explicitUserId is provided, it takes precedence.
  * Used across services to strictly isolate authenticated users from public demo seed data.
  */
-export async function getCurrentUserId(): Promise<string | null> {
+export async function getCurrentUserId(explicitUserId?: string | null): Promise<string | null> {
+  if (explicitUserId !== undefined) {
+    if (explicitUserId !== null) _cachedActiveUserId = explicitUserId;
+    return explicitUserId;
+  }
+  if (_cachedActiveUserId !== undefined) {
+    return _cachedActiveUserId;
+  }
   try {
     const { data } = await supabase.auth.getSession();
-    return data?.session?.user?.id ?? null;
+    const id = data?.session?.user?.id ?? null;
+    _cachedActiveUserId = id;
+    return id;
   } catch {
     return null;
   }
@@ -53,8 +73,8 @@ export interface EdgeConfirmation {
 
 export const edgeConfirmationsService = {
   /** Confirmed/dismissed edges for the signed-in user. Empty for signed-out visitors. */
-  async list(): Promise<EdgeConfirmation[]> {
-    const userId = await getCurrentUserId();
+  async list(explicitUserId?: string | null): Promise<EdgeConfirmation[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     if (!userId) return [];
     const { data, error } = await supabase
       .from('graph_edge_confirmations')
@@ -112,8 +132,8 @@ export const flagsService = {
     ) as Promise<InterpretationFlag>;
   },
   /** Saved corrections, newest first. Scopes strictly to current account, or demo if signed out. */
-  async list(): Promise<InterpretationFlag[]> {
-    const userId = await getCurrentUserId();
+  async list(explicitUserId?: string | null): Promise<InterpretationFlag[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('interpretation_flags').select('*').order('created_at', { ascending: false });
     if (userId) {
       query = query.eq('user_id', userId);
@@ -171,8 +191,8 @@ export const flagsService = {
 };
 
 export const memoriesService = {
-  async list(orderBy: 'occurred_at' | 'created_at' = 'occurred_at'): Promise<Memory[]> {
-    const userId = await getCurrentUserId();
+  async list(orderBy: 'occurred_at' | 'created_at' = 'occurred_at', explicitUserId?: string | null): Promise<Memory[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('memories').select('*').order(orderBy, { ascending: false });
     if (userId) {
       query = query.eq('user_id', userId);
@@ -181,8 +201,8 @@ export const memoriesService = {
     }
     return unwrap(query);
   },
-  async get(id: string): Promise<Memory | null> {
-    const userId = await getCurrentUserId();
+  async get(id: string, explicitUserId?: string | null): Promise<Memory | null> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('memories').select('*').eq('id', id);
     if (userId) {
       query = query.eq('user_id', userId);
@@ -216,8 +236,8 @@ export const memoriesService = {
 };
 
 export const beliefsService = {
-  async listWithHistory(): Promise<Belief[]> {
-    const userId = await getCurrentUserId();
+  async listWithHistory(explicitUserId?: string | null): Promise<Belief[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let bQuery = supabase.from('beliefs').select('*').order('last_reflected_at', { ascending: false });
     let hQuery = supabase.from('beliefs_history').select('*').order('recorded_at', { ascending: true });
     if (userId) {
@@ -234,8 +254,8 @@ export const beliefsService = {
       history: (history as BeliefHistoryPoint[]).filter((h) => h.belief_id === b.id),
     }));
   },
-  async get(id: string): Promise<Belief | null> {
-    const userId = await getCurrentUserId();
+  async get(id: string, explicitUserId?: string | null): Promise<Belief | null> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('beliefs').select('*').eq('id', id);
     if (userId) {
       query = query.eq('user_id', userId);
@@ -290,8 +310,8 @@ export const beliefsService = {
 };
 
 export const decisionsService = {
-  async list(): Promise<Decision[]> {
-    const userId = await getCurrentUserId();
+  async list(explicitUserId?: string | null): Promise<Decision[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('decisions').select('*').order('created_at', { ascending: false });
     if (userId) {
       query = query.eq('user_id', userId);
@@ -300,8 +320,8 @@ export const decisionsService = {
     }
     return unwrap(query);
   },
-  async get(id: string): Promise<Decision | null> {
-    const userId = await getCurrentUserId();
+  async get(id: string, explicitUserId?: string | null): Promise<Decision | null> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('decisions').select('*').eq('id', id);
     if (userId) {
       query = query.eq('user_id', userId);
@@ -431,8 +451,8 @@ export const decisionsService = {
 };
 
 export const timelineService = {
-  async list(): Promise<TimelineEvent[]> {
-    const userId = await getCurrentUserId();
+  async list(explicitUserId?: string | null): Promise<TimelineEvent[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('timeline_events').select('*').order('occurred_at', { ascending: false });
     if (userId) {
       query = query.eq('user_id', userId);
@@ -476,8 +496,8 @@ export type StatementRelationshipRow = {
  * never duplicates rows; it upserts the latest candidate judgment.
  */
 export const relationshipsService = {
-  async list(): Promise<StatementRelationshipRow[]> {
-    const userId = await getCurrentUserId();
+  async list(explicitUserId?: string | null): Promise<StatementRelationshipRow[]> {
+    const userId = await getCurrentUserId(explicitUserId);
     let query = supabase.from('statement_relationships').select('*').order('created_at', { ascending: false });
     if (userId) {
       query = query.eq('user_id', userId);

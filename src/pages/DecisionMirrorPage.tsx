@@ -28,8 +28,12 @@ import { useAuth } from '@/lib/useAuth';
 type FilterTab = 'all' | 'unresolved' | 'decided';
 
 export function DecisionMirrorPage() {
-  const { user } = useAuth();
-  const { data, loading, error, reload } = useAsyncData(() => decisionsService.list(), [user?.id]);
+  const { user, loading: authLoading } = useAuth();
+  const { data, loading, error, reload } = useAsyncData(
+    () => decisionsService.list(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [pendingDelete, setPendingDelete] = useState<Decision | null>(null);

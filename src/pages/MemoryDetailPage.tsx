@@ -7,6 +7,7 @@ import { MemoryForm } from '@/components/MemoryForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LoadingState, ErrorState } from '@/components/ui';
 import { navigateTo } from '@/lib/router';
+import { useAuth } from '@/lib/useAuth';
 
 const MOOD_TONES: Record<Memory['mood'], { bg: string; text: string }> = {
   positive: { bg: 'bg-sage/15', text: 'text-sage-dark' },
@@ -16,9 +17,11 @@ const MOOD_TONES: Record<Memory['mood'], { bg: string; text: string }> = {
 };
 
 export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
+  const { user, loading: authLoading } = useAuth();
   const { data, loading, error, reload } = useAsyncData(
-    () => memoriesService.get(memoryId),
-    [memoryId]
+    () => memoriesService.get(memoryId, user?.id),
+    [memoryId, user?.id, authLoading],
+    { enabled: !authLoading }
   );
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);

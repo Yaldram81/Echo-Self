@@ -31,9 +31,17 @@ import {
 import { useAuth } from '@/lib/useAuth';
 
 export function BeliefsPage() {
-  const { user } = useAuth();
-  const { data, loading, error, reload } = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
-  const { data: memories } = useAsyncData(() => memoriesService.list(), [user?.id]);
+  const { user, loading: authLoading } = useAuth();
+  const { data, loading, error, reload } = useAsyncData(
+    () => beliefsService.listWithHistory(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const { data: memories } = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'user' | 'suggestions'>('all');

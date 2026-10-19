@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Sparkles, Tag as TagIcon, Plus } from 'lucide-react';
 import { memoriesService } from '@/lib/services';
+import { useAuth } from '@/lib/useAuth';
 import {
   MEMORY_CATEGORIES,
   MEMORY_SOURCES,
@@ -19,6 +20,7 @@ export function MemoryForm({
   onSaved: (saved: Memory) => void;
   onCancel: () => void;
 }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(existing?.title ?? '');
   const [content, setContent] = useState(existing?.content ?? '');
   const [category, setCategory] = useState(existing?.category ?? 'personal_growth');
@@ -37,7 +39,7 @@ export function MemoryForm({
   const [dbTags, setDbTags] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
-    memoriesService.list().then((list) => {
+    memoriesService.list('occurred_at', user?.id).then((list) => {
       if (cancelled) return;
       const seen = new Set<string>();
       for (const m of list) {
@@ -49,7 +51,7 @@ export function MemoryForm({
       setDbTags(Array.from(seen));
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [user?.id]);
 
   const valid = title.trim().length > 0 && content.trim().length > 0 && date !== '';
 

@@ -150,7 +150,7 @@ export function HomePage() {
                 onClick={() => navigateTo('memories')}
                 className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-charcoal text-paper font-semibold text-xs sm:text-sm hover:bg-slateink-dark hover:scale-[1.01] active:scale-98 transition-all shadow-lifted cursor-pointer"
               >
-                <span>Explore Jordan Demo</span>
+                <span>{signedIn ? 'Open Personal Workspace' : 'Explore Jordan Demo'}</span>
                 <ArrowRight className="w-4 h-4 text-terracotta-light" aria-hidden="true" />
               </button>
 
@@ -333,7 +333,7 @@ export function HomePage() {
                 onClick={() => navigateTo('memories')}
                 className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-terracotta-deep hover:text-terracotta transition-colors group cursor-pointer"
               >
-                <span>Inspect Jordan&apos;s Memory Ledger</span>
+                <span>{signedIn ? 'Open Memory Ledger' : "Inspect Jordan's Memory Ledger"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>

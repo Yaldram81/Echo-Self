@@ -85,11 +85,27 @@ const PERIOD_LABELS: Record<'all' | '30' | '90' | '365', string> = {
 };
 
 export function EvidenceGraphPage() {
-  const { user } = useAuth();
-  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
-  const decisions = useAsyncData(() => decisionsService.list(), [user?.id]);
-  const confirmations = useAsyncData(() => edgeConfirmationsService.list(), [user?.id]);
+  const { user, loading: authLoading } = useAuth();
+  const memories = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const beliefs = useAsyncData(
+    () => beliefsService.listWithHistory(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const decisions = useAsyncData(
+    () => decisionsService.list(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const confirmations = useAsyncData(
+    () => edgeConfirmationsService.list(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
 
   const loading = memories.loading || beliefs.loading || decisions.loading || confirmations.loading;
   const error = memories.error || beliefs.error || decisions.error || confirmations.error;

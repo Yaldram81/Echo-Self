@@ -56,8 +56,12 @@ function withinDays(iso: string, days: number | null): boolean {
 }
 
 export function MemoriesPage() {
-  const { user } = useAuth();
-  const { data, loading, error, reload } = useAsyncData(() => memoriesService.list(), [user?.id]);
+  const { user, loading: authLoading } = useAuth();
+  const { data, loading, error, reload } = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | MemoryCategory>('all');
   const [tag, setTag] = useState<string | null>(null);

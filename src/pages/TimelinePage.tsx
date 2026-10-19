@@ -164,10 +164,22 @@ function buildEntries(memories: Memory[], decisions: Decision[], beliefs: Belief
 }
 
 export function TimelinePage() {
-  const { user } = useAuth();
-  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
-  const decisions = useAsyncData(() => decisionsService.list(), [user?.id]);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
+  const { user, loading: authLoading } = useAuth();
+  const memories = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const decisions = useAsyncData(
+    () => decisionsService.list(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const beliefs = useAsyncData(
+    () => beliefsService.listWithHistory(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
 
   const loading = memories.loading || decisions.loading || beliefs.loading;
   const error = memories.error || decisions.error || beliefs.error;

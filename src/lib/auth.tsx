@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { AuthContext, type AuthState } from './authContext';
-import { profilesService } from './services';
+import { profilesService, setActiveUserId } from './services';
 
 /** Provides the verified session to the app. Hook: useAuth() from ./useAuth. */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -17,6 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth
       .getSession()
       .then(({ data }) => {
+        const uid = data.session?.user?.id ?? null;
+        setActiveUserId(uid);
         if (!cancelled) {
           setState({ session: data.session, user: data.session?.user ?? null, loading: false });
           // Ensure profile exists for pre-migration users
@@ -26,10 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
+        setActiveUserId(null);
         if (!cancelled) setState({ session: null, user: null, loading: false });
       });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user?.id ?? null;
+      setActiveUserId(uid);
       setState({ session, user: session?.user ?? null, loading: false });
       // Ensure profile exists on login/signup
       if (session?.user) {

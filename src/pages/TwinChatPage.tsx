@@ -120,8 +120,16 @@ function persistSessions(sessions: ChatSession[]) {
 
 export function TwinChatPage() {
   const { user, loading: authLoading } = useAuth();
-  const memories = useAsyncData(() => memoriesService.list(), [user?.id]);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), [user?.id]);
+  const memories = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const beliefs = useAsyncData(
+    () => beliefsService.listWithHistory(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
   const preferredUserName = useMemo(() => {
     return (
       user?.user_metadata?.preferred_name ||
@@ -132,8 +140,9 @@ export function TwinChatPage() {
     );
   }, [user]);
   const flags = useAsyncData(
-    async (): Promise<InterpretationFlag[]> => (user ? await flagsService.list() : []),
-    [user?.id]
+    async (): Promise<InterpretationFlag[]> => (user ? await flagsService.list(user.id) : []),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
   );
   const loading = memories.loading || beliefs.loading;
   const error = memories.error || beliefs.error;

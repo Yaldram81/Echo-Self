@@ -28,6 +28,7 @@ import {
 } from '@/lib/decisionAnalysis';
 import { LoadingState, ErrorState, Badge } from '@/components/ui';
 import { navigateTo } from '@/lib/router';
+import { useAuth } from '@/lib/useAuth';
 
 type Report = ReturnType<typeof analyzeDecision>;
 
@@ -154,9 +155,22 @@ function ProposalSection({
 }
 
 export function DecisionDetailPage({ decisionId }: { decisionId: string }) {
-  const decision = useAsyncData(() => decisionsService.get(decisionId), [decisionId]);
-  const memories = useAsyncData(() => memoriesService.list(), []);
-  const beliefs = useAsyncData(() => beliefsService.listWithHistory(), []);
+  const { user, loading: authLoading } = useAuth();
+  const decision = useAsyncData(
+    () => decisionsService.get(decisionId, user?.id),
+    [decisionId, user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const memories = useAsyncData(
+    () => memoriesService.list('occurred_at', user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
+  const beliefs = useAsyncData(
+    () => beliefsService.listWithHistory(user?.id),
+    [user?.id, authLoading],
+    { enabled: !authLoading }
+  );
 
   const loading = decision.loading || memories.loading;
   const error = decision.error || memories.error || beliefs.error;
